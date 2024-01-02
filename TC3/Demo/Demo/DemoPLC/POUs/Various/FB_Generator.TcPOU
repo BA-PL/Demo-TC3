@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Generator" Id="{32e2ca1f-8182-486d-a739-eb2625ee79df}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_Generator	 v1.0											*)
+(*									26.06.2008													*)
+(*					Blok funkcyjny posiadający funkje generatora. Możemy wybierać typ			*)
+(*					przebiegu, to czy okres będzie określony czasem czy ilością cykli programu.	*)
+(*					Generator posiada również wejście RESET, które gdy przyjmuję wartość		*)
+(*					powoduje pojawienie się na wyjściu wartości 0. 								*)
+(*______________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_Generator
+VAR_INPUT
+	MODE:GEN_MODE;		(* Typ przebiegu :
+								TRIANGLE lub 0			Przebieg trójkątny od wartości AMPL do - AMPL
+								TRIANGLE_POS lub 1		Przebieg trójkątny od wartości AMPL do 0
+								SAWTOOTH_RISE lub 2	Przebieg piłokształtny rosnący od wartości -AMPL do AMPL
+								SAWTOOTH_FALL lub 3	Przebieg piłokształtny opadający od wartości AMPL do -AMPL
+								RECTANGLE lub 4		Przebieg prostokątny AMPL i - AMPL 
+								SINUS lub 5				Przebieg sinusoidalny
+								COSINUS lub 6			Przebieg cosinusoidalny *)
+	BASE:BOOL;			(* Okleślenie okresu : FALSE-Liczba cykli programu ; TRUE-Czas *)
+	PERIOD:TIME;		(* Okres, jeżeli BASE=TRUE *)
+	CYCLES:INT;			(* Cykle programu na okres, jeżeli BASE=FALSE *)
+	AMPLITUDE:INT;		(* Amplituda *)
+	RESET:BOOL;			(* Reset *)
+END_VAR
+VAR_OUTPUT
+	OUT:INT;
+END_VAR
+VAR
+	CET,PER:DWORD;
+	COUNTER:INT;
+	CLOCK:TON;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF RESET THEN
+	COUNTER:=0;
+	OUT:=0;
+	CLOCK(IN:=FALSE);
+ELSE
+	IF BASE=FALSE THEN		(* Periodizität bzgl. Aufrufe *)
+		COUNTER:=(COUNTER+1)MOD CYCLES;
+		CASE MODE OF
+		0:	(* Dreiecksfunktion von -AMPL bis AMPL.*)
+			OUT:=(CYCLES-2*ABS(CYCLES-2*COUNTER))*AMPLITUDE/CYCLES;
+		1:	(* Dreiecksfunktion von 0 bis AMPL.*)
+			OUT:=(CYCLES-ABS(CYCLES-2*COUNTER))*AMPLITUDE/CYCLES;
+		2:	(* Sägezahn steigend *)
+			OUT:=(2*COUNTER-CYCLES)*AMPLITUDE/CYCLES;
+		3:	(* Sägezahn fallend *)
+			OUT:=(CYCLES-2*COUNTER)*AMPLITUDE/CYCLES;
+		4:	(* Rechteck AMPL./-AMPL. *)
+			IF 2*COUNTER>CYCLES THEN
+				OUT:=-AMPLITUDE;
+			ELSE
+				OUT:=AMPLITUDE;
+			END_IF
+		5:	(* Sinusfunktion *)
+			OUT:=REAL_TO_INT(SIN(6.283167*COUNTER/CYCLES)*AMPLITUDE);
+		6:	(* Cosinusfunktion *)
+			OUT:=REAL_TO_INT(COS(6.283167*COUNTER/CYCLES)*AMPLITUDE);
+		END_CASE;
+	ELSE												(* Periodizität bzgl. Zeit *)
+		CLOCK();										(* Timer abfragen *)
+		IF CLOCK.PT<>PERIOD+PERIOD THEN	(* Initialisierung *)
+			CLOCK.PT:=PERIOD+PERIOD;		(* Setze Timer auf zwei PERIODn *)
+			CLOCK(IN:=TRUE);
+		ELSE
+			CET:=TIME_TO_DWORD(CLOCK.ET);
+			PER:=TIME_TO_DWORD(PERIOD);
+			IF CET>=PER THEN	(* Neuinitialisierung des Timers*)
+				CLOCK(IN:=FALSE);
+				CLOCK(IN:=TRUE);
+				CET:=CET MOD PER;
+			END_IF
+			CASE MODE OF
+			0:	(* Dreiecksfunktion -AMPL bis AMPL.*)
+				OUT:=(1-2*ABS(1-2*DWORD_TO_INT(CET/PER))*AMPLITUDE);
+			1:	(* Dreiecksfunktion 0 bis AMPL.*)
+				OUT:=(1-ABS(1-2*DWORD_TO_INT(CET/PER))*AMPLITUDE);
+			2:	(* Sägezahn steigend *)
+				OUT:=((2*DWORD_TO_INT(CET/PER)-1)*AMPLITUDE);
+			3:	(* Sägezahn fallend *)
+				OUT:=((1-2*DWORD_TO_INT(CET/PER))*AMPLITUDE);
+			4:	(* Rechteck AMPL./-AMPL. *)
+				IF CET*2<PER THEN
+					OUT:=-AMPLITUDE;
+				ELSE
+					OUT:=AMPLITUDE;
+				END_IF
+			5:	(* Sinusfunktion *)
+				OUT:=REAL_TO_INT(SIN(6.283167*DWORD_TO_REAL(CET/PER))*AMPLITUDE);
+			6:	(* Cosinusfunktion *)
+				OUT:=REAL_TO_INT(COS(6.283167*DWORD_TO_REAL(CET/PER))*AMPLITUDE);
+			END_CASE;
+		END_IF
+	END_IF;
+END_IF;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

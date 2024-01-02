@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_ExcelDateMin" Id="{0137feb7-5851-443f-8bd5-b97bd5d31c66}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								F_ExcelDateMin v1.1										*)
+(*									9.11.2007											*)
+(*		Funkcja konwerująca strukturę TIMESTRUCT  na zmienną typu STRING(17).			*)
+(*		Nowa zmienna zawiera datę dzienną z dokładnością minuty.						*)
+(*		Format daty pozwala na bezpośrednie wykorzystanie jej w programie Excel.		*)
+(*______________________________________________________________________________________*)
+
+FUNCTION F_ExcelDateMin : STRING(16)
+VAR_INPUT
+	strCzas		:	TIMESTRUCT;		(*Czas w formie struktury*)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_ExcelDateMin := SYSTEMTIME_TO_STRING(strCzas);
+F_ExcelDateMin := REPLACE (F_ExcelDateMin,' ' ,1,11);(*zamiana znaku "-" na " " przed godziną*)]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

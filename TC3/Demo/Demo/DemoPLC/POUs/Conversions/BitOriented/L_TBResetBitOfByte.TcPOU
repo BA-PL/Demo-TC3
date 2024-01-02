@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBResetBitOfByte" Id="{6f57603b-ba3e-4202-b212-60581a612942}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBResetBitOfByte v1.0										*)
+(*									29.02.2007											*)
+(*				This function resets a single bit in a value of type ”byte” to “0”		*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBResetBitOfByte : BYTE
+VAR_INPUT
+	byInput: BYTE;
+	byBitNr: BYTE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBResetBitOfByte := byInput;
+CASE byBitNr OF
+	0:
+	L_TBResetBitOfByte.0 := FALSE;
+	1:
+	L_TBResetBitOfByte.1 := FALSE;
+	2:
+	L_TBResetBitOfByte.2 := FALSE;
+	3:
+	L_TBResetBitOfByte.3 := FALSE;
+	4:
+	L_TBResetBitOfByte.4 := FALSE;
+	5:
+	L_TBResetBitOfByte.5 := FALSE;
+	6:
+	L_TBResetBitOfByte.6 := FALSE;
+	7:
+	L_TBResetBitOfByte.7 := FALSE;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

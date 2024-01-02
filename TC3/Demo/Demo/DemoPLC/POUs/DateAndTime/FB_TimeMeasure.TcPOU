@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_TimeMeasure" Id="{a58b1c54-ddbf-46a0-95a1-60f7e73cbffa}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_TimeMeasure v1.1										*)
+(*									13.08.2012											*)
+(* Mierzy czas załączenia wejścia. Podaje aktualny czas oraz czas ostatniego załączenia *)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_TimeMeasure
+VAR_INPUT
+	bOn				:	BOOL;
+END_VAR
+VAR_OUTPUT
+	tCurrentTime	:	TIME;
+	tLastTime		:	TIME;
+END_VAR
+VAR
+	ton1			:	TON;
+	bOnOld			:	BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bOn = FALSE AND bOnOld = TRUE THEN tLastTime := tCurrentTime; END_IF
+ton1(IN:= bOn, PT:= T#71582m47s295ms, Q=> , ET=> tCurrentTime);
+bOnOld := bOn;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

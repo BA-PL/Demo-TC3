@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBConvByteToBits" Id="{74296ea7-7e10-4bb2-80d2-b7313a7dfc0b}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBConvByteToBits     v1.0									*)
+(*									29.02.2007											*)
+(*	This FB returns the 8 corresponding bit values for an input value of type ”byte”	*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK L_TBConvByteToBits
+VAR_INPUT
+	byInput: BYTE;
+END_VAR
+VAR_OUTPUT
+	bBit0: BOOL;
+	bBit1: BOOL;
+	bBit2: BOOL;
+	bBit3: BOOL;
+	bBit4: BOOL;
+	bBit5: BOOL;
+	bBit6: BOOL;
+	bBit7: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bBit0 := byInput.0;
+bBit1 := byInput.1;
+bBit2 := byInput.2;
+bBit3 := byInput.3;
+bBit4 := byInput.4;
+bBit5 := byInput.5;
+bBit6 := byInput.6;
+bBit7 := byInput.7;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

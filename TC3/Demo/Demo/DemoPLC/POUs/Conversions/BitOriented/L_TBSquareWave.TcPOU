@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBSquareWave" Id="{a62201e8-5e33-4d17-865c-94d74d6a0145}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								L_TBSquareWave v1.0										*)
+(*									29.02.2007											*)
+(*	This FB can be used to generate a Boolean square wave signal with a variable high/low time *)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK L_TBSquareWave
+VAR_INPUT
+	bEnable:BOOL;
+	wTimeHigh:WORD;
+	wTimeLow:WORD;
+END_VAR
+VAR_OUTPUT
+	bOut:BOOL;
+END_VAR
+VAR
+	ton1: TON;
+	ton2: TON;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bEnable THEN
+	ton1(IN:= NOT ton2.Q, PT:=WORD_TO_TIME(wTimeLow));
+	bOut:=NOT ton1.Q;
+	ton2(IN:=ton1.Q , PT:=WORD_TO_TIME(wTimeHigh));
+ELSE
+	bOut:=FALSE;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

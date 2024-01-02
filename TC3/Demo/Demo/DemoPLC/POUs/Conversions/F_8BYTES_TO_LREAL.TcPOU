@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_8BYTES_TO_LREAL" Id="{54cbca58-a432-4037-a091-dfebc543201a}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************)
+(*							Beckhoff Automation Poland								*)
+(*							F_8BYTES_TO_LREAL v1.0									*)
+(*									3.07.2015										*)
+(*					Funkcja zamieniająca 8 zmiennych typu BYTE na LREAL 			*)
+(*__________________________________________________________________________________*)
+FUNCTION F_8BYTES_TO_LREAL : LREAL
+VAR_INPUT
+	BByte0		: BYTE;
+	BByte1		: BYTE;
+	BByte2		: BYTE;
+	BByte3		: BYTE;
+	BByte4		: BYTE;
+	BByte5		: BYTE;
+	BByte6		: BYTE;
+	BByte7		: BYTE;
+END_VAR
+VAR
+	arrByte	: ARRAY [1..8] OF BYTE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[arrByte[1] := BByte0;
+arrByte[2] := BByte1;
+arrByte[3] := BByte2;
+arrByte[4] := BByte3;
+arrByte[5] := BByte4;
+arrByte[6] := BByte5;
+arrByte[7] := BByte6;
+arrByte[8] := BByte7;
+
+MEMCPY(ADR(F_8BYTES_TO_LREAL),ADR(arrByte), 8);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

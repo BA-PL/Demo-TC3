@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_FilePutText" Id="{b61a1d7e-67cd-4e64-aa8a-e2c690249672}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_FilePutText  v1.0									*)
+(*									26.06.2014											*)
+(*				Blok funkcyjny pozwalający wpisać do pliku String(1000)					*)
+(*						jest to rozszerzenie bloku FB_FilePuts							*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_FilePutText			(* Write a string to a stream. *)
+VAR_INPUT
+	sNetId					:	T_AmsNetId;		(* ams net id *)
+	hFile					:	UINT;			(* file handle *)
+	sLine					:	STRING(1000);	(* string to write *)
+	bExecute				:	BOOL;			(* control input *)
+	tTimeout				:	TIME := DEFAULT_ADS_TIMEOUT;
+END_VAR
+VAR_OUTPUT
+	bBusy					:	BOOL;
+	bError					:	BOOL;
+	nErrId					:	UDINT;
+END_VAR
+{library private}
+VAR
+	fbAdsRdWrt				:	FW_AdsRdWrt := ( nPort := AMSPORT_R3_SYSSERV, nIdxGrp := SYSTEMSERVICE_FPUTS, cbReadLen := 0, pReadBuff := 0 );
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbAdsRdWrt( sNetId := sNetId, nIdxOffs := hFile, cbWriteLen := SIZEOF(sLine)(*inclusive terminating NULL*), pWriteBuff := ADR(sLine),
+			bExecute := bExecute, tTimeout := tTimeout, bBusy=>bBusy, bError=>bError, nErrID=>nErrID );
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_WorktimeCompact" Id="{2018d0d9-24bf-4655-bf18-897aab0e1bda}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_WorktimeCompact v1.0									*)
+(*									31.09.2011											*)
+(*							Licznik czasu pracy i liczby załaczeń.						*)
+(*			Zmienne IN_OUT powinny być przechowywane po zaniku zasilania				*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_WorktimeCompact
+VAR_INPUT
+	bIn			:	BOOL;
+END_VAR
+VAR_IN_OUT
+	dwMinutes	: 	DWORD;
+	dwCounts	:	DWORD;
+END_VAR
+VAR
+	Timer		:	TON;
+	rtMinute	:	R_TRIG;
+	i			:	DWORD;
+	iOld		:	DWORD;
+	rtOn		:	R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Wyciągamy sekundy *)
+i := TIME_TO_DWORD(Timer.ET) MOD 60000;
+
+IF bIn THEN
+	(* Jak działa to sprawdzamy czy się minuta nie przepętliła *)
+	rtMinute(CLK:= iOld>i, Q=> );
+ELSE
+	(* Jak nie działa to sprawdzamy czy było więcej niż 30 s, jak tak to dodamy minutę *)
+	rtMinute(CLK:= i>30000, Q=> );
+END_IF
+(* Timer odliczający czas *)
+Timer(IN:=bIn AND NOT Timer.Q ,PT:= T#24h);
+(* Przepisanie poprzednich sekund - do wykrycia przepętlenia *)
+iOld := i;
+(* Dodanie minuty *)
+IF rtMinute.Q THEN
+	dwMinutes := dwMinutes+1;
+END_IF
+(* Licznik załaczeń *)
+rtOn(CLK:=bIn);
+IF rtOn.Q THEN dwCounts := dwCounts+1; END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

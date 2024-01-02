@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_ReadRegister" Id="{0042943d-f252-4ce2-bbb7-e8d769fbf64c}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_ReadRegister	 v1.0											*)
+(*									9.9.2009													*)
+(*			Blok funkcyjny odczytujacy wartosc z rejestru modułu analogowego KLxxxx				*)
+(*				Szczegolowe informacje dotyczace komunikacji z rejestrami						*)
+(*				i wartosci w nich przechowywanych znajduja sie w dokumentacji modulu			*)
+(*				W programie może być jednocześnie wywołany 1 blok dla 1 kanalu 					*)
+(*______________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_ReadRegister
+VAR_INPUT
+	bRead: 		BOOL;		(*Rozkaz odczytu*)
+	iRegNo:		INT;		(*Numer odczytywanego rejestru*)
+	State: 		BYTE;		(*Nalezy zlinkowac do State przy konkretnym kanale w module KLxxxx*)
+	DataIn: 	INT;		(*Nalezy zlinkowac do Data_In przy konkretnym kanale w module KLxxxx*)
+END_VAR
+VAR_OUTPUT
+	bBusy:		BOOL; 		(*Blok wykonuje akcje*)
+	bError:		BOOL;		(*Wystapil blad*)
+	Value: 		INT;		(*Odczytana wartosc*)
+	Ctrl: 		BYTE;		(*Nalezy zlinkowac do Ctrl przy konkretnym kanale w module KLxxxx*)
+END_VAR
+VAR
+	Step: 		INT;		(*Krok instrukcji CASE*)
+	Temp: 		BYTE;		(*Zapamietanie wartosci CTRL przez odczytem*)
+	rtRead:		R_TRIG;		(*Zlapanie rozkazu odczytu*)
+	Timeout:	TON;		(*Wykrycie bledu*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Sprawdzanie czy nie uplynal czas*)
+	Timeout(IN:=Step<>0 , PT:= T#200ms, Q=> bError);
+	IF bError THEN Step := 99; END_IF
+
+(*Wykrycie sygnalu do odczytu*)
+	rtRead(CLK:= bRead, Q=> );
+
+(*Odczyt*)
+	CASE Step OF
+	0:
+		(*Mierzymy chyba ze otrzymamy sygnal startu*)
+		IF rtRead.Q THEN
+			bBusy := TRUE;
+			Step := Step+10;
+		END_IF
+	10:
+		Temp := Ctrl;(*Zapamietanie controla sprzed odczytu*)
+		Ctrl :=INT_TO_BYTE(128+iRegNo); (*1|0|Reg_No*)
+		Step := Step+10;
+	20:
+		IF State = Ctrl THEN
+			Value := DataIn;
+			Ctrl := Temp;
+			bBusy := FALSE;
+			Step := 0;
+		END_IF
+	99:	(*Gdy blad*)
+		Ctrl := Temp;
+		bBusy := FALSE;
+		Step := 0;
+	END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

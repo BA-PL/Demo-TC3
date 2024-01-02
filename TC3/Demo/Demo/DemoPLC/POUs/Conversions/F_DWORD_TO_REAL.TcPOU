@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_DWORD_TO_REAL" Id="{a5c4bea8-e706-4efa-baa7-ca4ca97f52e5}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************)
+(*							Beckhoff Automation Poland							*)
+(*							F_DWORD_TO_REAL v1									*)
+(*									21.11.2013									*)
+(*					Funkcja zamieniająca DWORD na REAL				 			*)
+(*______________________________________________________________________________*)
+FUNCTION F_DWORD_TO_REAL : REAL
+VAR_INPUT
+	dwDword	: DWORD;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[MEMCPY(ADR(F_DWORD_TO_REAL),ADR(dwDword), 4);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

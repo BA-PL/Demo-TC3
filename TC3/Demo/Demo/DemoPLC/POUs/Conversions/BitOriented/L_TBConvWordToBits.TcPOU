@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBConvWordToBits" Id="{7d26c52e-8d4e-4bcf-b775-741690c99f76}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBConvWordToBits v1.0										*)
+(*									29.02.2007											*)
+(*	This FB returns the 16 corresponding bit values for an input value of type ” word”	*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK L_TBConvWordToBits
+VAR_INPUT
+	wInput:WORD;
+END_VAR
+VAR_OUTPUT
+	bBit0: BOOL;
+	bBit1: BOOL;
+	bBit2: BOOL;
+	bBit3: BOOL;
+	bBit4: BOOL;
+	bBit5: BOOL;
+	bBit6: BOOL;
+	bBit7: BOOL;
+	bBit8: BOOL;
+	bBit9: BOOL;
+	bBit10: BOOL;
+	bBit11: BOOL;
+	bBit12: BOOL;
+	bBit13: BOOL;
+	bBit14: BOOL;
+	bBit15: BOOL;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bBit0:=wInput.0;
+bBit1:=wInput.1;
+bBit2:=wInput.2;
+bBit3:=wInput.3;
+bBit4:=wInput.4;
+bBit5:=wInput.5;
+bBit6:=wInput.6;
+bBit7:=wInput.7;
+bBit8:=wInput.8;
+bBit9:=wInput.9;
+bBit10:=wInput.10;
+bBit11:=wInput.11;
+bBit12:=wInput.12;
+bBit13:=wInput.13;
+bBit14:=wInput.14;
+bBit15:=wInput.15;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

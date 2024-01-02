@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="E_DayPL" Id="{215f77f9-b7bb-42a3-8014-21fc3529093e}">
+    <Declaration><![CDATA[TYPE E_DayPL :(Poniedzialek:=1, Wtorek, Sroda, Czwartek, Piatek, Sobota, Niedziela );
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

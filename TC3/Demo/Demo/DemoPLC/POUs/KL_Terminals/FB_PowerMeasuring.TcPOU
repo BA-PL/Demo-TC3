@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_PowerMeasuring" Id="{a74b8983-7eac-4484-95f0-1a0223464ce9}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*							FB_PowerMeasuring v1.3													*)
+(*									24.05.2011														*)
+(*			Blok funkcyjny zliczający zużycie energii. Współpracuje z modułem KL3403.				*)
+(*			Konieczne jest dodanie biblioteki TcUtilities.lib, TcSystem.lib oraz TcBase.lib			*)
+(*			Dane wyjściowe to raport roczny w formie tablicy 12 elementów typu ST_KL3403_Report		*)
+(*				Summary: WORD; - całkowite zużycie energii = Tarrif1 + Tarrif2						*)
+(*				SummaryPrice:WORD;- całkowity koszt energii = Tarrif1Price + Tarrif2Price			*)
+(*				Tarrif1: WORD;																		*)
+(*				Tarrif1Price:WORD;																	*)
+(*				Tarrif2: WORD;																		*)
+(*				Tarrif2Price:WORD;																	*)
+(* 			Konieczne jest dodanie biblioteki TcUtilities.lib, TcSystem.lib oraz TcBase.lib			*)
+(*		UWAGA!!!																					*)
+(*		Blok ten korzysta z czasu systemowego, podawanego na wejście bloku.							*)
+(*		Nie można wywoływać tego bloku bez podania czasu na wejściu,								*)
+(*		ponieważ wówczas przyjmuje on wartości zerowe												*)
+(*__________________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_PowerMeasuring
+VAR_INPUT
+	wValue: 			WORD; 			(*Zliczana wartość*)
+	bTariff_Ex: 		BOOL; 			(*Sygnał droższej taryfy*)
+	rFactor_1: 			REAL;	 		(*Współczynnik mnożący taryfy tańszej, w PLN*)
+	rFactor_2: 			REAL;			(*Współczynnik mnożący taryfy droższej, w PLN*)
+	strAktCzas:			TIMESTRUCT;		(*Aktualny czas w formie struktury*)
+END_VAR
+VAR_IN_OUT
+	arrReport: 			ARRAY [1..12] OF ST_KL3403_Report;(*Raport z ostatnich 12 mesięcy*)
+END_VAR
+VAR
+	wOldTariff1: 		WORD;		(*Wartość taryfy tańszej z bieżącego miesiąca*)
+	wOldTariff2: 		WORD;		(*Wartość taryfy droższej z bieżącego miesiąca*)
+	RisingEdge: 		R_TRIG;		(*Przełączenie na taryfę droższą*)
+	FallingEdge: 		F_TRIG;		(*Przełączenie na taryfę tańszą*)
+	wOldMonth: 			WORD; 		(*Poprzedni miesiąc*)
+	wFreeze: 			WORD; 		(*Wartość w momencie przełączenia taryf*)
+	bFirstCycle: 		BOOL:=TRUE;	(*Oznaczenie pierwszego cyklu programu*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[	(*Zapisanie początkowej wartości po restarcie programu*)
+	IF bFirstCycle THEN
+		(*Wpisanie aktualnych danych z pamięci nieulotnej*)
+		wOldTariff1 := arrReport[strAktCzas.wMonth].Tarrif1;
+		wOldTariff2 := arrReport[strAktCzas.wMonth].Tarrif2;
+		(*Uzupełnienie wpisu o aktualnej wartości*)
+		wFreeze := wValue;
+		bFirstCycle := FALSE;
+	END_IF
+	(*Zapisanie początkowej wartości po restarcie modułu*)
+	IF  wFreeze > wValue THEN
+		wFreeze := wValue;
+		wOldTariff1 := 0;
+		wOldTariff2 := 0;
+		arrReport[wOldMonth].Tarrif2 := 0;
+		arrReport[wOldMonth].Tarrif1 := 0;
+	END_IF
+
+	(*Wykrycie przełączenia na taryfę tanią i obliczenie ostatniego przyrostu taryfy taniej*)
+	RisingEdge(CLK:= bTariff_Ex);
+	IF RisingEdge.Q THEN
+		wOldTariff1 := wOldTariff1 + (wValue - wFreeze);
+		wFreeze := wValue;
+	END_IF
+	(*Wykrycie przełączenia na taryfę drogą i obliczenie ostatniego przyrostu taryfy drogiej*)
+	FallingEdge(CLK:= bTariff_Ex);
+	IF FallingEdge.Q THEN
+		wOldTariff2 := wOldTariff2 + (wValue - wFreeze);
+		wFreeze := wValue;
+	END_IF
+
+	(*Sprawdzamy czy nadal mamy ten sam miesiąc*)
+	IF strAktCzas.wMonth <> wOldMonth THEN
+		(*Zapamiętanie stanów i wyzerowanie liczników w nowym miesiącu*)
+		wOldMonth := strAktCzas.wMonth;
+		wOldTariff1 := 0;
+		wOldTariff2 := 0;
+		wFreeze := wValue; (*Wartość przy przełączeniu taryf*)
+	ELSE
+		(*Uzupełnienie wpisów w tabeli*)
+		IF bTariff_Ex THEN
+			arrReport[wOldMonth].Tarrif2 := wOldTariff2 + (wValue-wFreeze);
+			arrReport[wOldMonth].Tarrif2Price := REAL_TO_WORD((wOldTariff2 +wValue-wFreeze)* rFactor_2);
+		ELSE
+			arrReport[wOldMonth].Tarrif1 := wOldTariff1 + (wValue-wFreeze);
+			arrReport[wOldMonth].Tarrif1Price := REAL_TO_WORD((wOldTariff1 + wValue-wFreeze)* rFactor_1);
+		END_IF
+		arrReport[wOldMonth].Summary := arrReport[wOldMonth].Tarrif1 + arrReport[wOldMonth].Tarrif2;
+		arrReport[wOldMonth].SummaryPrice := arrReport[wOldMonth].Tarrif1Price + arrReport[wOldMonth].Tarrif2Price;
+	END_IF;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

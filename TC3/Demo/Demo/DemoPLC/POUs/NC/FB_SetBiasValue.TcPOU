@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_SetBiasValue" Id="{e832518c-a5b9-49e3-bb11-db2da3769a7a}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_SetBiasValue	 v1.0											*)
+(*									12.04.2015													*)
+(*							Blok wpisujący offset pozycji										*)
+(* 							Wymaga biblioteki TcMc2.lib 										*)
+(*______________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_SetBiasValue
+VAR_INPUT
+	bExecute			: BOOL; 		(* Narastajace zbocze aktywuje zapis *)
+	sNetId				: T_AmsNetId;
+	lrBias				: LREAL;
+END_VAR
+VAR_OUTPUT
+	bBusy				: BOOL;
+	bError				: BOOL;
+	udiErrorID			: UDINT;
+END_VAR
+VAR_IN_OUT
+	Axis				: AXIS_REF;
+END_VAR
+VAR
+	fbADSWRITE			: ADSWRITE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbADSWRITE(
+	NETID:= sNetId,
+	PORT:= AMSPORT_R0_NC,
+	IDXGRP:= 16#5000+Axis.NcToPlc.AxisId,
+	IDXOFFS:= 7,
+	LEN:= SIZEOF(lrBias),
+	SRCADDR:= ADR(lrBias),
+	WRITE:= bExecute,
+	TMOUT:= ,
+	BUSY=> bBusy,
+	ERR=> bError,
+	ERRID=> udiErrorID);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

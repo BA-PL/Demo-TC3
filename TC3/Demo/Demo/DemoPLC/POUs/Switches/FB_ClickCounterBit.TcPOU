@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_ClickCounterBit" Id="{0e03741f-a952-4e2d-80f5-e594b117901f}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************************)
+(*							Beckhoff Automation Poland													*)
+(*							FB_ClickCounterBit v1.0														*)
+(*									18.02.2008															*)
+(*				Blok funkcyjny zliczający ilość kliknięć i podający ją w formie bitu w bajcie			*)
+(*______________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_ClickCounterBit
+VAR_INPUT
+	bSwitch:		BOOL;(*Przycisk, którego kliknięcia zliczamy*)
+	tInterval: 		TIME;(*max czas między kliknięciami*)
+END_VAR
+VAR_OUTPUT
+	BOut:			BYTE;(*Zliczona ilość kliknięć*)
+END_VAR
+VAR
+	Counting:		TOF;
+	BAmount:		BYTE;
+	RisingEdge:		R_TRIG;
+	FallingEdge:	F_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Counting(IN:=bSwitch , PT:= tInterval, Q=> , ET=> );
+RisingEdge(CLK:= bSwitch, Q=> );
+FallingEdge(CLK:= Counting.Q, Q=> );
+IF RisingEdge.Q AND Counting.Q THEN
+	BAmount := BAmount+1;
+	BOut := 0;
+END_IF
+IF FallingEdge.Q THEN
+	IF BAmount > 8 THEN
+		BAmount := 8;
+	END_IF(**)
+	BOut := LREAL_TO_BYTE(EXPT(2,BAmount-1));
+	BAmount := 0;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

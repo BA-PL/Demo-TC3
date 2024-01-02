@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Dimmer2P" Id="{05ad013a-c2e1-44af-b2ac-6b99904f8d0d}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_Dimmer2P v1.0											*)
+(*									21.11.2007												*)
+(*		Blok funkcyjny do przyciemniania/rozjaśniania za pomocą 1 przycisków bistabilnych	*)
+(*							wykorzystywany z KL2751											*)
+(*__________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Dimmer2P
+VAR_INPUT
+	bSwitchOnUp:			BOOL;			(*Przycisk 1*)
+	bSwitchOffDown:			BOOL;			(*Przycisk 2*)
+	bReset:					BOOL;			(*Reset bloku funkcyjnego przez funkcję centralną*)
+END_VAR
+VAR_OUTPUT
+	iOut: 					INT;			(*Wyjscie - powinno byc zlinkowane z wyjściem modułu KL2751*)
+END_VAR
+VAR_IN_OUT
+	iOldOut: 				INT;			(*Zapamiętanie stanu w yjścia*)
+END_VAR
+VAR
+	iStep:					INT:=100;		(*Krok zmany wyjścia*)
+	timeLong:		 		TIME:=T#200MS;	(*Czas długiego kliknięcia*)
+	ftrig1:					F_TRIG;
+	ftrig2:					F_TRIG;
+	rtrig1:					R_TRIG;
+	rtrig2:					R_TRIG;
+	timer1:					TON;
+	timer2:					TON;
+	pom1: 					BOOL;
+	bLong1: 				BOOL;
+	bLong2: 				BOOL;
+	pom2: 					BOOL;
+	ResetTrig: 				R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Przywrócenie ustawień początkowych*)
+ResetTrig(CLK:=bReset);
+IF ResetTrig.Q THEN
+	iOut :=0;
+END_IF;
+(*Wywołanie trigerow i timerow*)
+timer1(PT:= timeLong);
+ftrig1(CLK:= bSwitchOnUp);
+rtrig1(CLK:= bSwitchOnUp);
+timer2(PT:= timeLong);
+ftrig2(CLK:= bSwitchOffDown);
+rtrig2(CLK:= bSwitchOffDown);
+(*Przycisk On i Up*)
+(*Włączenie przycisku*)
+IF rtrig1.Q THEN
+	timer1.IN := TRUE;
+	pom1 := TRUE;
+	bLong1 := FALSE;
+END_IF
+(*Krótkie wciśnięcie*)
+IF ftrig1.Q AND pom1 THEN
+	pom1 := FALSE;
+	timer1.IN := FALSE;
+	iOut := iOldOut;
+	bLong1 := FALSE;
+END_IF
+(*Długie wciśnięcie*)
+IF timer1.Q THEN
+	timer1.IN := FALSE;
+	bLong1 := TRUE;
+	pom1 := FALSE;
+END_IF
+(*Operacje gdy długi Up*)
+IF bLong1 THEN
+	iOut:=iOut+iStep;
+	IF iOut<0THEN
+		iOut :=32767;
+	END_IF
+	iOldOut:=iOut;
+END_IF;
+(*Wyłączenie długiego wciśnięcia*)
+IF NOT bSwitchOnUp THEN
+	bLong1 := FALSE;
+END_IF
+
+(*Przycisk Off i Down*)
+(*Włączenie przycisku*)
+IF rtrig2.Q THEN
+	timer2.IN := TRUE;
+	pom2 := TRUE;
+	bLong2 := FALSE;
+END_IF
+(*Krótkie wciśnięcie*)
+IF ftrig2.Q AND pom2 THEN
+	pom2 := FALSE;
+	timer2.IN := FALSE;
+	iOut := 0;
+	bLong2 := FALSE;
+END_IF
+(*Długie wciśnięcie*)
+IF timer2.Q THEN
+	timer2.IN := FALSE;
+	bLong2 := TRUE;
+	pom2 := FALSE;
+END_IF
+(*Operacje gdy długi Off*)
+IF bLong2 THEN
+	iOut:=iOut-iStep;
+	IF iOut<iStep THEN
+		iOut :=0;
+	END_IF
+	iOldOut:=iOut;
+END_IF;
+(*Wyłączenie długiego wciśnięcia*)
+IF NOT bSwitchOffDown THEN
+	bLong2 := FALSE;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

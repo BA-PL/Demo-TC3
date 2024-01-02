@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_FileLog" Id="{b91e322c-76e2-4069-8c3e-8687b295655d}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_FileLog  v1.0										*)
+(*									26.06.2014											*)
+(*			Blok funkcyjny pozwalający logowac dane do pliku							*)
+(*	Uwaga - blok nie posiada reakcji na zbocze narastajace,								*)
+(*	aby mogl byc wykorzystany wielokrotnie w jednym cyklu programu. 					*)
+(*	Reakcja na zbocze musi byc wykonana na zewnatrz bloku. 								*)
+(*	W przypadku pojawiania sie komunikatow czesciej niz blok jest w stanie zapisac,		*)
+(*	dane sa buforowane w pamieci w zmiennej 											*)
+ (*	arrSaveEventBuffer:ARRAY [1..20] OF STRING; 										*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_FileLog
+VAR_INPUT
+	bAdd					: BOOL;			(* Dodaj wpis *)
+	sMessage				: STRING(1000);	(* Tresc wpisu *)
+	bNoAndTime				: BOOL:= TRUE; (* TRUE - dodaj nr porzadkowy i stempel czasowy *)
+	sActTime				: STRING;		(* Aktualny czas *)
+(* Ustawienia zapisu do pliku *)
+	AmsNetId				: T_AmsNetId;	(* AMS NET ID obiektu docelowego, gdy lokalnie, to zmienna moze byc pusta *)
+	sPath					: STRING; 		(* Sciezka pliku, np  'Hard Disk\'*)
+	sName					: STRING; 		(* Nazwa pliku wraz z rozszerzeniem 'LogFile.txt'; *)
+END_VAR
+VAR_OUTPUT
+	bBusy					: BOOL;
+	bError					: BOOL;
+END_VAR
+VAR
+(* Logowanie do plików *)
+	fbSaveEvent: 			FB_SaveTextToFile;
+	fbSaveEventBuffer:		FB_MemRingBuffer;
+	arrSaveEventBuffer: 	ARRAY [1..20] OF STRING(1000);
+	wMessageNo: 			WORD;
+	sFileMessage: 			STRING(1000);
+	nStep: 					BYTE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbSaveEventBuffer(
+	pWrite:= ADR(sMessage),
+	cbWrite:= SIZEOF(sMessage),
+	pRead:= ADR(sFileMessage),
+	cbRead:= SIZEOF(sFileMessage),
+	pBuffer:= ADR(arrSaveEventBuffer),
+	cbBuffer:= SIZEOF(arrSaveEventBuffer),
+	bOk=> ,
+	nCount=> , 
+	cbSize=> , 
+	cbReturn=> );
+IF bAdd THEN
+	IF bNoAndTime THEN
+		wMessageNo:=wMessageNo + 1;
+		sMessage := CONCAT(CONCAT(CONCAT(CONCAT(CONCAT(WORD_TO_STRING(wMessageNo),'.$t'),sActTime),'$t'),sMessage),'$n');
+	END_IF
+	fbSaveEventBuffer.A_AddTail();
+END_IF
+
+CASE nStep OF
+	0:
+	(* Jesli jest komunikat do zapisania to zapisz *)
+	IF fbSaveEventBuffer.nCount>0 THEN
+		fbSaveEventBuffer.A_RemoveHead();
+		fbSaveEvent.bExecute:=TRUE;
+		nStep := nStep + 10;
+	END_IF
+	10:
+	fbSaveEvent.bExecute:=FALSE;
+	(* Jak zapis zakonczony sukcesem - to wroc do kroku 0 *)
+	IF NOT bBusy AND NOT bError THEN
+		nStep := 0;
+	END_IF
+	(* Jak blad to zresetuj bloczek i podejmij próbę ponownie *)
+	IF bError THEN
+		nStep := nStep + 10;
+	END_IF
+	20:
+		fbSaveEvent.bExecute:=TRUE;
+		nStep := nStep - 10;
+END_CASE
+
+fbSaveEvent(
+	AmsNetId	:= AmsNetId,
+	sPath		:= sPath,
+	sName		:= sName,
+	sLine		:= sFileMessage,
+	bBusy		=> bBusy,
+	bError		=> bError);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

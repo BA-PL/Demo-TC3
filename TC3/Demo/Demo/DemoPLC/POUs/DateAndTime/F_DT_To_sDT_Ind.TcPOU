@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_DT_To_sDT_Ind" Id="{e703c683-27b0-4a11-89d1-74a1373051cc}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************)
+(*							Beckhoff Automation Poland							*)
+(*								F_DT_To_sDT_Ind v1.0							*)
+(*									15.02.2010									*)
+(*		Funkcja konwersji zmiennej DT z TC do formatu daty w Indusoft			*)
+(*______________________________________________________________________________*)
+FUNCTION F_DT_To_sDT_Ind : STRING
+VAR_INPUT
+	dtTC	:	DT; (*DT z TC*)
+END_VAR
+VAR
+	sDT_TC	:	STRING(22);
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[sDT_TC := DT_TO_STRING(dtTC);										(*DT#YYYY-MM-DD-GG:MM:SS*)
+F_DT_To_sDT_Ind := MID(sDT_TC,8,15);								(*GG:MM:SS*)
+F_DT_To_sDT_Ind := CONCAT('// ', F_DT_To_sDT_Ind);					(*// GG:MM:SS*)
+F_DT_To_sDT_Ind := INSERT(F_DT_To_sDT_Ind, MID(sDT_TC,4,4),2);	(*//YYYY GG:MM:SS*)
+F_DT_To_sDT_Ind := INSERT(F_DT_To_sDT_Ind, MID(sDT_TC,2,12),1);	(*/DD/YYYY GG:MM:SS*)
+F_DT_To_sDT_Ind := CONCAT( MID(sDT_TC,2,9),F_DT_To_sDT_Ind);	(*MM/DD/YYYY GG:MM:SS*)]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

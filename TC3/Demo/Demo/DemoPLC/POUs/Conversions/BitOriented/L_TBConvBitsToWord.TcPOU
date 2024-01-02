@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBConvBitsToWord" Id="{438904c5-7efe-42b7-8f9a-b307ee11b60c}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBConvBitsToWord  v1.0									*)
+(*									29.02.2007											*)
+(*			This function converts 16 single bit values into a value of type ”word”		*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBConvBitsToWord : WORD
+VAR_INPUT
+	bBit0: BOOL;
+	bBit1: BOOL;
+	bBit2: BOOL;
+	bBit3: BOOL;
+	bBit4: BOOL;
+	bBit5: BOOL;
+	bBit6: BOOL;
+	bBit7: BOOL;
+	bBit8: BOOL;
+	bBit9: BOOL;
+	bBit10: BOOL;
+	bBit11: BOOL;
+	bBit12: BOOL;
+	bBit13: BOOL;
+	bBit14: BOOL;
+	bBit15: BOOL;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBConvBitsToWord.0 := bBit0;
+L_TBConvBitsToWord.1 := bBit1;
+L_TBConvBitsToWord.2 := bBit2;
+L_TBConvBitsToWord.3 := bBit3;
+L_TBConvBitsToWord.4 := bBit4;
+L_TBConvBitsToWord.5 := bBit5;
+L_TBConvBitsToWord.6 := bBit6;
+L_TBConvBitsToWord.7 := bBit7;
+L_TBConvBitsToWord.8 := bBit8;
+L_TBConvBitsToWord.9 := bBit9;
+L_TBConvBitsToWord.10 := bBit10;
+L_TBConvBitsToWord.11 := bBit11;
+L_TBConvBitsToWord.12 := bBit12;
+L_TBConvBitsToWord.13 := bBit13;
+L_TBConvBitsToWord.14 := bBit14;
+L_TBConvBitsToWord.15 := bBit15;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

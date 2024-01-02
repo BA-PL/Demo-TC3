@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TONR" Id="{347a084d-b31f-416b-840c-ddc89e23927e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TONR
+VAR_INPUT
+	IN 			: BOOL;		// Start input
+	RIN			: BOOL;		// Reset input
+	PT			: TIME;		// Maximum duration of time recording
+END_VAR
+VAR_OUTPUT
+	Q			: BOOL;		// Output tht is set when time PT expires
+	ET			: TIME;		// Accumulated time
+END_VAR
+VAR
+	startTime 	: TIME;
+	inputTrig	: R_TRIG;
+	resetTrig	: R_TRIG;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Update start time *)
+inputTrig(CLK := IN AND NOT RIN);
+startTime := SEL(inputTrig.Q, startTime, TIME() - ET); 
+
+(* Reset timer *)
+resetTrig(CLK := RIN);
+ET := SEL(resetTrig.Q, ET, T#0S);
+
+(* Set outputs *)
+ET 	:= SEL(IN AND NOT RIN, ET, TIME() - startTime);
+Q 	:= SEL(IN AND ET >= PT, FALSE, TRUE);
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

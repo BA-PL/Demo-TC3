@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_I2T_AX2000" Id="{3c9c3799-215d-4ad1-aece-54f5b3ed2f82}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************)
+(*							Beckhoff Automation Poland						*)
+(*								FB_I2T_AX2000	 v1.0						*)
+(*									27.05.2014								*)
+(*							Blok odczytujący parametr I2T					*)
+(* 							Wymaga biblioteki TcMc2Drive.lib 				*)
+(*__________________________________________________________________________*)
+FUNCTION_BLOCK FB_I2T_AX2000
+VAR_INPUT
+	bEnable					: BOOL := TRUE;
+	sNetId					: T_AmsNetId; (* AMS Net ID of EtherCAT Master *)
+	nSlaveAddr				: INT;
+END_VAR
+VAR_OUTPUT
+	rI2T					: REAL;
+	bBusy					: BOOL;
+	bError					: BOOL;
+	nErrId					: UDINT;
+END_VAR
+VAR
+	fbEcCoESdoRead			: FB_EcCoESdoRead;
+	tonWait200ms			: TON;
+	dwI2T					: DWORD;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[tonWait200ms(IN:= NOT tonWait200ms.Q AND bEnable, PT:=T#200MS );
+
+fbEcCoESdoRead(
+	sNetId:=sNetId ,
+	nSlaveAddr:=INT_TO_UINT(nSlaveAddr),
+	nSubIndex:=16#1 ,
+	nIndex:=16#3559 ,
+	pDstBuf:=ADR(dwI2T) ,
+	cbBufLen:=SIZEOF(dwI2T) ,
+	bExecute:=tonWait200ms.Q ,
+	tTimeout:=t#2000ms ,
+	bBusy=>bBusy ,
+	bError=>bError ,
+	nErrId=>nErrId );
+
+rI2T := (DWORD_TO_REAL (dwI2T))/10.0;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

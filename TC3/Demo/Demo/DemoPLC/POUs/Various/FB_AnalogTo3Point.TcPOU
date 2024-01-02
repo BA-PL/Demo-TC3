@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_AnalogTo3Point" Id="{b35647bd-7268-4b5f-9bbb-f169b5c7944e}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//					Beckhoff Automation Poland
+//							26.05.2017
+//		Blok funkcyjny zmieniajacy wartosc ciagla w 3P
+// 	v1.0 	|| TC v 3.1.4020.32 	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_AnalogTo3Point
+VAR_INPUT
+	bReset						: BOOL;
+	rSetpoint					: REAL;
+	tTaskCycleTime				: TIME;
+	rMinSetpoint				: REAL;
+	rMaxSetpoint				: REAL;
+	rThreshold					: REAL;
+	rTolerance					: REAL;
+	tStrokeTime					: TIME := T#3M;
+	tSwitchOverDeadTime			: TIME := T#5S;
+END_VAR
+VAR_OUTPUT
+	bOpen						: BOOL;
+	bClose						: BOOL;
+	rPosition					: REAL;
+	bError						: BOOL;
+END_VAR
+VAR
+	rE							: REAL;		// Odchylka SP - CV
+	rWholeDistance				: REAL;
+	bMove						: BOOL;		// Flaga koniecznosci ruchu - ustawiana gdy odchylka jest wieksza niz rThreshold
+	rStrokeTime					: REAL;
+	rTaskCycleTime				: REAL;
+	rSf							: REAL;
+	rOneCycleDistance			: REAL;
+	tofWaitOpen					: TOF;
+	tofWaitClose				: TOF;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Wywolanie FB
+tofWaitOpen(IN:= bOpen, PT:= tSwitchOverDeadTime);
+tofWaitClose(IN:= bClose, PT:= tSwitchOverDeadTime);
+// Reset
+IF bReset THEN
+	tofWaitOpen(IN:= FALSE);
+	tofWaitClose(IN:= FALSE);
+	rPosition					:= rMinSetpoint;
+	bOpen						:= FALSE;
+	bClose						:= FALSE;
+END_IF
+// Sprawdzanie parametrów
+bError							:= (rMinSetpoint >= rMaxSetpoint) 
+								OR (rThreshold <= rTolerance)
+								OR tTaskCycleTime = T#0MS
+								OR tStrokeTime = T#0MS;
+IF NOT bError THEN
+	// Limit SP
+	rSetpoint 					:= LIMIT(rMinSetpoint, rSetpoint, rMaxSetpoint);
+	
+	// Open/Close
+	rE 							:= rSetpoint - rPosition;
+	rWholeDistance				:= rMaxSetpoint - rMinSetpoint;
+	bMove 						S= ABS(rE) > rThreshold;
+	bMove 						R= ABS(rE) < rTolerance;
+	bOpen						:= rE > 0 AND bMove AND NOT tofWaitClose.Q;//((rSetpoint - rPosition) >= rThreshold) AND bMove;// ;
+	bClose						:= rE < 0 AND bMove AND NOT tofWaitOpen.Q;//((rPosition - rSetpoint) >= rThreshold) AND bMove;// ;
+	
+	// Position
+	rTaskCycleTime 				:= TIME_TO_REAL(tTaskCycleTime);
+	rStrokeTime 				:= TIME_TO_REAL(tStrokeTime);
+	rSf							:= rTaskCycleTime/rStrokeTime;
+	rOneCycleDistance			:= rSf * rWholeDistance;
+	IF bOpen THEN
+		rPosition 				:= rPosition + rOneCycleDistance;
+	ELSIF bClose THEN
+		rPosition 				:= rPosition - rOneCycleDistance;
+	END_IF
+	rPosition 					:= LIMIT(rMinSetpoint, rPosition, rMaxSetpoint);	
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_AnalogTo3Point">
+      <LineId Id="96" Count="0" />
+      <LineId Id="98" Count="1" />
+      <LineId Id="130" Count="3" />
+      <LineId Id="135" Count="1" />
+      <LineId Id="129" Count="0" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="126" Count="1" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="103" Count="6" />
+      <LineId Id="111" Count="13" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

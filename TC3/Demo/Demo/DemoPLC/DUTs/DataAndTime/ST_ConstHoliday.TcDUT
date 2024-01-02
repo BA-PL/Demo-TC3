@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <DUT Name="ST_ConstHoliday" Id="{92114d1b-cbdd-41f7-aaf4-aa83b5e36f61}">
+    <Declaration><![CDATA[TYPE ST_ConstHoliday :
+STRUCT
+	// Zapamietane dni swiat 
+	//  gc_ConstHoliday - rozmiar tablicy array of ST_Holiday size   -> Var_Global_Calendar;   
+	//  w tablicy najpierw nalezy podac swieta stale 
+	//  if month = 0 obliczamy swieto ruchome
+	//  iExecute mowi ile dni wczesniej/pozniej jest swieto
+	astLocation: ARRAY [1..15] OF ST_Holiday := [		(sName := 'Nowy Rok', 				wDay := 1, 	wMonth := 1),
+														(sName := 'Swieto Pracy', 			wDay := 1, 	wMonth := 5),
+														(sName := 'Konstytucja 3 Maja', 	wDay := 3, 	wMonth := 5),
+														(sName := 'Wniebowstapienie NMP',	wDay := 15,	wMonth := 8),
+														(sName := 'Wszystkich Swietych', 	wDay := 1, 	wMonth := 11),
+														(sName := 'Swieto Niepodleglosc', 	wDay := 11, 	wMonth := 11),
+														(sName := 'Boze Narodzenie', 		wDay := 25, 	wMonth := 12),
+														(sName := 'Boze Narodzenie', 		wDay := 26, 	wMonth := 12),
+														(sName := 'Wielki Piatek',			wDay := 0, 	wMonth := 0, iExecute := -2),
+														(sName := 'Wielka Sobota', 			wDay := 0, 	wMonth := 0, iExecute := -1),
+														(sName := 'Wielkanoc', 				wDay := 0, 	wMonth := 0, iExecute := 0),
+														(sName := 'Poniedziałek Wielkanocny', wDay :=1,	wMonth := 0, iExecute := 1),
+														(sName := 'Boze Cialo', 			wDay := 0, 	wMonth := 0, iExecute := 60),
+														2(())];
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

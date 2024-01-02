@@ -1,0 +1,263 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_KL32x8_1channelEx" Id="{2e14327e-ae2b-4f6d-8bf7-d75c562adba2}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*							FB_KL32x8_1channelEx v1.0											*)
+(*									17.07.2015													*)
+(* 				-Dodane bDisableChannel															*)
+(*		Blok funkcyjny konfigurujący kanał modułu KL32x8 dla określonego typu czujnika			*)
+(*______________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_KL32x8_1channelEx
+(*Objaśnienie procedur*)
+(*	Control Byte
+	BIT7 = 1 Register Mode
+	BIT6 = 0 Read Register
+	BIT6 = 1 Write Register
+	BIT5-BIT0 -> Register Number
+	
+	usStatus BYTE
+	BIT7 -> Writing Acknowledgement
+	BIT5-BIT0 -> Which Register was Read
+	
+	R31 - CodeWord Register Code: 16#1235*)
+VAR_INPUT
+	bChange:				BOOL;	(*Rising edge activated function block*)
+	bDisableChannel: 		BOOL; 	(* Disable the channel completely *)
+	bySensorType:			BYTE;	(*Sensor type	R32 - Feature Register:
+													BIT15	BIT14	BIT13	BIT12	Element	
+								bySensorType = 0		0		0		0		0		PT1000
+								bySensorType = 1		0		0		0		1		NI1000
+								bySensorType = 2		0		0		1		0		RSNI1000*)
+	byFurtherElements: 		BYTE; (* R39: Further elements (supported by KL3208-0010, from firmware version 1C and hardware version 01)
+									  50 	NCT1K8			-40°C ... 130°C
+									  51 	NCT1K8_TK		-30°C ... 150°C
+									  52 	NCT2K2			-50°C ... 130°C
+									  53 	NCT3K			-50°C ...   80°C
+									  54 	NCT5K			-40°C ... 100°C
+									  55 	NTC10K			-30°C ... 150°C
+									  56 	NTC10KPRE		-30°C ... 150°C
+									  57 	NTC10K_3204	-40°C ... 110°C
+									  58 	NTC10KTYP2	-50°C ... 130°C
+									  59 	NTC10KTYP3	-50°C ... 130°C
+									  60 	NTC10KDALE	-50°C ... 130°C
+									  61 	NTC10K3A221	-40°C ... 130°C
+									  62 	NTC20K			-20°C ... 150°C
+									100		Poti, resolution 0.1 Ohm	0 ... 5 kOhm
+									101 	Poti, resolution 1 Ohm	0 ... 10 kOhm
+									200 	NTC100K		-40°C ... 130°C
+									255 	user defined NTC*)
+	wR41: 					WORD;	(*B-Parameter for user defined NTC*)
+	wR42: 					WORD; 	(*Resistance at 25°C for user defined NTC*)
+	wR43: 					WORD; 	(*Reference temperature for user defined NTC*)
+	wR44: 					WORD; 	(*Lower range limit for user defined NTC*)
+	wR45: 					WORD; 	(*Upper range limit for user defined NTC*)
+	usiState :				USINT;	(*Linked with KL32x8 - Channel X - Status*)
+	iDataIn:				INT;	(*Linked with KL32x8 - Channel X - DataIn*)
+END_VAR
+VAR_OUTPUT
+	bBusy: 					BOOL;	(* FB has job *)
+	bDone:					BOOL;	(*If the execution of the function block is without error this output is set*)
+	bError:					BOOL;	(*If an error is occur during the execution of the function block this output is set*)
+	usiCtrl:				USINT;	(*Linked with KL32x8 - Channel X - Ctrl*)
+	iDataOut:				INT;	(*Linked with KL32x8 - Channel X - DataOut*)
+END_VAR
+VAR
+	byStep: 				BYTE;
+	rtChange:				R_TRIG;
+END_VAR
+VAR CONSTANT
+	byCodeWordReg: 			BYTE := 31;
+	byFeatureReg: 			BYTE := 32;
+	byFurtherElementsReg: 	BYTE := 39;
+	wCodeWord:				WORD := 16#1235;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtChange(CLK:= bChange);
+IF rtChange.Q  THEN
+	byStep := 10;
+	bBusy := TRUE;
+	bDone := FALSE;
+	bError := FALSE;
+END_IF
+CASE byStep OF
+	0:
+		usiCtrl := 0;
+		iDataOut := 0;
+
+	10:	(*Write Code*)
+		usiCtrl := byCodeWordReg;
+		usiCtrl.7 := TRUE;(*tryb register comm*)
+		usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+		iDataOut := WORD_TO_INT(wCodeWord);
+		byStep := byStep + 10;
+
+	20:	byStep := byStep + 10;(*czekamy*)
+
+	30:	(*Read if Code write was succesful R31 Read*)
+		IF usiState = 2#1001_1111 THEN
+			(*Read Feature Register*)
+			usiCtrl := byFeatureReg;
+			usiCtrl.7 := TRUE;
+			usiCtrl.6 := FALSE;
+		ELSE
+			bBusy := FALSE;
+			bError := TRUE;
+		END_IF
+		(* Jak nie ma bledy to dalej, jak blad to do kroku bledu *)
+		IF bError THEN byStep := 255; ELSE byStep := byStep + 10;  END_IF
+
+	40:	byStep := byStep + 10;
+
+	50:(*Read if Feature was succesful R32 Read*)
+		 IF usiState = 2#1010_0000 THEN
+			(*Write Feature Register*)
+			usiCtrl := byFeatureReg;
+			usiCtrl.7 := TRUE;
+			usiCtrl.6 := TRUE;
+			iDataOut := iDataIn;(*Leave other settings*)
+			iDataOut.11 := bDisableChannel; (* Disable the channel completely *)
+			CASE bySensorType OF
+				0:	iDataOut.15 := FALSE;	iDataOut.14 := FALSE;	iDataOut.13 :=	FALSE;	iDataOut.12 := FALSE;(*PT1000*)
+				1:	iDataOut.15 := FALSE;	iDataOut.14 := FALSE;	iDataOut.13 :=	FALSE;	iDataOut.12 := TRUE;(*NI1000*)
+				2:	iDataOut.15 := FALSE;	iDataOut.14 := FALSE;	iDataOut.13 :=	TRUE;	iDataOut.12 := FALSE;(*RSNI1000*)
+			ELSE
+				bBusy := FALSE;
+				bError := TRUE;
+			END_CASE
+		ELSE
+				bBusy := FALSE;
+				bError := TRUE;
+		END_IF
+		(* Jak nie ma bledy to dalej, jak blad to do kroku bledu *)
+		IF bError THEN byStep := 255; ELSE byStep := byStep + 10;  END_IF
+
+	60:	byStep := byStep + 10;(*Czekamy*)
+
+	70:(*Read if Feature was succesful R32 Read*)
+		 IF usiState = 2#1010_0000 THEN
+			CASE byFurtherElements OF
+			0, 50..62, 100, 101, 200, 255: (* Wpisujemy odpowiednia wartosc do rejestru 39  *)
+				usiCtrl := byFurtherElementsReg;
+				usiCtrl.7 := TRUE;(*tryb register comm*)
+				usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+				iDataOut := byFurtherElements;
+			ELSE
+				bBusy := FALSE;
+				bError := TRUE;
+			END_CASE
+		ELSE
+				bBusy := FALSE;
+				bError := TRUE;
+		END_IF
+
+		(* Jak nie ma bledy to dalej, jak blad to do kroku bledu *)
+		IF bError THEN byStep := 255; ELSE byStep := byStep + 10;  END_IF
+
+	80:	byStep := byStep + 10;(*Czekamy*)
+
+	90: IF usiState = 2#1010_0111  THEN (* R39 zapisany prawidlowo *)
+			usiCtrl := 2#10_1001; (* Zapis do rejestru 41 *)
+			usiCtrl.7 := TRUE;(*tryb register comm*)
+			usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+			iDataOut := WORD_TO_INT(wR41);
+			byStep := byStep + 10;(*Dalej*)
+		ELSE
+			bBusy := FALSE;
+			bError := TRUE;
+			byStep := 255;(* Krok bledu *)
+		END_IF
+
+	100: byStep := byStep + 10;(*Czekamy*)
+
+	110: IF usiState = 2#1010_1001  THEN (* R41 zapisany prawidlowo *)
+			usiCtrl := 2#10_1010; (* Zapis do rejestru 42 *)
+			usiCtrl.7 := TRUE;(*tryb register comm*)
+			usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+			iDataOut := WORD_TO_INT(wR42);
+			byStep := byStep + 10;(*Dalej*)
+		ELSE
+			bBusy := FALSE;
+			bError := TRUE;
+			byStep := 255;(* Krok bledu *)
+		END_IF
+
+	120: byStep := byStep + 10;(*Czekamy*)
+
+	130: IF usiState = 2#1010_1010  THEN (* R42 zapisany prawidlowo *)
+			usiCtrl := 2#10_1011; (* Zapis do rejestru 43 *)
+			usiCtrl.7 := TRUE;(*tryb register comm*)
+			usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+			iDataOut := WORD_TO_INT(wR43);
+			byStep := byStep + 10;(*Dalej*)
+		ELSE
+			bBusy := FALSE;
+			bError := TRUE;
+			byStep := 255;(* Krok bledu *)
+		END_IF
+
+	140: byStep := byStep + 10;(*Czekamy*)
+
+	150: IF usiState = 2#1010_1011  THEN (* R43 zapisany prawidlowo *)
+			usiCtrl := 2#10_1100; (* Zapis do rejestru 44 *)
+			usiCtrl.7 := TRUE;(*tryb register comm*)
+			usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+			iDataOut := WORD_TO_INT(wR44);
+			byStep := byStep + 10;(*Dalej*)
+		ELSE
+			bBusy := FALSE;
+			bError := TRUE;
+			byStep := 255;(* Krok bledu *)
+		END_IF
+
+	160: byStep := byStep + 10;(*Czekamy*)
+
+	170: IF usiState = 2#1010_1100  THEN (* R44 zapisany prawidlowo *)
+			usiCtrl := 2#10_1101; (* Zapis do rejestru 45 *)
+			usiCtrl.7 := TRUE;(*tryb register comm*)
+			usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+			iDataOut := word_to_int(wR45);
+			byStep := byStep + 10;(*Dalej*)
+		ELSE
+			bBusy := FALSE;
+			bError := TRUE;
+			byStep := 255;(* Krok bledu *)
+		END_IF
+
+	180: byStep := byStep + 10;(*Czekamy*)
+
+	190: IF usiState = 2#1010_1101  THEN (* R45 zapisany prawidlowo *)
+			byStep := 200;(*Idz do zamkniecia rejestrow*)
+		ELSE
+			bBusy := FALSE;
+			bError := TRUE;
+			byStep := 255; (* Krok bledu *)
+		END_IF
+
+	200:(* Zamykamy rejestry *)
+		usiCtrl := byCodeWordReg;
+		usiCtrl.7 := TRUE;(*tryb register comm*)
+		usiCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+		iDataOut := 0;
+		byStep := byStep + 10;(*Czekamy*)
+
+	210: byStep := byStep + 10;(*Czekamy*)
+
+	220: IF usiState = 2#10011111 THEN (* Zapisano 0 do R31 *)
+			usiCtrl		:= 0;
+			iDataOut 	:= 0;
+			bBusy 		:= FALSE;
+			bDone 		:= TRUE;
+			byStep 		:= 0;
+		END_IF
+	255:	(*Error - proba zamkniecia rejestrow*)
+		usiCtrl		:= byCodeWordReg;
+		usiCtrl.7 	:= TRUE;
+		usiCtrl.6 	:= TRUE;
+		iDataOut 	:= 0;
+		byStep 		:= 0;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

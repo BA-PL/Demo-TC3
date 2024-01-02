@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_KL3403_1channel" Id="{e3025f3f-da97-4832-a691-bc7228b7be46}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								KL3403_1channel v1.2									*)
+(*									03.11.2010											*)
+(*					Blok funkcyjny zliczający wyświetlający parametry sieci.			*)
+(*							Współpracuje z modułem KL3403.								*)
+(*______________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_KL3403_1channel
+VAR_INPUT
+	bEnable				:	BOOL;		(* Uruchomienie pomiarów*)
+	bResetEnergy		:	BOOL; 		(* Narastające zbocze kasuje żużycie energii*)
+END_VAR
+VAR_OUTPUT
+	wCurrentRMS			: 	WORD;		(* Natężenie prądu, rozdzielczość: 0.001A *)
+	wVoltageRMS			: 	WORD;		(* Napięcie, rozdzielczość: 0.1V  *)
+	wPower				:	WORD;		(* Moc, rozdzielczość: 0.1 W*)
+	wCosFi				:	WORD;		(* cos Fi, rozdzielczość: 0.01 *)
+	wEnergy				:	WORD;		(* Zużyta energia, rozdzielczość: 0.01 kWh*)
+	bUndervoltage		: 	BOOL;		(* V_L1-N < R36 value*)
+	bError				:	BOOL;		(* Błąd odczytu*)
+	BProcDatIdx			:	BYTE;		(* Index aktualnie czytanych danych procesowych*)
+END_VAR
+VAR
+	ibyState AT %I*		:	BYTE;		(* Płączone z  KL3403 - Channel X - State*)
+	iwDataIn AT %I*		:	WORD;		(* Połączone z  KL3403 - Channel X - DataIn*)
+	qbyCtrl AT %Q*		:	BYTE;		(* Połączone z KL3403 - Channel X - Ctrl*)
+	qwDataOut AT %Q*	:	WORD;		(* Połączone z KL3403 - Channel X - DataOut*)
+
+	BProcDatIdxChoose	:	BYTE;
+	BProcDatIdxIs		:	BYTE;
+	bAckPDM				:	BOOL;
+	i					:	BYTE;
+	imax				:	BYTE	:= 7;
+	T1					:	TON;
+	error1				:	BOOL;
+	RisingEdge			:	R_TRIG;
+	Step				:	INT;
+	bMeasure			:	BOOL	:=TRUE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Zerowanie energii*)
+RisingEdge(CLK:= bResetEnergy);
+IF RisingEdge.Q THEN bMeasure := FALSE; END_IF
+
+IF bMeasure THEN
+	(* wybor zmiennej pomierzonej lub wyliczonej do odczytu z rejestru DATA IN w KL3403
+	    w ramach 'process image', zapis do zmiennej kontrolnej Ctrl typu BYTE *)
+	qbyCtrl:=0;
+	qbyCtrl:=BProcDatIdxChoose;
+
+	(* odczyt potwierdzenia ze zmiennej STATE umieszczenia w rejestrze DATA IN zadanej zmiennej (prad, napiecie itp.)  *)
+	BProcDatIdxIs:=0;
+	BProcDatIdxIs:=2#00001111 AND ibyState;	(*change: V1.2*)
+	BProcDatIdx:=BProcDatIdxIs;
+
+	(*Acknowledgement for process data mode and Voltage between L1 and N less  than Undervoltage threshold *)
+	bAckPDM:=ibyState.7;
+	bUndervoltage:=ibyState.6;
+
+	(* przepisanie opowiedniej zmiennej odczytanej z rejestru KL3403 po potwierdzeniu
+	    umieszczenia jej w rejestrze DATA IN w KL3403 *)
+	IF bEnable THEN
+		IF i>imax THEN i:=0; END_IF;
+		CASE i OF
+			0:	BProcDatIdxChoose:=0;
+			1:	BProcDatIdxChoose:=1;
+			2:	BProcDatIdxChoose:=2;
+			3:	BProcDatIdxChoose:=3;
+			4:	BProcDatIdxChoose:=4;
+			(*5:	BProcDatIdxChoose:=5;
+			6:	BProcDatIdxChoose:=6;
+			7:	BProcDatIdxChoose:=7;*)
+		END_CASE;
+		IF BProcDatIdxIs=BProcDatIdxChoose THEN
+			CASE BProcDatIdxChoose OF
+				0:	wCurrentRMS:=		iwDataIn;
+				1:	wVoltageRMS:=		iwDataIn;
+				2:	wPower:=			iwDataIn;
+				3:	wCosFi:=			iwDataIn;
+				4:	wEnergy:=			iwDataIn;
+				(*5:	wPeakCurrent:=		wDataIn;
+				6:	wPeakVoltage:=		wDataIn;
+				7:	wPeakPower:=		wDataIn;*)
+			END_CASE;
+			i:=i+1;(*Odczyt następnej wartości*)
+		END_IF;
+	ELSE
+	(*Gdy nie odczytujemy*)
+		i:=0;
+		BProcDatIdxChoose:=0;
+	END_IF;
+
+	(* obsluga bledow *)
+	T1( IN:=error1 OR bAckPDM, PT:= T#500ms );
+	IF BProcDatIdxChoose<>BProcDatIdxIs THEN
+		error1:=TRUE;
+	ELSE
+		error1:=FALSE;
+	END_IF;
+	bError:=T1.Q;
+ELSE
+	CASE Step OF
+	0:
+	(*Czekamy*)
+	IF  RisingEdge.Q THEN
+		qbyCtrl:=2#11011111; (* otwieramy do zapisu R31*)
+		qwDataOut:=16#1235; (* i wpisujemy 1235 hex*)
+		Step:=Step+10;
+	END_IF;
+
+	10:
+	IF ibyState=2#10011111  THEN
+		(*Wpisujemy 16#1004 DO rejestru 7*)
+		qbyCtrl:=199; (*1|1|Reg_No*)
+		qwDataOut:=16#1004;
+		Step:=Step+10;
+	END_IF
+
+	20:
+	(* sprawdzamy, czy dobrze wpisalismy *)(*1|0|Reg_No*)
+	IF ibyState=135 THEN
+		qbyCtrl:=199; (*1|1|Reg_No*)
+		qwDataOut:=0;
+		Step:=Step+10;
+	END_IF;
+
+	30:
+
+	IF ibyState.7=TRUE THEN
+		qbyCtrl:=2#11011111; (* rejestr 31 wpisujemy wartosc 0*)
+		qwDataOut:=0;
+		Step:=Step+10;
+	END_IF
+
+	40:
+	IF ibyState=2#10011111 THEN
+		qbyCtrl.7:=0;(*zamykamy rejestr*)
+		Step:=Step+10;
+	END_IF
+
+	50:
+	IF ibyState.7=0 THEN
+		Step:=0;
+		bMeasure:=TRUE;
+	END_IF
+
+	END_CASE
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

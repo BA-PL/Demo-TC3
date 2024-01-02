@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_EncIntToDint" Id="{ac2e615d-d59a-40ab-9182-8d6017d5256d}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_EncIntToDint  v1.1									*)
+(*									2.12.2010											*)
+(*	Blok funkcyjny do poszerzania zakresu odczytu z encoderow,							*)
+(*	wartosc wejsciowa typu UINT <-32768; 32767>											*)
+(*	przenoszona jest na wyjscie typu UDINT <-2147483648; 2147483647>					*)
+(*	Przepetlenie wartosci wejsciowej nie powoduje w tym przypadku bledu					*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_EncIntToDint
+VAR_INPUT
+	iInput : 			INT; 		(* wartosc wejsciowa *)
+	bReset : 			BOOL;
+END_VAR
+VAR
+	iDelta: 			INT;
+	iLastInput : 		INT;
+END_VAR
+VAR_IN_OUT
+	diOutput: 			DINT;		(* wartosc wyjsciowa  - warto zrobic jako persistent*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bReset THEN
+	diOutput := 0;
+ELSE
+	iDelta := ( iInput - iLastInput);
+	diOutput := diOutput + iDelta;
+END_IF
+
+iLastInput := iInput;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

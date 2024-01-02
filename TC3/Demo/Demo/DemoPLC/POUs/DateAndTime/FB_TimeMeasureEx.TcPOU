@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_TimeMeasureEx" Id="{577c1614-5184-4c84-bd6f-a25228b68a60}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									30.03.2017
+//		Mierzy czas zalaczenia wejscia. Podaje aktualny czas oraz czas ostatniego zalaczenia
+//		W porownaniu do FB_TimeMeasure ma wejscie bReset
+// 	v1.0 	|| TC v 3.1.4020.32		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_TimeMeasureEx
+VAR_INPUT
+	bOn										: BOOL;					// Zliczany sygnal
+	bReset									: BOOL;					// Zerowanie wartosci
+END_VAR
+VAR_OUTPUT
+	tCurrentTime							: TIME;
+	tLastTime								: TIME;
+END_VAR
+VAR
+	ton1									: TON;
+	bOnOld									: BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bOn = FALSE AND bOnOld = TRUE THEN 
+	tLastTime := tCurrentTime; 
+END_IF
+ton1(IN:= bOn, PT:= T#71582m47s295ms, Q=> , ET=> tCurrentTime);
+bOnOld 						:= bOn;
+IF bReset THEN
+	bOnOld					:= FALSE;
+	tLastTime				:= T#0S;
+	tCurrentTime			:= T#0S;
+	ton1(IN:= FALSE);
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_TimeMeasureEx">
+      <LineId Id="43" Count="1" />
+      <LineId Id="3" Count="1" />
+      <LineId Id="26" Count="1" />
+      <LineId Id="30" Count="2" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

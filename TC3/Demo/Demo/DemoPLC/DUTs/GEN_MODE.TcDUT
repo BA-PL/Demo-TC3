@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="GEN_MODE" Id="{a3d1a638-6eab-4c37-bca7-0171876dfe97}">
+    <Declaration><![CDATA[TYPE GEN_MODE :
+	(TRIANGLE:=0,TRIANGLE_POS:=1,SAWTOOTH_RISE:=2,SAWTOOTH_FALL:=3,RECTANGLE:=4,SINUS:=5,COSINUS:=6);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

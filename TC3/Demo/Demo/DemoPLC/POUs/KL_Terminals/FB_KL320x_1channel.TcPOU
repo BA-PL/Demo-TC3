@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_KL320x_1channel" Id="{151e86b9-90d8-4fb9-913b-2a1713e53f1b}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							FB_KL320x_1channel v1.1										*)
+(*									9.11.2007											*)
+(*		Blok funkcyjny konfigurujący kanał modułu KL320x dla określonego typu czujnika	*)
+(*							Współpracuje z modułem KL320x.								*)
+(*______________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_KL320x_1channel
+(*Objaśnienie procedur*)
+(*	Control Byte
+	BIT7 = 1 Register Mode
+	BIT6 = 0 Read Register
+	BIT6 = 1 Write Register
+	BIT5-BIT0 -> Register Number
+	
+	usStatus BYTE
+	BIT7 -> Writing Acknowledgement
+	BIT5-BIT0 -> Which Register was Read
+	
+	R31 - CodeWord Register Code: 16#1235
+
+	R32 - Feature Register:
+					BIT15	BIT14	BIT13	BIT12	Element		Measuring Range
+usSensorType = 0		0		0		0		0		PT100		-200C 	+850C
+usSensorType = 1		0		0		0		1		NI100		-60C 	+250C
+usSensorType = 2		0		0		1		0		PT1000		-200C	+850C
+usSensorType = 3		0		0		1		1		PT500		-200C	+850C
+usSensorType = 4		0		1		0		0		PT200		-200C	+850C
+usSensorType = 5		0		1		0		1		NI1000		-200C	+850C
+usSensorType = 6		0		1		1		0		NI120		-200C	+850C
+usSensorType = 7		1		1		1		0		Output in Ohm	10.0		5000.0 Ohm
+usSensorType = 8 	1		1		1		1		Output in Ohm 10.0		1200.0 Ohm
+*)
+VAR_INPUT
+	bChange:			BOOL;		(*Rising edge activated function block*)
+	usSensorType:		USINT;		(*Sensor type*)
+	usState :			USINT;		(*Linked with KL320x - Channel X - Status*)
+	iDataIn:			INT;		(*Linked with KL320x - Channel X - DataIn*)
+END_VAR
+VAR_OUTPUT
+	bDone:				BOOL;		(*If the execution of the function block is without error this output is set*)
+	bError:				BOOL;		(*If an error is occur during the execution of the function block this output is set*)
+	usCtrl:				USINT;		(*Linked with KL320x - Channel X - Ctrl*)
+	iDataOut:			INT;		(*Linked with KL320x - Channel X - DataOut*)
+END_VAR
+VAR
+	Step: 				USINT;
+	Trig1:				R_TRIG;
+END_VAR
+VAR CONSTANT
+	CodeWordRegister: 	BYTE := 31;
+	FeatureRegister: 	BYTE := 32;
+	Code: 				WORD := 16#1235;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Trig1(CLK:= bChange);
+IF Trig1.Q  THEN
+	Step := 1;
+END_IF
+CASE Step OF
+	0:
+		usCtrl := 0;
+		iDataOut := 0;
+
+	1:	(*Write Code*)
+		usCtrl := CodeWordRegister;
+		usCtrl.7 := TRUE;(*tryb register comm*)
+		usCtrl.6 := TRUE;(*true -zaspis rejestru, false - odczyt*)
+		iDataOut := word_to_int(Code);
+		Step := Step + 1;
+
+	2:	Step := Step + 1;(*czekamy*)
+
+	3:	(*Read if Code write was succesful*)
+		IF usCtrl.7 THEN
+			Step := Step + 1;
+		ELSE
+			bError := TRUE;
+			Step := 0;
+		END_IF
+
+	4:	(*Read Feature Register*)
+		usCtrl := FeatureRegister;
+		usCtrl.7 := TRUE;
+		usCtrl.6 := FALSE;
+		Step := Step + 1;
+
+	5:	Step := Step + 1;
+
+	6:
+		usCtrl := FeatureRegister;
+		usCtrl.7 := TRUE;
+		usCtrl.6 := TRUE;
+		iDataOut := iDataIn;(*Leave other settings*)
+		CASE usSensorType OF
+			0:	iDataOut.15 := FALSE;	iDataOut.14 := FALSE;	iDataOut.13 :=	FALSE;	iDataOut.12 := FALSE;(*PT100*)
+			1:	iDataOut.15 := FALSE;	iDataOut.14 := FALSE;	iDataOut.13 :=	FALSE;	iDataOut.12 := TRUE;(*NI100*)
+			2:	iDataOut.15 := FALSE;	iDataOut.14 := FALSE;	iDataOut.13 :=	TRUE;	iDataOut.12 := FALSE;(*PT1000*)
+			3:	iDataOut.15 := FALSE;	iDataOut.14 := FALSE;	iDataOut.13 :=	TRUE;	iDataOut.12 := TRUE;(*PT500*)
+			4:	iDataOut.15 := FALSE;	iDataOut.14 := TRUE;	iDataOut.13 :=	FALSE;	iDataOut.12 := FALSE;(*PT200*)
+			5:	iDataOut.15 := FALSE;	iDataOut.14 := TRUE;	iDataOut.13 :=	FALSE;	iDataOut.12 := TRUE;(*NI1000*)
+			6:	iDataOut.15 := FALSE;	iDataOut.14 := TRUE;	iDataOut.13 :=	TRUE;	iDataOut.12 := FALSE;(*NI120*)
+			7:	iDataOut.15 := TRUE;	iDataOut.14 := TRUE;	iDataOut.13 :=	TRUE;	iDataOut.12 := FALSE;(*Output in Ohm 10.0 to 5000.0*)
+			8:	iDataOut.15 := TRUE;	iDataOut.14 := TRUE;	iDataOut.13 :=	TRUE;	iDataOut.12 := TRUE;(*Output in Ohm 10.0 to 1200.0*)
+		ELSE
+			;
+		END_CASE
+		Step := Step + 1;
+
+	7:	Step := Step + 1;(*Czekamy*)
+
+	8:	IF usState.7  THEN
+			bDone := TRUE;
+			bError := FALSE;
+		ELSE
+			bDone := FALSE;
+			bError := TRUE;
+		END_IF
+		Step := 100;
+
+	100:	(*Write 0 to CodeWord Register back*)
+		usCtrl	:= CodeWordRegister;
+		usCtrl.7 := TRUE;
+		usCtrl.6 := TRUE;
+		iDataOut := 0;
+		Step :=0;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

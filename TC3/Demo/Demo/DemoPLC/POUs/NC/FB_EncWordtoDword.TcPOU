@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_EncWordtoDword" Id="{b1b8d788-efb1-467d-834f-eeea1ec8b374}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_EncWordToDword  v1.1												*)
+(*									2.12.2010														*)
+(*	Blok funkcyjny do poszerzania zakresu odczytu z encoderow,										*)
+(*	wartosc wejsciowa typu WORD <0;  65535> przenoszona jest na wyjscie typu DWORD <0; 4294967295>	*)
+(*	Przepetlenie wartosci wejsciowej nie powoduje w tym przypadku bledu								*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_EncWordToDword
+VAR_INPUT
+	wInput: 		DWORD;		(* wartosc wejsciowa *)
+	bReset: 		BOOL; 		(* reset wartosci *)
+END_VAR
+VAR_IN_OUT
+	dwOutput: 		DWORD;		(*wartosc wyjsciowa - warto zrobic jako presistent *)
+END_VAR
+VAR
+	wLastInput: 	DWORD;		(* Ostatnia wartosc *)
+	dwOutputHW:		DWORD; 		(* Gorna czesc dworda*)
+	bFirstCycle: 	BOOL := TRUE;
+END_VAR
+VAR CONSTANT
+	wLow: 			DWORD := 15000;
+	wHigh:			DWORD := 50000;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*pierwszy cykl*)
+IF bReset THEN
+	dwOutput := 0;
+	dwOutputHW := 0;
+END_IF
+
+IF bFirstCycle THEN
+	dwOutputHW := dwOutput AND 16#FFFF0000; (* pobranie gornego worda *)
+	bFirstCycle := FALSE;
+ELSE
+	IF wInput < wLow AND wLastInput > wHigh THEN
+		(* Przekroczylismy zakres w gore *)
+		dwOutputHW := dwOutputHW + 16#00010000;
+	END_IF
+	IF wInput > wHigh AND wLastInput < wLow THEN
+		(*Przekroczylismy zakres w dol*)
+		dwOutputHW := dwOutputHW - 16#00010000;
+	END_IF
+END_IF
+
+wLastInput := wInput;
+dwOutput := dwOutputHW + wInput;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

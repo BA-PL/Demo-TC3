@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="E_Location" Id="{3fba7160-fc0e-4943-bf14-601e11a27b16}">
+    <Declaration><![CDATA[TYPE E_Location : (Wroclaw:=1, Warszawa, Krakow, Zakopane, Katowice, Poznan );
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

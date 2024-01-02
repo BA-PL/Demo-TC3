@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Sw4FTrig" Id="{04d521d3-1b29-41c7-a575-203457975b9b}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_Sw4FTrig v1.1											*)
+(*									9.11.2007												*)
+(*					Blok funkcyjny symulujący przycisk sterujący 4 wyjściami typu BOOL		*)
+(*							bShortOn | bShortOff = TRUE | bLongOn | bLongOff				*)
+(*__________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Sw4FTrig
+VAR_INPUT
+	bSwitch:		BOOL;					(*Obsługiwany przycisk*)
+	tLong:			TIME	:=T#200MS;		(*Czas określający długie wciśnięcie przycisku*)
+	bReset:			BOOL; 					(*Reset bloku funkcyjnego przez funkcję centralną*)
+END_VAR
+VAR_OUTPUT
+	bShortOn:		BOOL; 					(*Przyjmuje wartość TRUE dla krótkiego naciśnięcia podczas włączania*)
+	bShortOff:		BOOL; 					(*Przyjmuje wartość TRUE dla krótkiego naciśnięcia podczas wyłączania*)
+	bLongOn:		BOOL; 					(*Przyjmuje wartość TRUE dla długiego naciśnięcia podczas włączania*)
+	bLongOff:		BOOL; 					(*Przyjmuje wartość TRUE dla długiego naciśnięcia podczas wyłączania*)
+END_VAR
+VAR
+	iStep:			INT;
+	Czas:			TON;
+	Licznik:		CTU;
+	bLong: 			BOOL	:=TRUE;
+	bShort: 		BOOL;
+	BOut:			BYTE; (*	xxxx 0001 - bShortOn
+						xxxx 0010 - bShortOff
+						xxxx 0100 - bLongOn
+						xxxx 1000 - bLongOff
+						*)
+	ResetTrig:		R_TRIG;
+	ShortOnTrig:	R_TRIG;
+	ShortOffTrig:	R_TRIG;
+	LongOnTrig:		R_TRIG;
+	LongOffTrig:	R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Przywrócenie ustawień początkowych*)
+ResetTrig(CLK:=bReset);
+IF ResetTrig.Q THEN iStep := 1; bLong := TRUE; bShort := FALSE; BOut := 0; END_IF;
+
+(* Wykrycie dlugiego nacisniecia *)
+Czas(IN:= bSwitch, PT:=tLong);
+(* Rozpoznanie funkcji *)
+Licznik(CU:= bSwitch, RESET:= Licznik.Q, PV:= 2);
+
+IF Licznik.CV = 0 AND bSwitch THEN iStep := 0; END_IF;(*wlaczany przycisk, byc moze rozjasnianie*)
+IF Licznik.CV = 0 AND NOT bSwitch THEN iStep := 1; END_IF;(*wylaczony przycisk, byc moze wlaczenie*)
+IF Licznik.CV = 1 AND bSwitch THEN iStep := 2; END_IF;(*wlaczany przycisk, byc moze sciemnianie*)
+IF Licznik.CV = 1 AND NOT bSwitch THEN iStep := 3; END_IF;(*wylaczony przycisk, byc moze wylaczenie*)
+(*zapamietanie, ze bylo krotkie nacisniecie*)
+IF bSwitch AND NOT Czas.Q THEN bLong := FALSE; END_IF;
+IF NOT bSwitch AND NOT bLong THEN bShort := TRUE; END_IF;
+(*zapamietanie, ze bylo dlugie nacisniecie*)
+IF bSwitch AND Czas.Q THEN bLong := TRUE; bShort := FALSE; END_IF;
+
+CASE iStep OF
+
+(*Wlaczenie i rozjasnianie*)
+0:
+(*dlugie nacisniecie >= tLong*)
+IF bLong THEN BOut := 2#00001000; END_IF;
+
+1:
+(*Krotkie nacisniecie*)
+IF bShort THEN BOut := 2#00000010; END_IF;
+
+(*Przygaszanie i wylaczenie*)
+2:
+(*dlugie nacisniecie >= tLong*)
+IF bLong THEN BOut := 2#00000100; END_IF;
+
+3:
+(*Krotkie nacisniecie*)
+IF bShort THEN BOut := 2#00000001; END_IF;
+
+END_CASE;
+
+(*Wystawienie wyjść*)
+ShortOnTrig(CLK:= BOut.0, Q=>bShortOn );
+ShortOffTrig(CLK:= BOut.1, Q=>bShortOff );
+LongOnTrig(CLK:= BOut.2, Q=>bLongOn );
+LongOffTrig(CLK:= BOut.3, Q=>bLongOff );
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Hysteresis" Id="{ed135df0-1152-42c0-920c-f5f57f84860a}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_Hysteresis v1.0												*)
+(*									9.02.2011													*)
+(*				Blok funkcyjny histerezy. Zaczyna pracę z wyjsciem ustawionym na FALSE			*)
+(*					Histereza w obrzasze rSetValue - rH1<	...	<rSetValue + rH2				*)
+(*			Dla warości wejściowej rActualValue < rSetValue - rH1przyjmuje wartość FALSE		*)
+(*			Dla warości wejściowej rActualValue > rSetValue + rH2przyjmuje wartość TRUE			*)
+(*______________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Hysteresis
+VAR_INPUT
+	bEnable: 		BOOL:=TRUE;
+	rActualValue: 	REAL;
+	rSetValue: 		REAL;
+	rH1: 			REAL;
+	rH2: 			REAL;
+END_VAR
+VAR_OUTPUT
+	bOut: 			BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bEnable THEN
+	IF rActualValue <= rSetValue - rH1 THEN bOut := FALSE; END_IF
+	IF rActualValue >= rSetValue + rH2 THEN bOut := TRUE; END_IF
+ELSE
+	bOut := FALSE;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_2ndByteW" Id="{d7729598-0167-4e2e-97d8-772dce6237b9}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								F_2ndByteW v1.0											*)
+(*									15.02.2010											*)
+(*		Funkcja wyciagajaca bardziej znaczacy BYTE ze zmiennej typu WORD				*)
+(*							 wyjscie typu WORD											*)
+(*______________________________________________________________________________________*)
+FUNCTION F_2ndByteW : WORD
+VAR_INPUT
+	wIn		:	WORD;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_2ndByteW := wIn AND 16#FF00;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

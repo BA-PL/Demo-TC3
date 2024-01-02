@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="F_ScaleLREAL" Id="{879b22d9-204f-4243-bfa7-bfc6d51a4a36}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									30.03.2017
+//			Funkcja skalujaca
+// 	v1.0	|| TC v 3.1.4020.32		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION F_ScaleLREAL: LREAL
+VAR_INPUT
+	lrValue									: LREAL;				// Zmienna skalowana
+	lrXmin									: LREAL;				// Dolny zakres zmiennej przeskalowanej
+	lrXmax									: LREAL;				// Gorny zakres zmiennej przeskalowanej
+	lrYmin									: LREAL;				// Dolny zakres zmiennej skalowanej
+	lrYmax									: LREAL;				// Gorny zakres zmiennej skalowanej
+	bLimits									: BOOL;					// Ogranicz wyjscie w przedziale lrYmin : lrYmax
+END_VAR
+VAR
+	lrfA									: LREAL;				// Wspolczynnik kierunkowy prostej
+	lrfB									: LREAL;				// Wspolczynnik przesuniecia prostej
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF (((lrXmax - lrXmin) < 0.01) AND ((lrXmax - lrXmin) > -0.01)) THEN
+	F_ScaleLREAL := lrYmin;
+ELSE
+	lrfA := (lrYmax - lrYmin) / (lrXmax - lrXmin);
+	lrfB := lrYmax - lrfA * lrXmax;
+	F_ScaleLREAL := lrfA * lrValue + lrfB;
+END_IF;
+// LIMITY - opcja
+IF bLimits THEN
+	IF lrYmin < lrYmax THEN
+		F_ScaleLREAL := LIMIT(lrYmin, F_ScaleLREAL, lrYmax);
+	ELSE
+		F_ScaleLREAL := LIMIT(lrYmax, F_ScaleLREAL, lrYmin);		
+	END_IF	
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="F_ScaleLREAL">
+      <LineId Id="8" Count="5" />
+      <LineId Id="51" Count="2" />
+      <LineId Id="55" Count="3" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

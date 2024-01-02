@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBResetBitOfWord" Id="{0da34e6a-ed98-44b3-84ea-856529b75cea}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBResetBitOfWord v1.0										*)
+(*									29.02.2007											*)
+(*				This function resets a single bit in a value of type ”word” to “0”		*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBResetBitOfWord : WORD
+VAR_INPUT
+	wInput: WORD;
+	byBitNr: BYTE;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBResetBitOfWord := wInput;
+CASE byBitNr OF
+	0:
+	L_TBResetBitOfWord.0 := FALSE;
+	1:
+	L_TBResetBitOfWord.1 := FALSE;
+	2:
+	L_TBResetBitOfWord.2 := FALSE;
+	3:
+	L_TBResetBitOfWord.3 := FALSE;
+	4:
+	L_TBResetBitOfWord.4 := FALSE;
+	5:
+	L_TBResetBitOfWord.5 := FALSE;
+	6:
+	L_TBResetBitOfWord.6 := FALSE;
+	7:
+	L_TBResetBitOfWord.7 := FALSE;
+	8:
+	L_TBResetBitOfWord.8 := FALSE;
+	9:
+	L_TBResetBitOfWord.9 := FALSE;
+	10:
+	L_TBResetBitOfWord.10 := FALSE;
+	11:
+	L_TBResetBitOfWord.11 := FALSE;
+	12:
+	L_TBResetBitOfWord.12 := FALSE;
+	13:
+	L_TBResetBitOfWord.13 := FALSE;
+	14:
+	L_TBResetBitOfWord.14 := FALSE;
+	15:
+	L_TBResetBitOfWord.15 := FALSE;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

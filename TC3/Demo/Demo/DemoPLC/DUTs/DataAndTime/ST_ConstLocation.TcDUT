@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <DUT Name="ST_ConstLocation" Id="{17fca26c-2a58-469c-b9c8-50ea49a039c2}">
+    <Declaration><![CDATA[TYPE ST_ConstLocation :
+STRUCT
+	(* to memorize location *)
+	(* gc_ConstLocation - max array of ST_Location  size  -> Var_Global_Calendar;   *)
+	astLocation : ARRAY [1.. 10] OF ST_Location := [(sName := 'Wroclaw', rLatitude := 51.1174, rLongitude := 17.0383),
+											(sName := 'Warszawa', rLatitude := 52.248, rLongitude := 21.008),
+											(sName := 'Krakow', rLatitude := 50.085, rLongitude := 19.940),
+											(sName := 'Zakopane', rLatitude := 49.3091, rLongitude := 19.9524),
+											(sName := 'Katowice', rLatitude := 50.2746, rLongitude := 19.0255),
+											(sName := 'Poznan', rLatitude := 52.425, rLongitude :=  16.927),
+											(),
+											(),
+											(),
+											()];
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

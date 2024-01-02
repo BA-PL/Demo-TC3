@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_RecMove" Id="{7d485a0c-461d-423d-b110-72561bc8a925}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_RecMove	 v1.0													*)
+(*									29.12.2008														*)
+(*		Blok funkcyjny obliczający polozenie punktu w kartezjanskim ukladzie wspolrzednych			*)
+(*							po obrocie o ustaony kat												*)
+(*		Wartosciami wejsciowymi jest polozenie srodka okregu, punktu startowego i katu obrotu		*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_RecMove
+VAR_INPUT
+(*Srodek okregu*)
+	Xs: 			REAL:=5;
+	Ys:				REAL:=0;
+(*Punkt poczatkowy*)
+	X0: 			REAL:=0;
+	Y0:				REAL:=0;
+(*Kat przesuniecia*)
+	alfa:			REAL:=90;
+END_VAR
+VAR_OUTPUT
+(*Punkt koncowy*)
+	X1: 			REAL;
+	Y1:				REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[X1 := LREAL_TO_REAL((X0-Xs)*COS(alfa*PI/180)+Xs-(Y0-Ys)*SIN(alfa*PI/180));
+Y1 := LREAL_TO_REAL((X0-Xs)*SIN(alfa*PI/180)+(Y0-Ys)*COS(alfa*PI/180)+Ys);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

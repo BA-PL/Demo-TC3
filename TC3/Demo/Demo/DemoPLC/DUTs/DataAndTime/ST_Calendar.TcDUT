@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="ST_Calendar" Id="{63c8203f-f10a-4b13-a250-1aaa55eacd0b}">
+    <Declaration><![CDATA[TYPE ST_Calendar :
+STRUCT
+	dateDate : DATE;				(* data *)
+	wYear : WORD;				(* rok  *)
+	wMonth : WORD;				(* miesiąc  *)
+	wDay : WORD;				(* dzień *)
+	bLeapYear: BOOL;			(* true if rok przestępny *)
+	eWeekDay: E_DayPL;			(* dzień tygodnia *)
+	wNoWeek : WORD;			(* nr tygodnia w roku *)
+	wDayInYear: WORD;			(* nr dnia w roku *)
+	bHoliday : BOOL;				(* true jesli jest swieto *)
+	sHolidayName: STRING(30);	(* nazwa swieta *)
+	eSeason: E_SeasonPL;		(* pora roku *)
+	sLocation: STRING(30);		(* lokalizacja *)
+	rLatitude: REAL;				(* szerokosc geograficzna np. Wrocław :=51.1174 *) (* do obliczen wschodu i zachodu slonca *)
+	rLongitude: REAL;				(* długosc geograficzna np. Wrocław := 17.0383 *)
+	todSunRise: TOD;				(* sun_rise for current location *)
+	todSunSet : TOD;				(* sun_set for current location *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

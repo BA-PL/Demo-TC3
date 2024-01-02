@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_Boiler_Load" Id="{3c2a5ab4-9d8d-48fd-ae7b-096c4ad3974e}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_Boiler_Load  v1										*)
+(*									27.05.2008											*)
+(*						Bloczek do kontroli grzania boilera								*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Boiler_Load
+VAR_INPUT
+	TempUp:			INT;(**)
+	TempDown:		INT;(**)
+	Enable:			BOOL;(*wlaczenie*)
+	Off:			INT;(**)
+	On:				INT;(**)
+END_VAR
+VAR_OUTPUT
+	Out: 			BOOL:= FALSE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF Enable THEN
+	IF TempUp < On THEN Out := TRUE; END_IF(*gdy temp zadana wyzsza od temp aktualnej wlacza boiler*)
+	IF Tempdown > Off THEN Out := FALSE; END_IF
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

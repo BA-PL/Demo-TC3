@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_CERHOST" Id="{b4b6d984-4b7e-4ad6-8b2b-f5d3805fe634}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_CERHOST v1.1														*)
+(*						v1.1 - Optymalizacja kodu													*)
+(*									14.07.2015														*)
+(*					Blok funkcyjny aktywacji i dezatywacji apkiacji CERHOST							*)
+(*						     w sterownika z system Windows CE										*)
+(*	!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*)
+(*      	UWAGA PO WYKONANIU BLOKU STEROWNIK WYKONUJE AUTOMATYCZNY RESTART						*)
+(* 							Wymaga biblioteki TcUtilities.lib 										*)
+(*__________________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_CERHOST
+VAR_INPUT
+	bEnableCERHOST		: BOOL;							(*  CERHOST will be enabled with a positive edge at the bEnableCERHOST.  *)
+	bDisableCERHOST		: BOOL;							(*  CERHOST will be disabled with a positive edge at the bDisableCERHOST.  *)
+END_VAR
+VAR_OUTPUT
+	bBusy				: BOOL;							(*  When the function block is activated this output is set. It remains set until and acknowledgement is received.  *)
+	bError				: BOOL;							(*  If an ADS error should occur during the execution of the command, then this output is set, after the bBusy output has been reset.  *)
+	nErrId				: UDINT;							(*  When the bError output is set, this variable supplies the ADS error or the command-specific error code (table).  *)
+END_VAR
+VAR
+	fbRegSetValue		: FB_RegSetValue;				(*  This function block is used to write a data in the system registry.  *)
+	sEnableData			: STRING(12) := 'CeRDisp.exe';	(*  This value come from CeRemoteDisplay_Enable.reg file.  *)
+	sDisableData		: STRING(12) := '_CeRDisp.exe';	(*  This value come from CeRemoteDisplay_Disable.reg file.  *)
+	tTimeOut			: TIME :=DEFAULT_ADS_TIMEOUT;
+	ntReboot			: NT_Reboot;					(*  This function block is used to reboot system. *)
+	rtEnableRising		: R_TRIG;						(*  Positive edge detection at the bEnableCERHOST. *)
+	rtDisableRising		: R_TRIG;						(*  Positive edge detection at the bDisableCERHOST. *)
+	ftBusyFalling		: F_TRIG;						(*  Negative edge detection at the fbRegSetValue.bBusy. *)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtEnableRising( CLK := bEnableCERHOST );
+rtDisableRising( CLK := bDisableCERHOST );
+
+IF rtEnableRising.Q THEN
+	fbRegSetValue.cbData		:= INT_TO_UDINT(LEN(sEnableData) + 1);
+	fbRegSetValue.pData			:= ADR(sEnableData);
+ELSIF rtDisableRising.Q THEN
+	fbRegSetValue.cbData		:= INT_TO_UDINT(LEN(sDisableData) + 1);
+	fbRegSetValue.pData			:= ADR(sDisableData);
+END_IF
+
+fbRegSetValue(
+	sNetId		:=''	,
+	sSubKey	:=	'init',
+	sValName	:=	'Launch90',
+	eValType	:=	REG_SZ,
+	bExecute	:=	rtEnableRising.Q OR rtDisableRising.Q,
+	tTimeOut	:=	tTimeOut,
+	bBusy		=>	bBusy,
+	bError		=>	bError,
+	nErrId		=>	nErrId );
+
+(* Reboot system only when writing to the registry has been successful. *)
+ftBusyFalling (CLK := fbRegSetValue.bBusy );
+ntReboot(
+	NETID	:='' ,
+	START	:= ftBusyFalling.Q AND NOT fbRegSetValue.bError,
+	TMOUT	:= tTimeOut );
+
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

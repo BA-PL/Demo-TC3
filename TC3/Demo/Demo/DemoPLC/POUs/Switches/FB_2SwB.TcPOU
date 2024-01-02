@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_2SwB" Id="{eb456ea2-57e4-45c7-b4f2-350a0a4863bf}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_2SwB v1.1											*)
+(*									9.11.2007											*)
+(*				Blok funkcyjny symulujący pracę dwóch przycisków bistabilnych			*)
+(*						 jako sterowania światłem schodowym								*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_2SwB
+VAR_INPUT
+	bSwitch1:			BOOL;		(*Pierwszy przycisk bistabilny*)
+	bSwitch2:			BOOL;		(*Drugi przycisk bistabilny*)
+	bReset:				BOOL;		(*Przywrócenie stanu początkowego*)
+END_VAR
+VAR_OUTPUT
+	bOut:				BOOL;		(*Wyjscie sterujące oświetleniem*)
+END_VAR
+VAR
+	RTrig1:				R_TRIG;
+	RTrig2:				R_TRIG;
+	FTrig1:				F_TRIG;
+	FTrig2:				F_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[RTrig1(CLK:= bSwitch1);
+RTrig2(CLK:= bSwitch2);
+FTrig1(CLK:= bSwitch1);
+FTrig2(CLK:= bSwitch2);
+bOut  := SEL(RTrig1.Q OR rTrig2.Q OR FTrig1.Q OR FTrig2.Q, bOut , NOT bOut );
+IF bReset THEN bOut := FALSE; END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

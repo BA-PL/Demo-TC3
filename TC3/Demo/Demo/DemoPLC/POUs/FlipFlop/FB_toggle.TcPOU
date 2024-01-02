@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_toggle" Id="{db7fc1a4-28a8-45c5-a902-de7ffb5775be}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_Toogle  v1											*)
+(*									27.05.2008											*)
+(*				Bloczek do zamiany wartosci out z 1 na 0 i z 0 na 1						*)
+(*______________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_toggle
+VAR_INPUT
+	bIn:		BOOL;(*wartosc wejsciowa*)
+END_VAR
+VAR_OUTPUT
+	bOut:		BOOL;(*wartosc wyjsciowa*)
+END_VAR
+VAR
+	lastin:		BOOL:=TRUE;
+	lastout:	BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bOut:=SEL(bIn>lastin,bOut,NOT bOut);
+lastout:=bOut;
+lastin:=bIn;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

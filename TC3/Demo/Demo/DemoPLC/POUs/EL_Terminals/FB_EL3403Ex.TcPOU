@@ -1,0 +1,272 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_EL3403Ex" Id="{486af52f-0061-4478-961f-0d424b578145}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_EL3403Ex	 v1.0												*)
+(*									11.03.2014													*)
+(*					Blok funkcyjny obsługujący moduł EL3403										*)
+(*			Możliwy zapis energii w module, kasowanie przechowywanych wartosci					*)
+(*		Jesli jest wybrany wiecej niz jeden kanal to komenda wykonana zostanie na wszystkich	*)
+(*					Zapis ma wyzszy priorytet niz kasowanie										*)
+(*							Blok posiada fukcje autozapisu										*)
+(*				Komendy wkonywane sa na narastajace zbocze na odpowiednim wejsciu				*)
+(* 				Wyjscia z danymi udostepniopne w formie struktury ST_EL3403_Data 				*)
+(*______________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_EL3403Ex
+VAR_INPUT
+	sNetId					: T_AmsNetId; (* AMS Net ID of EtherCAT Master *)
+	nSlaveAddr				: UINT;
+	bStoreCh1				: BOOL;
+	bStoreCh2				: BOOL;
+	bStoreCh3				: BOOL;
+	bStoreAll				: BOOL;
+	bAutoStore				: BOOL;
+	bDeleteCh1				: BOOL;
+	bDeleteCh2				: BOOL;
+	bDeleteCh3				: BOOL;
+	bDeleteAll				: BOOL;
+END_VAR
+VAR_OUTPUT
+	bBusy					: BOOL;
+	bError					: BOOL;
+	nErrorID				: UDINT;
+	bMissingZeroCrossingA 	AT %I*: BOOL;
+	bMissingZeroCrossingB 	AT %I*: BOOL;
+	bMissingZeroCrossingC 	AT %I*: BOOL;
+	bPhaseSequenceError		AT %I*: BOOL;
+	stEL3403_Data			:ST_EL3403_Data; (*Parametry wyjściowe*)
+END_VAR
+VAR
+(* I/O *)
+	diCurrent1 				AT %I*: DINT;(* Unit 0,000001 A *)
+	diCurrent2 				AT %I*: DINT;(* Unit 0,000001 A *)
+	diCurrent3 				AT %I*: DINT;(* Unit 0,000001 A *)
+	diVoltage1 				AT %I*: DINT;(* Unit 0,0001 V *)
+	diVoltage2 				AT %I*: DINT;(* Unit 0,0001 V *)
+	diVoltage3 				AT %I*: DINT;(* Unit 0,0001 V *)
+	diActivePower1 			AT %I*: DINT;(* Unit 0,01 W *)
+	diActivePower2 			AT %I*: DINT;(* Unit 0,01 W *)
+	diActivePower3 			AT %I*: DINT;(* Unit 0,01 W *)
+	usiIndex1				AT %I*: USINT;
+	usiIndex2				AT %I*: USINT;
+	usiIndex3				AT %I*: USINT;
+	diVariantValue1 		AT %I*: DINT;
+	diVariantValue2 		AT %I*: DINT;
+	diVariantValue3 		AT %I*: DINT;
+	usiIndex1q				AT %Q*: USINT;
+	usiIndex2q				AT %Q*: USINT;
+	usiIndex3q				AT %Q*: USINT;
+(*Raw Values*)
+	diApparentPower1		: DINT; (* Unit 0,01 VA *)
+	diApparentPower2		: DINT; (* Unit 0,01 VA *)
+	diApparentPower3		: DINT; (* Unit 0,01 VA *)
+	diReactivePower1		: DINT; (* Unit 0,01 VAR *)
+	diReactivePower2		: DINT; (* Unit 0,01 VAR *)
+	diReactivePower3		: DINT; (* Unit 0,01 VAR *)
+	diEnergy1				: DINT;(* Unit 0,001 Wh *)
+	diEnergy2				: DINT;(* Unit 0,001 Wh *)
+	diEnergy3				: DINT;(* Unit 0,001 Wh *)
+	diCosPhi1				: DINT;(* Unit 0,001 *)
+	diCosPhi2				: DINT;(* Unit 0,001 *)
+	diCosPhi3				: DINT;(* Unit 0,001 *)
+	diFrequency1			: DINT;(* Unit 0,1 Hz *)
+	diFrequency2			: DINT;(* Unit 0,1 Hz *)
+	diFrequency3			: DINT;(* Unit 0,1 Hz *)
+	diEnergyNegative1		: DINT;(* Unit 0,001 Wh *)
+	diEnergyNegative2		: DINT;(* Unit 0,001 Wh *)
+	diEnergyNegative3		: DINT;(* Unit 0,001 Wh *)
+(* Energy store/delete *)
+	fbEcCoeSdoWrite			: FB_EcCoESdoWrite;
+	t1						: TON;
+	arrRTrigs				: ARRAY [1..9] OF R_TRIG;
+	wDataS					: WORD;
+	wDataD					: WORD;
+	bExecute				: BOOL;
+	BStore					: BYTE; (* bit 0 - ch1, 1 - ch2, 3 - ch3, else all *)
+	BDelete					: BYTE; (* bit 0 - ch1, 1 - ch2, 3 - ch3, else all *)
+	bStoreCommand			: BOOL;
+	bDeleteCommand			: BOOL;
+	wData					: WORD;
+
+END_VAR
+VAR CONSTANT
+	nSubIndex				: BYTE				:= 16#01;
+	nIndex					: WORD				:= 16#FB00;
+	wChannel1				: WORD				:= 16#0100;
+	wChannel2				: WORD				:= 16#0200;
+	wChannel3				: WORD				:= 16#0300;
+	wStore					: WORD				:= 16#0014;
+	wDelete					: WORD				:= 16#0004;
+	tStoreInterval			: TIME				:= T#15m;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Read Variant Variable *)
+A_ReadVariantVariable();
+
+(* Scale *)
+A_Scale();
+
+(* Energy *)
+BStore.0 := bStoreCh1 OR bStoreAll;
+BStore.1 := bStoreCh2 OR bStoreAll;
+BStore.2 := bStoreCh3 OR bStoreAll;
+CASE BStore OF
+1:	wDataS := wChannel1 + wStore;
+2:	wDataS := wChannel2 + wStore;
+4:	wDataS := wChannel3 + wStore;
+ELSE
+	wDataS := wStore;
+END_CASE
+
+BDelete.0 := bDeleteCh1 OR bDeleteAll;
+BDelete.1 := bDeleteCh2 OR bDeleteAll;
+BDelete.2 := bDeleteCh3 OR bDeleteAll;
+CASE BDelete OF
+1:	wDataD := wChannel1 + wDelete;
+2:	wDataD := wChannel2 + wDelete;
+4:	wDataD := wChannel3 + wDelete;
+ELSE
+	wDataD := wDelete;
+END_CASE
+
+t1(IN:= NOT t1.Q AND bAutoStore , PT:= tStoreInterval); (* Auto store *)
+
+arrRTrigs[1](CLK:= bStoreCh1);
+arrRTrigs[2](CLK:= bStoreCh2);
+arrRTrigs[3](CLK:= bStoreCh3);
+arrRTrigs[4](CLK:= bStoreAll);
+arrRTrigs[5](CLK:= t1.Q);
+arrRTrigs[6](CLK:= bDeleteCh1);
+arrRTrigs[7](CLK:= bDeleteCh2);
+arrRTrigs[8](CLK:= bDeleteCh3);
+arrRTrigs[9](CLK:= bDeleteAll);
+
+bStoreCommand		:= arrRTrigs[1].Q OR arrRTrigs[2].Q OR arrRTrigs[3].Q OR arrRTrigs[4].Q OR arrRTrigs[5].Q;
+bDeleteCommand	:= arrRTrigs[6].Q OR arrRTrigs[7].Q OR arrRTrigs[8].Q OR arrRTrigs[9].Q;
+wData				:= SEL(bDeleteCommand, wDataS, wDataD);
+bExecute			:= bStoreCommand OR bDeleteCommand;
+
+
+
+
+fbEcCoeSdoWrite(
+	sNetId:= sNetId,
+	nSlaveAddr:= nSlaveAddr,
+	nSubIndex:= nSubIndex,
+	nIndex:= nIndex,
+	pSrcBuf:= ADR(wData),
+	cbBufLen:= 2,
+	bExecute:= bExecute,
+	bBusy=> bBusy,
+	bError=> bError,
+	nErrId=> nErrorID);]]></ST>
+    </Implementation>
+    <Action Name="A_ReadVariantVariable" Id="{8307c407-73c6-41e1-ba82-a722bf34ee4a}">
+      <Implementation>
+        <ST><![CDATA[CASE usiIndex1 OF
+0:
+	diApparentPower1 := diVariantValue1;
+	usiIndex1q := usiIndex1+1;
+1:
+	diReactivePower1 := diVariantValue1;
+	usiIndex1q := usiIndex1+1;
+2:
+	diEnergy1 := diVariantValue1;
+	usiIndex1q := usiIndex1+1;
+3:
+	diCosPhi1 := diVariantValue1;
+	usiIndex1q := usiIndex1+1;
+4:
+	diFrequency1 := diVariantValue1;
+	usiIndex1q := usiIndex1+1;
+5:
+	diEnergyNegative1 := diVariantValue1;
+	usiIndex1q := usiIndex1+1;
+ELSE
+	usiIndex1q := 0;
+END_CASE
+
+CASE usiIndex2 OF
+0:
+	diApparentPower2 := diVariantValue2;
+	usiIndex2q := usiIndex2+1;
+1:
+	diReactivePower2 := diVariantValue2;
+	usiIndex2q := usiIndex2+1;
+2:
+	diEnergy2 := diVariantValue2;
+	usiIndex2q := usiIndex2+1;
+3:
+	diCosPhi2 := diVariantValue2;
+	usiIndex2q := usiIndex2+1;
+4:
+	diFrequency2 := diVariantValue2;
+	usiIndex2q := usiIndex2+1;
+5:
+	diEnergyNegative2 := diVariantValue2;
+	usiIndex2q := usiIndex2+1;
+ELSE
+	usiIndex2q := 0;
+END_CASE
+
+
+CASE usiIndex3 OF
+0:
+	diApparentPower3 := diVariantValue3;
+	usiIndex3q := usiIndex3+1;
+1:
+	diReactivePower3 := diVariantValue3;
+	usiIndex3q := usiIndex3+1;
+2:
+	diEnergy3 := diVariantValue3;
+	usiIndex3q := usiIndex3+1;
+3:
+	diCosPhi3 := diVariantValue3;
+	usiIndex3q := usiIndex3+1;
+4:
+	diFrequency3 := diVariantValue3;
+	usiIndex3q := usiIndex3+1;
+5:
+	diEnergyNegative3 := diVariantValue3;
+	usiIndex3q := usiIndex3+1;
+ELSE
+	usiIndex3q := 0;
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="A_Scale" Id="{84288b3c-c5b2-4716-9878-fa2e1f30d644}">
+      <Implementation>
+        <ST><![CDATA[	stEL3403_Data.rCurrent1 			:= DINT_TO_REAL(diCurrent1)*0.000001;
+	stEL3403_Data.rVoltage1 			:= DINT_TO_REAL(diVoltage1)*0.0001;
+	stEL3403_Data.rActivePower1	 		:= DINT_TO_REAL(diActivePower1)*0.01;
+	stEL3403_Data.rApparentPower1	 	:= DINT_TO_REAL(diApparentPower1)*0.01;
+	stEL3403_Data.rReactivePower1 		:= DINT_TO_REAL(diReactivePower1)*0.01;
+	stEL3403_Data.rEnergy1 				:= DINT_TO_REAL(diEnergy1)*0.0001;
+	stEL3403_Data.rCosPhi1	 			:= DINT_TO_REAL(diCosPhi1)*0.001;
+	stEL3403_Data.rFrequency1	 		:= DINT_TO_REAL(diFrequency1)*0.1;
+	stEL3403_Data.rEnergyNegative1	 	:= DINT_TO_REAL(diEnergyNegative1)*0.001;
+
+	stEL3403_Data.rCurrent2 			:= DINT_TO_REAL(diCurrent2)*0.000001;
+	stEL3403_Data.rVoltage2 			:= DINT_TO_REAL(diVoltage2)*0.0001;
+	stEL3403_Data.rActivePower2	 		:= DINT_TO_REAL(diActivePower2)*0.01;
+	stEL3403_Data.rApparentPower2 		:= DINT_TO_REAL(diApparentPower2)*0.01;
+	stEL3403_Data.rReactivePower2	 	:= DINT_TO_REAL(diReactivePower2)*0.01;
+	stEL3403_Data.rEnergy2 				:= DINT_TO_REAL(diEnergy2)*0.0001;
+	stEL3403_Data.rCosPhi2	 			:= DINT_TO_REAL(diCosPhi2)*0.001;
+	stEL3403_Data.rFrequency2	 		:= DINT_TO_REAL(diFrequency2)*0.1;
+	stEL3403_Data.rEnergyNegative2 		:= DINT_TO_REAL(diEnergyNegative2)*0.001;
+
+	stEL3403_Data.rCurrent3 			:= DINT_TO_REAL(diCurrent3)*0.000001;
+	stEL3403_Data.rVoltage3 			:= DINT_TO_REAL(diVoltage3)*0.0001;
+	stEL3403_Data.rActivePower3	 		:= DINT_TO_REAL(diActivePower3)*0.01;
+	stEL3403_Data.rApparentPower3 		:= DINT_TO_REAL(diApparentPower3)*0.01;
+	stEL3403_Data.rReactivePower3 		:= DINT_TO_REAL(diReactivePower3)*0.01;
+	stEL3403_Data.rEnergy3 				:= DINT_TO_REAL(diEnergy3)*0.0001;
+	stEL3403_Data.rCosPhi3 				:= DINT_TO_REAL(diCosPhi3)*0.001;
+	stEL3403_Data.rFrequency3 			:= DINT_TO_REAL(diFrequency3)*0.1;
+	stEL3403_Data.rEnergyNegative3 		:= DINT_TO_REAL(diEnergyNegative3)*0.001;]]></ST>
+      </Implementation>
+    </Action>
+  </POU>
+</TcPlcObject>

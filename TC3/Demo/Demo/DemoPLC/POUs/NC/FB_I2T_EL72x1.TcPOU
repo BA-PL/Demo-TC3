@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_I2T_EL72x1" Id="{10e9bee6-f582-4620-8b6b-ebfd33c3f4b5}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_I2T_EL72x1	 v1.2											*)
+(*							v1.1 - usuniecie /10, zmiana wyjść na typ USINT						*)
+(*							v1.2 - poprawiony blad w nazwie zmiennej							*)
+(*									24.10.2014													*)
+(*							Blok odczytujący parametr I2T										*)
+(* 							Wymaga biblioteki TcEtherCAT.lib 									*)
+(*______________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_I2T_EL72x1
+VAR_INPUT
+(* A010:11 Amplifier I2T temperature  I2T model load Unit: % UINT8*)
+(* A011:11 Motor I2T temperature  I2T model load Unit: % UINT8*)
+	bEnable					: BOOL := TRUE; 		(* Pozwolenie na odczyt *)
+	sNetId					: T_AmsNetId; 			(* AMS Net ID of EtherCAT Master *)
+	nSlaveAddr				: UINT; 				(* Numer EtherCAT Slave *)
+END_VAR
+VAR_OUTPUT
+	bBusy					: BOOL;
+	bError					: BOOL;
+	nErrorID				: UDINT;
+	usiAmplifier_I2T		: USINT;
+	usiMotor_I2T			: USINT;
+END_VAR
+VAR
+(* Energy store/delete *)
+	fbEcCoeSdoRead			: FB_EcCoESdoRead;
+	bA010					: BOOL	:=TRUE;
+	ftRead					: F_TRIG;
+	tonWait200ms			: TON;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[tonWait200ms(IN:=NOT tonWait200ms.Q AND bEnable, PT:=T#200MS );
+
+fbEcCoeSdoRead.nIndex := SEL(bA010, 16#A011, 16#A010);
+fbEcCoeSdoRead.pDstBuf := SEL(bA010, ADR(usiMotor_I2T), ADR(usiAmplifier_I2T));
+
+fbEcCoeSdoRead(
+	sNetId:= sNetId,
+	nSlaveAddr:= nSlaveAddr,
+	nSubIndex:= 16#11,
+	cbBufLen:= 1,
+	bExecute:= bEnable AND tonWait200ms.Q,
+	bBusy=> bBusy,
+	bError=> bError,
+	nErrId=> nErrorID);
+
+ftRead(CLK:= bBusy, Q=> );
+bA010 := SEL(ftRead.Q, bA010, NOT bA010);
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

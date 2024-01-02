@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_SwOrSenTrig" Id="{49516b97-76eb-4b8b-a0d9-0d966ba39a43}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_SwOrSenTrig v1.1													*)
+(*									9.11.2007														*)
+(*	Blok funkcyjny symulujący przycisk monostabilny pracujacy w 3 trybach:							*)
+(*	usMode = 0 - reaguje tylko na włącznik, nie reaguje na czujkę									*)
+(*	usMode = 1 - reaguje tylko na czujkę, nie reaguje na włącznik									*)
+(*	usMode = 2 - swiatło włączamy włącznikiem, a wyłącza sie przez czujkę							*)
+(*	usMode = 3 - 	światło reaguje na czujkę,														*)
+(*				jeżeli jednak włączono światło włącznikiem (nawet gdy było włączone prze czujnik),	*)
+(*				to pomimo braku sygnału z czujnika, nie wyłączy się.								*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_SwOrSenTrig
+VAR_INPUT
+	bSwitch:				BOOL;			(*Włącznik światła*)
+	bSensor:				BOOL;			(*Czujnik ruchu*)
+	tDelay:					TIME;			(*Czas po jakim gaśnie światło podczas kontroli przez czujnik ruchu*)
+	usMode:					USINT;			(*Wybór trybu pracy*)
+	bReset:					BOOL; 			(*Reset bloku funkcyjnego przez funkcję centralną*)
+END_VAR
+VAR_OUTPUT
+	bOut:					BOOL;			(*Wyjście sterujące oświetleniem*)
+END_VAR
+VAR
+	Triger:					R_TRIG;
+	Timer:					TOF;
+	Timer_2:				TOF;
+	Stan_poprzedni:			BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Triger(CLK:= bSwitch);(*Wcisnięcie przycisku monostabilnego*)
+Timer();
+Timer_2();
+IF bReset THEN bOut := FALSE; Stan_poprzedni := FALSE; END_IF
+IF usMode <> 0 AND usMode <> 1 AND usMode <>2 THEN usMode := 3; END_IF
+
+CASE usMode OF
+
+	0:
+	(*swiatlo reaguje tylko na wlacznik*)
+	Stan_poprzedni := SEL(Triger.Q,Stan_poprzedni, NOT Stan_poprzedni);
+	bOut := Stan_poprzedni;
+
+	1:
+	(*swiatlo reaguje tylko na czujke*)
+	Timer(IN:=NOT bSensor, PT:= tDelay );
+	bOut := Timer.Q;
+
+	2:
+	(*swiatlo reaguje na czujke i wlacznik*)
+	Timer_2(IN:= NOT Stan_poprzedni AND  Triger.Q, PT:= tDelay);
+	Stan_poprzedni := SEL(Triger.Q,Stan_poprzedni, NOT Stan_poprzedni);
+	Timer(IN:=NOT bSensor AND Stan_poprzedni, PT:= tDelay );
+	bOut := (Timer.Q AND Stan_poprzedni) OR Timer_2.Q;
+
+	3:
+	Stan_poprzedni := SEL(Triger.Q,Stan_poprzedni, NOT Stan_poprzedni);
+	Timer(IN:=NOT bSensor, PT:= tDelay );
+	IF Stan_poprzedni THEN
+	(*Przycisk włączony*)
+		bOut := Stan_poprzedni;
+	ELSE
+	(*Przycisk wyłączony*)
+		bOut := Timer.Q;
+	END_IF
+
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

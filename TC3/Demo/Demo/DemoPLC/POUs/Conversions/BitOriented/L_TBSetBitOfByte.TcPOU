@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBSetBitOfByte" Id="{29345edb-33a7-4130-bbe0-e906ef1a51bf}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBSetBitOfByte v1.0										*)
+(*									29.02.2007											*)
+(*				This function sets a single bit in a value of type ”byte” to “1”		*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBSetBitOfByte : BYTE
+VAR_INPUT
+	byInput: BYTE;
+	byBitNr: BYTE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBSetBitOfByte := byInput;
+CASE byBitNr OF
+	0:
+	L_TBSetBitOfByte.0 := TRUE;
+	1:
+	L_TBSetBitOfByte.1 := TRUE;
+	2:
+	L_TBSetBitOfByte.2 := TRUE;
+	3:
+	L_TBSetBitOfByte.3 := TRUE;
+	4:
+	L_TBSetBitOfByte.4 := TRUE;
+	5:
+	L_TBSetBitOfByte.5 := TRUE;
+	6:
+	L_TBSetBitOfByte.6 := TRUE;
+	7:
+	L_TBSetBitOfByte.7 := TRUE;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

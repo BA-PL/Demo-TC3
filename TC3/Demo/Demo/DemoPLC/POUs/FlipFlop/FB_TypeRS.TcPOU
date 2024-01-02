@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_TypeRS" Id="{c7711995-c363-4795-844e-66b9fc29e068}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_TypeRS  v1														*)
+(*									27.05.2008														*)
+(*	Bloczek porzerzutnika typu RS																	*)
+(*	Jeśli na wejściu zegarowym jest stan nieaktywny to przerzutnik nie reaguje na zmiany			*)
+(*	sygnałów na pozostałych wejściach. Jeśli natomiast na wejściu zegarowym jest stan aktywny 		*)
+(*	przerzutnik zmienia się zgodnie z tablicą (dla przerzutnika typu RS)	.						*)
+(*	Różnie można rozumieć stan aktywny oraz stan nieaktywny - jest to zależne od wykonania			*)
+(*	przerzutnika. Może to być:																		*)
+(*    * Stan niski - 0 (Wyzwalanie niskim poziomem sygnału zegarowego)								*)
+(*   * Stan wysoki - 1 (Wyzwalanie wysokim poziomem sygnału zegarowego)								*)
+(*    * Moment zmiany stanu z niskiego na wysoki (0 na 1)											*)
+ (*   * Moment zmiany stanu z wysokiego na niski (1 na 0) 											*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_TypeRS
+VAR_INPUT
+	bR:			BOOL;
+	bS:			BOOL;
+END_VAR
+VAR_OUTPUT
+	bQ:			BOOL;
+END_VAR
+VAR
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF(bR =1) THEN bQ:=0;
+ELSIF(bS=1) THEN bQ:=1;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

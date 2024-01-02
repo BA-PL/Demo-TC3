@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="NEWTYPE" Id="{44aac2d7-a52e-48d2-b749-9b708ae0a500}">
+    <Declaration><![CDATA[TYPE NEWTYPE :
+STRUCT
+	No1: STRING;
+	No2: INT;
+	No3: BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

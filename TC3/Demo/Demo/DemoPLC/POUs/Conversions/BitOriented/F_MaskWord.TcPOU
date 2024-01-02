@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_MaskWord" Id="{968f3ca7-c1c8-4d7e-bb4e-50e46c45be6c}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								F_MaskWord v1.0											*)
+(*									15.02.2010											*)
+(*		Funkcja wyciagajaca  okreslona ilosc Bitow ze ze zmiennej typu WORD				*)
+(*							 wyjscie typu WORD											*)
+(*______________________________________________________________________________________*)
+FUNCTION F_MaskWord : WORD
+VAR_INPUT
+	wIn	:	WORD; (*Wejscie*)
+	wNo	:	WORD; (*Ilosc bitow, zaczynajac od LSB*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE wNo OF
+	0:
+	F_MaskWord := wIn AND 2#0;
+	1:
+	F_MaskWord := wIn AND 2#1;
+	2:
+	F_MaskWord := wIn AND 2#11;
+	3:
+	F_MaskWord := wIn AND 2#111;
+	4:
+	F_MaskWord := wIn AND 2#1111;
+	5:
+	F_MaskWord := wIn AND 2#11111;
+	6:
+	F_MaskWord := wIn AND 2#111111;
+	7:
+	F_MaskWord := wIn AND 2#1111111;
+	8:
+	F_MaskWord := wIn AND 2#11111111;
+	9:
+	F_MaskWord := wIn AND 2#111111111;
+	10:
+	F_MaskWord := wIn AND 2#1111111111;
+	11:
+	F_MaskWord := wIn AND 2#11111111111;
+	12:
+	F_MaskWord := wIn AND 2#111111111111;
+	13:
+	F_MaskWord := wIn AND 2#1111111111111;
+	14:
+	F_MaskWord := wIn AND 2#11111111111111;
+	15:
+	F_MaskWord := wIn AND 2#111111111111111;
+	16:
+	F_MaskWord := wIn;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

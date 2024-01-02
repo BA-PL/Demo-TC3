@@ -1,0 +1,238 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_AxisParameter" Id="{08c4b616-24ec-4f0d-ada1-2b7ccabc9dc8}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//					Beckhoff Automation Poland
+//							30.05.2017
+//		Blok funkcyjny zmieniajacy krańcówki SW górną i dolną
+// 	v1.0 	|| TC v 3.1.4020.32 	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_AxisParameter
+VAR_INPUT
+	udiAxisID				: UDINT;		// ID osi
+	bRead					: BOOL;
+	bWrite					: BOOL;
+	bReset					: BOOL; // Not yet
+// Set values
+	lrSetMinPos				: LREAL;
+	lrSetMaxPos				: LREAL;
+	bSetMinMon				: BOOL;
+	bSetMaxMon				: BOOL;
+END_VAR
+VAR_OUTPUT
+	//	
+	bBusy					: BOOL;
+	bError					: BOOL;
+	udiErrorID				: UDINT;
+// Actual values	
+	lrActMinPos				: LREAL;
+	lrActMaxPos				: LREAL;
+	bActMinMon				: BOOL;
+	bActMaxMon				: BOOL;
+END_VAR
+VAR
+	iStepWrite				: INT;
+	iStepRead				: INT;
+	wSetMinMon				: WORD;
+	wSetMaxMon				: WORD;
+	wActMinMon				: WORD;
+	wActMaxMon				: WORD;
+// FBs
+	rtRead					: R_TRIG;
+	rtWrite					: R_TRIG;
+	fbADSREAD				: ADSREAD;
+	fbADSWRITE				: ADSWRITE;
+END_VAR
+VAR CONSTANT
+	udiIDXGRP_OFFS			: UDINT := 16#0000_5000;
+	udiIDXOFFS_MinMon		: UDINT := 16#0000_000B;	// 2B
+	udiIDXOFFS_MinPos		: UDINT := 16#0000_000D;	// 8B
+	udiIDXOFFS_MaxMon		: UDINT := 16#0000_000C;	// 2B	
+	udiIDXOFFS_MaxPos		: UDINT := 16#0000_000E;	// 8B
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Triggery
+rtRead(CLK:= bRead, Q=> );
+rtWrite(CLK:= bWrite, Q=> );
+
+ACT_ReadParams();
+ACT_WriteParams();	
+
+	
+// Read parameters
+	fbADSREAD(	NETID:= '', 
+				PORT:= 500,
+				IDXGRP:= udiIDXGRP_OFFS + udiAxisID);
+	
+// Write parameters
+	fbADSWRITE(	NETID:= '', 
+				PORT:= 500,
+				IDXGRP:= udiIDXGRP_OFFS + udiAxisID);
+]]></ST>
+    </Implementation>
+    <Action Name="ACT_ReadParams" Id="{b298fe93-d988-4189-b9d8-6220b91223ac}">
+      <Implementation>
+        <ST><![CDATA[CASE iStepRead OF
+
+0: // Idle
+	IF rtRead.Q AND NOT bBusy THEN
+		bBusy 					:= TRUE;
+		bError 					:= FALSE;
+		udiErrorID				:= 0;
+		// MinMon 16#0000_000B;	// 2B
+		fbADSREAD.READ			:= TRUE;
+		fbADSREAD.IDXOFFS		:= 16#0000_000B;
+		fbADSREAD.LEN			:= 2;
+		fbADSREAD.DESTADDR		:= ADR(wActMinMon);
+		iStepRead				:= iStepRead + 5;
+	END_IF
+	
+5, 15, 25: // Wait CMD for end
+	fbADSREAD.READ				:= FALSE;
+	IF NOT fbADSREAD.BUSY AND NOT fbADSREAD.ERR THEN
+		iStepRead				:= iStepRead + 5;
+	ELSIF fbADSREAD.ERR THEN
+		iStepRead				:= 1000;
+	END_IF
+	
+10: // udiIDXOFFS_MinPos		: UDINT := 16#0000_000D;	// 8B
+	fbADSREAD.READ				:= TRUE;
+	fbADSREAD.IDXOFFS			:= 16#0000_000D;
+	fbADSREAD.LEN				:= 8;
+	fbADSREAD.DESTADDR			:= ADR(lrActMinPos);
+	iStepRead					:= iStepRead + 5;
+
+20: // 	udiIDXOFFS_MaxMon		: UDINT := 16#0000_000C;	// 2B
+	fbADSREAD.READ				:= TRUE;
+	fbADSREAD.IDXOFFS			:= 16#0000_000C;
+	fbADSREAD.LEN				:= 2;
+	fbADSREAD.DESTADDR			:= ADR(wActMaxMon);
+	iStepRead					:= iStepRead + 5;
+
+30: // 		udiIDXOFFS_MaxPos		: UDINT := 16#0000_000E;	// 8B
+	fbADSREAD.READ				:= TRUE;
+	fbADSREAD.IDXOFFS			:= 16#0000_000E;
+	fbADSREAD.LEN				:= 8;
+	fbADSREAD.DESTADDR			:= ADR(lrActMaxPos);
+	iStepRead					:= iStepRead + 5;
+		
+35: // 	End
+	fbADSREAD.READ				:= FALSE;
+	IF NOT fbADSREAD.BUSY AND NOT fbADSREAD.ERR THEN
+		bActMinMon				:= wActMinMon.0;
+		bActMaxMon				:= wActMaxMon.0;
+		bBusy 					:= FALSE;
+		iStepRead				:= 0;
+	ELSIF fbADSREAD.ERR THEN
+		iStepRead				:= 1000;
+	END_IF
+	
+1000:
+	bBusy 						:= FALSE;
+	bError 						:= TRUE;
+	udiErrorID					:= fbADSREAD.ERRID;
+	iStepRead					:= 0;
+
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_WriteParams" Id="{6c54cda9-1374-4906-a1d5-e5700a88e519}">
+      <Implementation>
+        <ST><![CDATA[CASE iStepWrite OF
+
+0: // Idle
+	IF rtWrite.Q AND NOT bBusy THEN
+		bBusy 					:= TRUE;
+		bError 					:= FALSE;
+		udiErrorID				:= 0;
+		// MinMon 16#0000_000B;	// 2B
+		wSetMinMon.0 			:= bSetMinMon;
+		fbADSWRITE.WRITE		:= TRUE;
+		fbADSWRITE.IDXOFFS		:= 16#0000_000B;
+		fbADSWRITE.LEN			:= 2;
+		fbADSWRITE.SRCADDR		:= ADR(wSetMinMon);
+		iStepWrite				:= iStepWrite + 5;
+	END_IF
+	
+5, 15, 25: // Wait CMD for end
+	fbADSWRITE.WRITE			:= FALSE;
+	IF NOT fbADSWRITE.BUSY AND NOT fbADSWRITE.ERR THEN
+		iStepWrite				:= iStepWrite + 5;
+	ELSIF fbADSWRITE.ERR THEN
+		iStepWrite				:= 1000;
+	END_IF
+	
+10: // udiIDXOFFS_MinPos		: UDINT := 16#0000_000D;	// 8B
+	fbADSWRITE.WRITE			:= TRUE;
+	fbADSWRITE.IDXOFFS			:= 16#0000_000D;
+	fbADSWRITE.LEN				:= 8;
+	fbADSWRITE.SRCADDR			:= ADR(lrSetMinPos);
+	iStepWrite					:= iStepWrite + 5;
+
+20: // 	udiIDXOFFS_MaxMon		: UDINT := 16#0000_000C;	// 2B
+	wSetMaxMon.0 				:= bSetMaxMon;
+	fbADSWRITE.WRITE			:= TRUE;
+	fbADSWRITE.IDXOFFS			:= 16#0000_000C;
+	fbADSWRITE.LEN				:= 2;
+	fbADSWRITE.SRCADDR			:= ADR(wSetMaxMon);
+	iStepWrite					:= iStepWrite + 5;
+
+30: // 		udiIDXOFFS_MaxPos		: UDINT := 16#0000_000E;	// 8B
+	fbADSWRITE.WRITE			:= TRUE;
+	fbADSWRITE.IDXOFFS			:= 16#0000_000E;
+	fbADSWRITE.LEN				:= 8;
+	fbADSWRITE.SRCADDR			:= ADR(lrSetMaxPos);
+	iStepWrite					:= iStepWrite + 5;
+		
+35: // 	End
+	fbADSWRITE.WRITE			:= FALSE;
+	IF NOT fbADSWRITE.BUSY AND NOT fbADSWRITE.ERR THEN
+		bBusy 					:= FALSE;
+		iStepWrite				:= 0;
+	ELSIF fbADSWRITE.ERR THEN
+		iStepWrite				:= 1000;
+	END_IF
+	
+1000:
+	bBusy 						:= FALSE;
+	bError 						:= TRUE;
+	udiErrorID					:= fbADSWRITE.ERRID;
+	iStepWrite					:= 0;
+
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="FB_AxisParameter">
+      <LineId Id="117" Count="0" />
+      <LineId Id="119" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="478" Count="0" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="328" Count="10" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AxisParameter.ACT_ReadParams">
+      <LineId Id="60" Count="4" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="65" Count="38" />
+      <LineId Id="120" Count="0" />
+      <LineId Id="123" Count="1" />
+      <LineId Id="105" Count="12" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AxisParameter.ACT_WriteParams">
+      <LineId Id="2" Count="4" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="8" Count="8" />
+      <LineId Id="64" Count="4" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="23" Count="7" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="31" Count="28" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

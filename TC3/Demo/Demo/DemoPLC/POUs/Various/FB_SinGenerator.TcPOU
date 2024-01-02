@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_SinGenerator" Id="{008d3083-7c67-424a-aaa2-7ba962155c01}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//					Beckhoff Automation Poland
+//							02.02.2017
+//		Blok funkcyjny generujacy sinusoide o zadanej amplitudzie i okresie
+// 	v1.0 	|| TC v 3.1.4020.28 	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_SinGenerator
+VAR_INPUT
+	bEnable						: BOOL;							// TRUE - obliczamy wyjscie, FALSE - zerujemy wyjscie
+	bReset						: BOOL;							// zeruje wartosci
+	lrAmplitude					: LREAL;						// amplituda wyjscia
+	tPeriod						: TIME;							// okres sinusoidy w ms
+	lrOffset					: LREAL;						// offset wyjscia
+	lrPeriodOffset				: LREAL;						// offset w okresie 0..T, np. 0.25 oznacza 1/4 okresu, 
+																// w przypadku wartosci wiekszych od 1 brana jest tylk czesc ulamkowa
+END_VAR
+VAR_OUTPUT
+	lrOut						: LREAL;						// wartosc wyjsciowa
+END_VAR
+VAR
+	diTaskIndex					: DINT;							// index tasku
+	lrTaskTime					: LREAL;						// czas tasku
+	lrPeriod					: LREAL;						// okres sinusoidy w ms
+	lrDeltaTime					: LREAL;						// przyrost czas tasku/okres, o ile na sinusoidzie przesuwamy sie w czasie znormalizowanym
+	lrTime						: LREAL;						// czas od podania enable
+	bFirstCycle					: BOOL := TRUE;					// flaga pierwszego cyklu
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bFirstCycle OR bReset THEN
+	diTaskIndex 				:= GETCURTASKINDEXEX();												// pobranie numeru tasku
+	lrTaskTime 					:= UDINT_TO_LREAL(_TaskInfo[diTaskIndex].CycleTime)/10000.0;		// pobranie czasu cyklu w ms
+	lrTime 						:= lrPeriodOffset;
+	lrOut						:= 0.0;																// wyzerowanie wyjscia
+	bFirstCycle 				:= FALSE;
+END_IF
+IF bEnable THEN
+	lrPeriod 					:= TIME_TO_LREAL(tPeriod);											// w ms
+	IF lrPeriod < 1.0 THEN 		lrPeriod := 1.0; END_IF
+	lrDeltaTime					:= lrTaskTime / lrPeriod;											//
+	lrOut 						:= (lrAmplitude * SIN(lrTime * 2.0 * PI)) + lrOffset;				// wyliczenie wyjscia
+	lrTime						:= lrTime + lrDeltaTime;											// inkrement
+ELSE
+	lrOut						:= 0.0;																// wyzerowanie wyjscia
+	bFirstCycle					:= TRUE;															// ustawienie flagi pierwszego cyklu
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SinGenerator">
+      <LineId Id="26" Count="2" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="29" Count="7" />
+      <LineId Id="55" Count="1" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

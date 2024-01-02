@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBResetBitOfDword" Id="{a55fbabe-f310-4c3b-a779-c6a28569d3c4}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBResetBitOfDword v1.0									*)
+(*									29.02.2007											*)
+(*			This function resets a single bit in a value of type ”double word” to “0”	*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBResetBitOfDword : DWORD
+VAR_INPUT
+	dwInput: DWORD;
+	byBitNr: BYTE;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBResetBitOfDword := dwInput;
+CASE byBitNr OF
+	0:
+	L_TBResetBitOfDword.0 := FALSE;
+	1:
+	L_TBResetBitOfDword.1 := FALSE;
+	2:
+	L_TBResetBitOfDword.2 := FALSE;
+	3:
+	L_TBResetBitOfDword.3 := FALSE;
+	4:
+	L_TBResetBitOfDword.4 := FALSE;
+	5:
+	L_TBResetBitOfDword.5 := FALSE;
+	6:
+	L_TBResetBitOfDword.6 := FALSE;
+	7:
+	L_TBResetBitOfDword.7 := FALSE;
+	8:
+	L_TBResetBitOfDword.8 := FALSE;
+	9:
+	L_TBResetBitOfDword.9 := FALSE;
+	10:
+	L_TBResetBitOfDword.10 := FALSE;
+	11:
+	L_TBResetBitOfDword.11 := FALSE;
+	12:
+	L_TBResetBitOfDword.12 := FALSE;
+	13:
+	L_TBResetBitOfDword.13 := FALSE;
+	14:
+	L_TBResetBitOfDword.14 := FALSE;
+	15:
+	L_TBResetBitOfDword.15 := FALSE;
+	16:
+	L_TBResetBitOfDword.16 := FALSE;
+	17:
+	L_TBResetBitOfDword.17 := FALSE;
+	18:
+	L_TBResetBitOfDword.18 := FALSE;
+	19:
+	L_TBResetBitOfDword.19 := FALSE;
+	20:
+	L_TBResetBitOfDword.20 := FALSE;
+	21:
+	L_TBResetBitOfDword.21 := FALSE;
+	22:
+	L_TBResetBitOfDword.22 := FALSE;
+	23:
+	L_TBResetBitOfDword.23 := FALSE;
+	24:
+	L_TBResetBitOfDword.24 := FALSE;
+	25:
+	L_TBResetBitOfDword.25 := FALSE;
+	26:
+	L_TBResetBitOfDword.26 := FALSE;
+	27:
+	L_TBResetBitOfDword.27 := FALSE;
+	28:
+	L_TBResetBitOfDword.28 := FALSE;
+	29:
+	L_TBResetBitOfDword.29 := FALSE;
+	30:
+	L_TBResetBitOfDword.30 := FALSE;
+	31:
+	L_TBResetBitOfDword.31 := FALSE;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

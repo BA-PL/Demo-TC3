@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_TypeJK" Id="{bf6409a8-39cb-4bda-becb-8f8c856f34b0}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************************)
+(*							Beckhoff Automation Poland														*)
+(*								FB_TypeJK  v1																*)
+(*									27.05.2008																*)
+(*	Bloczek przerzutnika JK																					*)
+(*	Przerzutnik ma wejścia informacyjne (J i K), , wyjście proste (Q) i jego negację (nie Q),				*)
+(*	Przerzutnik jest przerzutnikiem synchronicznym, co oznacza, że zmienia stan przy zmianie stanu wejścia 	*)
+(*	zegarowego z niskiego na wysoki (0 na 1)-wyzwalanie zboczem narastającym lub przy zmianie stanu			*)
+(*	wejścia zegarowego(CLK) z wysokiego na niski (1 na 0)- wyzwalanie zboczem opadającym .					*)
+(*	Stan wyjść podczas pracy przerzutnika zależy od stanu wejść, jak i stanu poprzedniego wyjść.			*)
+(*__________________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_TypeJK
+VAR_INPUT
+	J:			BOOL;
+	Clk:		BOOL;
+	K:			BOOL;
+END_VAR
+VAR_OUTPUT
+	Q:			BOOL;
+END_VAR
+VAR
+	lastClk:	BOOL;
+	lastQ: 		BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF (lastClk < Clk) THEN
+	IF(J=1 AND K=0) THEN Q:=0; END_IF
+	IF(J=0 AND K=1) THEN Q:=1; END_IF
+	IF(J=1 AND K=1) THEN Q:=NOT lastQ; END_IF
+	IF(J=0 AND K=0) THEN Q:=lastQ; END_IF
+END_IF
+lastQ:=Q;
+lastClk:=Clk;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

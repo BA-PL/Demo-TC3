@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_IntTo2Byte" Id="{7e7a398c-7c24-4d3f-96a5-6db969f8671e}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_IntTo2Byte	 v1.0									*)
+(*									24.5.2011											*)
+(*			Blok funkcyjny rozbijający zmienną typu INT na dwie zmienne typu BYTE		*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_IntTo2Byte
+VAR_INPUT
+	iInput :INT;
+END_VAR
+VAR_OUTPUT
+	byStarszy : BYTE;
+	byMlodszy : BYTE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[byMlodszy := INT_TO_BYTE(iInput);
+byStarszy := INT_TO_BYTE(ROL(iInput, 8));]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

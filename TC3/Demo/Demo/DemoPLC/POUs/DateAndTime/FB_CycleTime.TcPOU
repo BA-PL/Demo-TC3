@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_CycleTime" Id="{aecee9b2-92f7-4761-bec4-b99debe8b319}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*								Beckhoff Automation Poland										*)
+(* 									FB_CycleTime v1.0											*)
+(* 										2.2.2011												*)
+(*Blok funkcyjny podający na wyjściu czas miedzy kolejnymi wywołaniami - najczęściej czas cyklu	*)
+(*______________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_CycleTime
+VAR_INPUT
+	bEnable		: 	BOOL:=TRUE; (* Zezwolenie na obliczenia *)
+END_VAR
+VAR_OUTPUT
+	tCycleTime	:	TIME; 		(* Czas cylku *)
+END_VAR
+VAR
+	x 			:	TIME;
+	y 			:	TIME;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bEnable THEN
+	x := TIME();
+	tCycleTime := x-y;
+	y:=x;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

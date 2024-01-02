@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_Blink_S" Id="{73ad219d-f669-44b3-a222-006b3bb133de}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_Blink_S	 v1.1											*)
+(*									9.11.2007												*)
+(*						Blok funkcyjny zegara synchronicznego								*)
+(*__________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_Blink_S
+VAR_INPUT
+	Tv										:	TIME;				(*Czas trwania impulsu i przerwy*)
+END_VAR
+VAR_OUTPUT
+	Q										:	BOOL;				(*Wyjscie*)
+END_VAR
+VAR
+	ton1									:	TON;
+	ton2									:	TON;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ton1(IN:= NOT ton2.Q, PT:=Tv);
+Q:=ton1.Q;
+ton2(IN:=ton1.Q , PT:=ton1.PT );]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

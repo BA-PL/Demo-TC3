@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_AstrTimeCET" Id="{1fc44591-34c1-4eeb-857d-94c4f2671dfb}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_AstrTimeCET v1.0													*)
+(*									24.10.2014														*)
+(*	Blok funkcyjny zegara astronomicznego -  załączający wyjście bOutCET gdy jest dzien				*)
+(*	 mozliwe jest wprowadzenie offsetu, który jest uwzgledniony przez wyjscie bOutCETOffs			*)
+(*				Wymaga podania aktualnego czasu, informacji czy jest czas letni						*)
+(* 			oraz szerokości rWidth i długości rLenght geograficznej obiektu							*)
+(*					(w formie zmiennej typu REAL - 51 st 45 min = 51.75 !! )						*)
+(*		Na wyjsciu podany jest również czas wschodu i zachodu Słońca w danym dniu					*)
+(*					Wymagane dodanie biblioteki TcMatch 				 							*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_AstrTimeCET
+VAR_INPUT
+	bCalculate				: BOOL;									(* Obliczenia na zadanie na obliczenia*)
+	stActTimeCET			: TIMESTRUCT;							(* Aktualny czas CET*)
+	rWidth					: REAL			:=52.059625;			(* szerokosc geograficzna ujemna - S  dodatnia - N, wspolrzedne Warszawy: 52° N; 21° E *)
+	rLenght					: REAL			:=21.04540559999998;	(* dlugosc geograficzna ujemna - W  dodatnia - E*)
+	bDSTSummer				: BOOL;									(* Sygnalizacja czasu letniego - GMT + 1h *)
+	iSunriseOffset			: INT; 									(* przesuniecie zalaczenia, w minutach, "-" - wcześniej*)
+	iSunsetOffset			: INT;									(* przesuniecie wylaczenia, w minutach, "-" - wcześniej*)
+END_VAR
+VAR_OUTPUT
+	bOutCET					: BOOL;									(* Wskazanie dnia, TRUE => dzien, FALSE => noc*)
+	bOutCETOffs				: BOOL; 								(* Wyjscie uwzgledniajace offset, TRUE => dzien, FALSE => noc*)
+	todSunriseCET			: TOD;
+	todSunsetCET			: TOD;
+	todSunriseCETOffs		: TOD;
+	todSunsetCETOffs		: TOD;
+	bError					: BOOL; 								(* Blad nie podano czasu *)
+END_VAR
+VAR
+	J,Cent,L,G,O,F,E,A,C,lrWsch,lrZach:	LREAL;
+	wDayOld					: WORD;
+	todSunriseGMT			: TOD;
+	todSunsetGMT			: TOD;
+	dwSunriseHourGMT		: DWORD;		(*Czas GMT wschodu i zachodu Słońca *)
+	dwSunriseMinuteGMT		: DWORD;
+	dwSunsetHourGMT			: DWORD;
+	dwSunsetMinuteGMT		: DWORD;
+	dwSunriseGMT			: DWORD;		(*czas wschodu GMT w ms*)
+	dwSunsetGMT				: DWORD;		(*czas zachodu GMT w ms*)
+	dwSunriseCET			: DWORD;		(*czas wschodu CET w ms*)
+	dwSunsetCET				: DWORD;		(*czas zachodu CET w ms*)
+	dwSunriseOffs			: DWORD;		(*czas wschodu CET z Offs w ms*)
+	dwSunsetOffs			: DWORD;		(*czas zachodu CET z Offs w ms*)
+	todActTime				: TOD;
+END_VAR
+VAR CONSTANT
+	Req						: REAL := -0.833;		(*wysokosc Slonca podczas Wschodu i Zachodu*)
+(*
+Req = -0.833 - dla wschodów i zachodów Słońca
+Req = -6 - dla zmierzchu cywilnego
+Req = -12 - dla zmierzchu żeglarskiego
+Req = -18 - dla zmierzchu astronomicznego
+*)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bError := stActTimeCET.wYear = 0;
+(*Obliczenia wykonywane sa gdy pobrany zostal czas po wykryciu nowego dnia lub na zadanie *)
+IF NOT bError AND (bCalculate OR stActTimeCET.wDay <> wDayOld) THEN
+	(*Bardzo skomplikowane obliczenia wschodu i zachod słońca dla czasu GMT*)
+	J:=367*stActTimeCET.wYear-TRUNC(7*(stActTimeCET.wYear+TRUNC((stActTimeCET.wMonth+9)/12))/4)+TRUNC(275*stActTimeCET.wMonth/9)+stActTimeCET.wDay-730531.5;
+	Cent:=J/36525;
+	L:= LMOD((4.8949504201433+628.331969753199*Cent),6.28318530718);
+	G:= LMOD((6.2400408+628.3019501*Cent),6.28318530718);
+	O:=0.409093-0.0002269*Cent;
+	F:=0.033423*SIN(G)+0.00034907*SIN(2*G);
+	E:=0.0430398*SIN(2*(L+F)) - 0.00092502*SIN(4*(L+F)) - F;
+	A:=ASIN(SIN(O)*SIN(L+F));
+	C:=(SIN(0.017453293*Req) - SIN(0.017453293*rWidth)*SIN(A))/(COS(0.017453293*rWidth)*COS(A));
+	lrWsch:=((PI - (E+0.017453293*rLenght + 1*ACOS(C)))*57.29577951/15);
+	lrZach:=((PI - (E+0.017453293*rLenght + -1*ACOS(C)))*57.29577951/15);
+
+	(*Obliczenie zmiennych dla czasu GMT*)
+	dwSunriseHourGMT 	:= DINT_TO_DWORD(TRUNC(lrWsch));
+	dwSunriseMinuteGMT 	:= LREAL_TO_DWORD((lrWsch - DWORD_TO_LREAL(dwSunriseHourGMT))*60);
+	dwSunsetHourGMT 		:= DINT_TO_DWORD(TRUNC(lrZach));
+	dwSunsetMinuteGMT 	:= LREAL_TO_DWORD((lrZach - DWORD_TO_LREAL(dwSunsetHourGMT))*60);
+	dwSunriseGMT			:= (dwSunriseHourGMT*60+dwSunriseMinuteGMT)*60000;
+	dwSunsetGMT			:= (dwSunsetHourGMT*60+dwSunsetMinuteGMT)*60000;
+	todSunriseGMT 			:= DWORD_TO_TOD(dwSunriseGMT);
+	todSunsetGMT 			:= DWORD_TO_TOD(dwSunsetGMT);
+
+	(*Obliczenie zmiennych dla czasu CET*)
+	dwSunriseCET 			:= dwSunriseGMT+3600000;
+	dwSunsetCET			:= dwSunsetGMT+3600000;
+	(* + 1h dla DST *)
+	IF bDSTSummer THEN
+		dwSunriseCET 		:= dwSunriseCET+3600000;
+		dwSunsetCET		:= dwSunsetCET+3600000;
+	END_IF
+	todSunriseCET 			:= DWORD_TO_TOD(dwSunriseCET);
+	todSunsetCET 			:= DWORD_TO_TOD(dwSunsetCET);
+
+	(*Obliczenie zmiennych dla czasu CET z offsetem*)
+	dwSunriseOffs 			:= dwSunriseCET + INT_TO_DWORD(iSunriseOffset)*60000;
+	dwSunriseOffs 			:= LIMIT(0, dwSunriseOffs,86400000);						(* Jesli ktos przesadzil z offsetem i wyszedl poza dobe, to ustawiamy gorny limit *)
+	dwSunsetOffs 			:= dwSunsetCET + INT_TO_DWORD(iSunsetOffset)*60000;
+	dwSunsetOffs 			:= LIMIT(dwSunriseOffs, dwSunsetOffs,86400000);			(* Jesli ktos przesadzil z offsetem i wyszedl poza dobe, to ustawiamy gorny limit *)
+	todSunriseCETOffs 		:= DWORD_TO_TOD(dwSunriseOffs);
+	todSunsetCETOffs 		:= DWORD_TO_TOD(dwSunsetOffs);
+
+	wDayOld 				:= stActTimeCET.wDay; (*ustawienie nowego dnia*)
+END_IF
+todActTime 					:= DT_TO_TOD(SYSTEMTIME_TO_DT(stActTimeCET));
+(* Wystawienie wyjsc tylko gdy nie ma bledu*)
+bOutCET 					:= NOT bError AND (todActTime >= todSunriseCET AND todActTime <= todSunsetCET);
+bOutCETOffs 				:= NOT bError AND (todActTime >= todSunriseCETOffs AND todActTime <= todSunsetCETOffs);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

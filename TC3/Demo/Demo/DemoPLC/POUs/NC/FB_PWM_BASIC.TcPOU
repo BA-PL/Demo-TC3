@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_PWM_BASIC" Id="{cb60afbc-24ea-4917-bd4a-fcc74ed33704}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************************)
+(*								Beckhoff Automation Poland												*)
+(* 									FB_PWM_BASIC v1.1													*)
+(* 										22.04.2010														*)
+(*	v 1.1 - dodano bEnable, rCycleTime, początkowa faza to wyjście załączone, końcowa wyłączone			*)
+(* 		Blok funkcyjny sterowania wyjsciem bOut typu BOOL na zasadzie modulowania szerokosci impulsu.	*)
+(*					 Dokladnosc szerokosci impulsu  do 1 cylku sterownika.								*)
+(* 							Konieczne jest dodanie biblioteki TcSystem									*)
+(*______________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_PWM_BASIC
+VAR_INPUT
+	bEnable: 			BOOL	:=TRUE;	(* Pozwolenie na działanie bloczka *)
+	tPulseWidth: 		TIME; 			(*Szerokosc impulsu = 100% w ms typ zmiennej TIME*)
+	fUpPercent: 		REAL; 			(*Aktualne procentowe wypelnienie impulsu*)
+	rCycleTime: 		REAL;			(* Czas cylku - task, w milisekundach *)
+END_VAR
+VAR_OUTPUT
+	bOut: 				BOOL;			(* Wyjscie *)
+	wOn: 				WORD;			(* Liczba cykli z załączonym wyjściem *)
+	wOff: 				WORD;			(* Liczba cykli z wyłaczonym wyjściem *)
+END_VAR
+VAR
+	fCyclePulseWidth: 	REAL;  			(*Dlugosc impulsu = 100% w cyklach typ zmiennej REAL *)
+	fCyclesOn: 			REAL;			(*Ilosc cykli, w ktorych sygnal jest zalaczony*)
+	State: 				BYTE:=1;		(*Zmienna wyboru w instrukcji CASE*)
+	(*Przeliczenie na pelne cykle*)
+	wWidth: 			WORD;
+	wCycleCounter:		WORD;			(*Licznik cykli zalaczenia/wylaczenia*)
+	(*Przechowanie wartosci do porownania*)
+	tPulseWidthOld: 	TIME	:= T#0MS;
+	fUpPercentOld: 		REAL	:= -1;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bEnable THEN
+	(*Przelicz tylko gdy zmienia sie dane*)
+	IF tPulseWidth <> tPulseWidthOld OR fUpPercent <> fUpPercentOld THEN
+		(*Sprawdzamy poprawnosc wprowadzonych danych*)
+		IF fUpPercent <0 THEN fUpPercent := 0; END_IF
+		IF fUpPercent > 100 THEN fUpPercent := 100; END_IF
+		(*Obliczamy*)
+		fCyclePulseWidth := TIME_TO_REAL(tPulseWidth)/rCycleTime; (*Dlugosc impulsu*)
+		fCyclesOn := fCyclePulseWidth * fUpPercent/100;(*Cykle zalaczenia*)
+	
+		(*Przeliczamy na pelne cykle*)
+		(*Opcja dla dokladniejszego przyblizenia impulsu On i Off*)
+		wWidth := REAL_TO_WORD(fCyclePulseWidth);
+		wOn := REAL_TO_WORD(fCyclesOn);
+		(* Jeśli nie ma takiej potrzeby, nie wystawiaj wyjscia *)
+		IF wOff = 0 THEN State := 0; END_IF
+		wOff := REAL_TO_WORD(fCyclePulseWidth - fCyclesOn);
+		(*Podstawiamy*)
+		tPulseWidthOld := tPulseWidth;
+		fUpPercentOld := fUpPercent;
+	END_IF
+
+	(*Albo wystawiamy TRUE albo FALSE*)
+	CASE State OF
+		0:
+			bOut := FALSE;									(*Ustaw bOut na FALSE*)
+			wCycleCounter := wCycleCounter  +  1;			(*Dodaj cykl do licznika*)
+			IF wCycleCounter >= wOff THEN					(*Jezeli bylo bOut = FALSE wystarczajaca ilosc cykli to...*)
+				wCycleCounter := 0;							(*Resetuj licznik*)
+				IF wOff <> wWidth THEN State := 1; END_IF 	(*Przelacz tylko jesli ma byc kiedys bOut = TRUE*)
+			END_IF
+		1:
+			bOut := TRUE;									(*Ustaw bOut na TRUE*)
+			wCycleCounter := wCycleCounter  +  1;			(*Dodaj cykl do licznika*)
+			IF wCycleCounter >= wOn THEN					(*Jezeli bylo bOut = TRUE wystarczajaca ilosc cykli to...*)
+				wCycleCounter := 0;							(*Resetuj licznik*)
+				IF wOn <> wWidth THEN State := 0; END_IF 	(*Przelacz tylko jesli ma byc kiedys bOut = FALSE*)
+			END_IF
+	END_CASE
+ELSE
+	bOut := FALSE;
+	wCycleCounter := 0;
+	State := 1;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Filter" Id="{06f60353-61cf-4a5f-95a7-0db2d17502ef}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_Filter  v1											*)
+(*									27.05.2008											*)
+(*				Bloczek do filtru inercyjnego do wygladzania przebiegow					*)
+(* 			Uwaga!! w nowych aplikacjach nalezy stosowac FB_FilterEx 					*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Filter
+VAR_INPUT
+	In:						REAL;(*sygnal wejsciowy*)
+	tSamplingTime:			TIME;(*czas probkowania*)
+	tMeasureTime:			TIME;(*stala czasowa*)
+END_VAR
+VAR_OUTPUT
+	Out:					REAL;(*sygnal wyjsciowy*)
+END_VAR
+VAR
+	czas_probkowania_real:	REAL;
+	stala_czasowa_real:		REAL;
+	CLOCK: 					TP;
+	lastOut: 				REAL;
+	lastStan: 				BOOL;
+	stan: 					BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CLOCK();
+clock.PT:=tSamplingTime;
+czas_probkowania_real:=TIME_TO_REAL(tSamplingTime);
+stala_czasowa_real:= TIME_TO_REAL(tMeasureTime);
+IF CLOCK.Q=FALSE THEN
+	CLOCK(IN:=FALSE);
+	stan := NOT stan;
+	CLOCK(IN:=TRUE);
+END_IF
+IF(lastStan <> stan) THEN
+	Out:= lastOut + (In -lastOut)*czas_probkowania_real/stala_czasowa_real;
+END_IF
+lastOut:=Out;
+lastStan:= stan;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

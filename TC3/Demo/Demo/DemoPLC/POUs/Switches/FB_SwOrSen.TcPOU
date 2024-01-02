@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_SwOrSen" Id="{0b3fe822-ad4a-4a4b-9289-b5f032583d86}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_SwOrSen v1.1														*)
+(*									9.11.2007														*)
+(*	Blok funkcyjny symulujący przycisk bistabilny pracujacy w 3 trybach:							*)
+(*	usMode = 0 - reaguje tylko na włącznik, nie reaguje na czujkę									*)
+(*	usMode = 1 - reaguje tylko na czujkę, nie reaguje na włącznik									*)
+(*	usMode = 2 - swiatło włączamy włącznikiem, a wyłącza sie przez czujkę							*)
+(*	usMode = 3 - 	światło reaguje na czujkę,														*)
+(*				jeżeli jednak włączono światło włącznikiem (nawet gdy było włączone prze czujnik),	*)
+(*				to pomimo braku sygnału z czujnika, nie wyłączy się.								*)
+(*__________________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_SwOrSen
+VAR_INPUT
+	bSwitch:			BOOL;				(*Włącznik światła*)
+	bSensor:			BOOL;				(*Czujnik ruchu*)
+	tDelay:				TIME;				(*Czas po jakim gaśnie światło podczas kontroli przez czujnik ruchu*)
+	usMode:				USINT;				(*Wybór trybu pracy*)
+END_VAR
+VAR_OUTPUT
+	bOut:				BOOL;				(*Wyjście sterujące oświetleniem*)
+END_VAR
+VAR
+	Triger:				R_TRIG;
+	Timer:				TOF;
+	Timer_2:			TOF;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Triger();
+Timer();
+Timer_2();
+
+IF usMode <> 0 AND usMode <> 1 AND usMode <>2 THEN usMode := 3; END_IF
+
+CASE usMode OF
+
+	0:
+	(*swiatlo reaguje tylko na wlacznik*)
+	bOut := bSwitch;
+
+	1:
+	(*swiatlo reaguje tylko na czujke*)
+	Timer(IN:=NOT bSensor, PT:= tDelay );
+	bOut := Timer.Q;
+
+	2:
+	(*swiatlo reaguje na czujke i wlacznik*)
+	Triger(CLK:= bSwitch);
+	Timer_2(IN:= Triger.Q, PT:= tDelay);
+	Timer(IN:=NOT bSensor AND bSwitch, PT:= tDelay );
+	bOut :=bSwitch AND (Timer.Q OR Timer_2.Q);
+
+	3:
+	Timer(IN:=NOT bSensor, PT:= tDelay );
+	IF bSwitch THEN
+	(*Przycisk włączony*)
+		bOut := bSwitch;
+	ELSE
+	(*Przycisk wyłączony*)
+		bOut := Timer.Q;
+	END_IF
+
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

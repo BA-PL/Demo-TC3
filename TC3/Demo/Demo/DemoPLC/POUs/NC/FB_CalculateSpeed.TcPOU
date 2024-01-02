@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_CalculateSpeed" Id="{78c58294-d96b-4301-9757-ec1c67303c34}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************)
+(*							Beckhoff Automation Poland							*)
+(*							FB_CalculateSpeed  v1.0								*)
+(*									28.8.2013									*)
+(*			Blok funkcyjny obliczający predkosc z pozycji. z filtracją wyjscia	*)
+(*						Wewnatrz wykorzystany blok FB_Filter					*)
+(*______________________________________________________________________________*)
+FUNCTION_BLOCK FB_CalculateSpeed
+VAR_INPUT
+	dwInput					: DWORD;     			(* zliczone impulsy z enkodera *)
+	tSamplingTime 			: TIME;     			(* czas cyklu odczytu wejscia dwInput, musi byc rowony lub wiekszy od cyklu programu *)
+	tT						: TIME;					(* stala czasowa filtracji - po tym czasie wyjscie przyjmuje ok 0,65 wartosci wejsciowej*)
+END_VAR
+VAR_OUTPUT
+	rOut					: REAL; 				(* aktualna prędkość - unit/ms*)
+	bError					: BOOL;					(* blad - czas probkowania mniejszy niz czas cyklu *)
+END_VAR
+
+VAR
+	dwPrevInput				: DWORD;		 		(*liczba impulsów z poprzedniego odczytu*)
+	rSamplingTime			: REAL; 				(*czas cyklu odczytu wejscia dwInput *)
+	rDistance				: REAL;   				(*roznica w odczycie pomiedzy probkowaniami*)
+	rRawOut					: REAL;   				(*prędkość przed filtracją*)
+	dwBound					: DWORD;				(*granica wyznaczajaca przepetlenie*)
+	BIndex					: BYTE;					(* nr tasku - do porowniania czasu cyklu *)
+	tCycleTime				: TIME;					(* Ustawiony czas Tasku w ms*)
+	tCurrentTime			: TIME;					(* aktualny czas *)
+	tLastTime				: TIME;					(* poprzedni czas *)
+	bCalculate				: BOOL;					(* sygnal do wykonania obliczen *)
+	fbFilter 				: FB_Filter;			(* blok filtracji *)
+	fbGETCURTASKINDEX		: GETCURTASKINDEX; 		(* Blok sprawdzajcy numer Tasku *)
+END_VAR
+VAR CONSTANT
+	dwMaxInput				: DWORD := 4294967295;	(*maksymalna liczba impulsów*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbGETCURTASKINDEX(index=> BIndex);
+
+dwBound 		:= dwMaxInput/4;								(*graniczna wartosc roznicy impulsow jest rowna 25% maksymalnej wartosci*)
+tCycleTime		:= UDINT_TO_TIME(_TaskInfo[BIndex].CycleTime/10000);
+bError			:= tSamplingTime < tCycleTime;					(* sprawdzenie warunku wykonalnosci *)
+rSamplingTime	:= TIME_TO_REAL(tSamplingTime);
+tCurrentTime 	:= TIME();										(* pobranie czasu plc *)
+bCalculate 		:= (tCurrentTime - tLastTime) >= tSamplingTime; 	(* sprawdzamy czy nadszedl czas obliczen *)
+
+IF bCalculate AND NOT bError  THEN
+	IF dwInput < dwBound AND dwPrevInput > dwMaxInput- dwBound THEN 		(* Przepetlenie na + *)
+		rDistance := DWORD_TO_REAL(dwInput - dwPrevInput);
+	ELSIF dwInput > dwMaxInput- dwBound AND dwPrevInput < dwBound THEN 	(* Przepetlenie na - *)
+		rDistance := DWORD_TO_REAL(dwInput - dwPrevInput);
+	ELSE																		(* Bez przepetlenia zwykle odejmowanie *)
+		rDistance := DWORD_TO_REAL(dwInput - dwPrevInput);
+	END_IF
+	rRawOut := rDistance/rSamplingTime;										(* Obliczenie predkosci *)
+	(* Przepisanie starych wartosci *)
+	tLastTime 		:= tCurrentTime;
+	dwPrevInput 	:= dwInput;
+END_IF
+
+(*wygladzanie przebiegu*)
+fbFIlter(In := rRawOut, tSamplingTime:= tSamplingTime, tMeasureTime:= tT, Out => rOut);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

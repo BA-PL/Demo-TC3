@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_DiskFreeSpace" Id="{702d792d-e9cf-4fc8-ae36-6bae20a9e95f}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_DiskFreeSpace  v1.0											*)
+(*									08.12.2014													*)
+(*	Blok funkcyjny realizuje odczyt dostępnego wolnego miejsca na karcie sterownika.			*)
+(*	Odczytywana wartość jest wyrażona w MegaBytes												*)
+(*	Wymaga biblioteki TcMDP.lib 																*)
+(*______________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_DiskFreeSpace
+VAR_INPUT
+    sAmsNetId            		: T_AmsNetId;                  (* keep empty '' for the local device *)
+	bReadRequest				: BOOL	:= TRUE;
+END_VAR
+VAR_OUTPUT
+	lrDriveFreeSpace           :LREAL;
+END_VAR
+VAR
+	fbScanMDP					: FB_MDP_ScanModules;
+	fbReadMDP					: FB_MDP_Read;
+	iState						: UINT	:= 0;
+	iDriveFreeSpace				:ARRAY [1..2] OF DWORD;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE iState  OF
+0: (* Idle *)
+	IF bReadRequest THEN
+		bReadRequest	:= FALSE;
+		iState			:= 1;
+	END_IF
+1: (* Scan for module *)
+	fbScanMDP(
+		bExecute:= TRUE,
+		nModuleType:= eMDP_ModT_DiskManagement,
+		sAmsNetId:= sAmsNetId);
+	iState	:= 2;
+2: (* Get received dynamic module id *)
+	fbScanMDP(
+		bExecute:= FALSE,
+		nModuleType:= eMDP_ModT_DiskManagement);
+
+	IF NOT fbScanMDP.bBusy THEN
+		IF NOT fbScanMDP.bError THEN
+			iState	:= 3;
+		ELSE
+			iState	:= 0;
+		END_IF
+	END_IF
+3: (* Request MDP Element *)
+	fbReadMDP.stMDP_DynAddr.nArea		:= INT_TO_BYTE(eMDP_Area_ConfigArea);
+	fbReadMDP.stMDP_DynAddr.nModuleId	:= fbScanMDP.nDynModuleId;
+	fbReadMDP.stMDP_DynAddr.nTableId	:= 6;
+	fbReadMDP.stMDP_DynAddr.nSubIdx	:= 1;
+
+	fbReadMDP(
+		bExecute:= TRUE,
+		pDstBuf:= ADR(iDriveFreeSpace),
+		cbDstBufLen:= SIZEOF(iDriveFreeSpace),
+		sAmsNetId:= sAmsNetId );
+	iState	:= 4;
+4: (* Get received Information *)
+	fbReadMDP(
+		bExecute:= FALSE,
+		stMDP_DynAddr:= ,
+		pDstBuf:= ADR(iDriveFreeSpace),
+		cbDstBufLen:= SIZEOF(iDriveFreeSpace));
+
+	IF NOT fbReadMDP.bBusy THEN
+		iState	:= 0;
+	END_IF
+END_CASE
+
+
+lrDriveFreeSpace :=DWORD_TO_LREAL(  iDriveFreeSpace[2] )* 4294967296.0 + DWORD_TO_LREAL(iDriveFreeSpace[1]) ; (*Bytes*)
+lrDriveFreeSpace := lrDriveFreeSpace / 1024;	(* kB*)
+lrDriveFreeSpace := lrDriveFreeSpace / 1024;  (*MB*)]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

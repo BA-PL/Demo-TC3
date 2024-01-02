@@ -1,0 +1,111 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_WeekSchedule" Id="{49e2d84a-11a7-43ee-ad9e-0b868cf81c08}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_WeekSchedule  v1.2									*)
+(*									24.05.2011											*)
+(*		Blok funkcyjny wystawiający wyjście w określonych przedziałach czasu			*)
+(*				wymaga podania aktualnego czasu na wejście bloku 						*)
+(*																						*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_WeekSchedule
+VAR_INPUT
+	bReset:				BOOL;				(*Przywrócenie wartości w bloku do stanu początkowego*)
+	wStartHour:			WORD;				(*Godzina wystawienia wyjścia*)
+	wStartMinute:		WORD;				(*Minuta wystawienia wyjścia*)
+	wStopHour:			WORD;				(*Godzina wyzerowania wyjścia*)
+	wStopMinute:		WORD;				(*Minuta  wyzerowania wyjścia*)
+	
+	(*Dni tygodnia w których ma działać blok funkcyjny*)
+	bMonday: 			BOOL;
+	bTuesday:			BOOL;
+	bWednesday:			BOOL;
+	bThursday:			BOOL;
+	bFriday:			BOOL;
+	bSaturday:			BOOL;
+	bSunday:			BOOL;
+	stActTime: 			TIMESTRUCT;			(*Aktualny czas w formie struktury*)
+END_VAR
+VAR_OUTPUT
+	bOut:				BOOL;				(*Wyjście*)
+	bEdgeOn:	 		BOOL;				(* wystawia true na jeden cykl gdy zadanie rozpoczyna się wykonywać *)
+	bEdgeOff: 			BOOL;				(* wystawia true na jeden cykl gdy zadanie konczy się wykonywac *)
+END_VAR
+VAR
+	StartEdge:			R_TRIG;
+	StopEdge:			R_TRIG;
+	ResetEdge:			R_TRIG;
+	EdgeOn:				R_TRIG;
+	EdgeOff:			F_TRIG;
+	bGo: 				BOOL;
+	bFirstCycle:		BOOL	:=TRUE;
+	wStartHourOld: 		WORD;
+	wStartMinuteOld: 	WORD;
+	wStopHourOld: 		WORD;
+	wStopMinuteOld: 	WORD;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[StartEdge();
+StopEdge();
+ResetEdge(CLK:=bReset);
+IF ResetEdge.Q THEN
+	bOut:=FALSE;
+	bFirstCycle:=TRUE;
+END_IF;
+
+CASE stActTime.wDayOfWeek OF
+	0:	bGo := bSunday;
+	1:	bGo := bMonday;
+	2:	bGo := bTuesday;
+	3:	bGo := bWednesday;
+	4:	bGo := bThursday;
+	5:	bGo := bFriday;
+	6:	bGo := bSaturday;
+END_CASE
+
+(*Sprawdzenie czy była zmiana zadanych przedziałów czasowych*)
+IF wStartHour<>wStartHourOld OR wStartMinute<>wStartMinuteOld OR wStopHour<>wStopHourOld OR wStopMinute<>wStopMinuteOld THEN
+	bFirstCycle:=TRUE;
+END_IF;
+
+IF bGo AND stActTime.wYear <> 0 THEN
+	IF bFirstCycle THEN
+	(*W pierwszym cylku należy sprawdzić czy włączamy czy wyłączamy i likwidujemy zmienna pierwszego cyklu*)
+		IF stActTime.wHour< wStartHour OR stActTime.wHour>wStopHour THEN
+		(*Poznajemy po godzinie, ze na pewno jest wylaczone *)
+			bOut := FALSE;
+		ELSIF (stActTime.wHour=wStartHour AND stActTime.wMinute < wStartMinute) OR (stActTime.wHour=wStopHour AND stActTime.wMinute > wStopMinute)  THEN
+		(*W tej godzinie zaczyna sie badz konczy wylaczenie, ale jescze jest wylaczone*)
+			bOut := FALSE; (*Wylaczone*)
+		ELSE
+			bOut := TRUE; (*Wlaczone*)
+		END_IF
+		bFirstCycle := FALSE;
+	ELSE
+		(*Sprawdzamy czy zdarzenie jest całodniowe*)
+		IF wStartHour=0 AND wStartMinute=0 AND wStopHour=0 AND wStopMinute=0 THEN
+			bOut := TRUE; (*Dzien*)
+		END_IF
+		(*Teraz reagujemy tylko na zmiany - wykrycie sygnału do startu i końca*)
+		StartEdge.CLK := wStartHour = stActTime.wHour AND wStartMinute = stActTime.wMinute;
+		StopEdge.CLK := wStopHour = stActTime.wHour AND wStopMinute = stActTime.wMinute;
+		IF StartEdge.Q  THEN bOut := TRUE; (*Dzien*) END_IF
+		IF StopEdge.Q  THEN bOut := FALSE; (*Noc*) END_IF
+	END_IF
+ELSE
+	bOut := FALSE;
+	StartEdge.CLK := FALSE;
+	StopEdge.CLK := FALSE;
+END_IF
+(*Wartości wystawione na 1 cykl*)
+EdgeOn(CLK:= bOut, Q=>bEdgeOn );
+EdgeOff(CLK:= bOut, Q=>bEdgeOff );
+
+wStartHourOld:=wStartHour;
+wStartMinuteOld:=wStartMinute;
+wStopHourOld:=wStopHour;
+wStopMinuteOld:=wStopMinute;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

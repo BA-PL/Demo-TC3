@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_TOGGLE_WITH_RESET" Id="{93f5cb11-304a-463a-bd90-5659f6ae6210}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_XCopyCE  v1.0											*)
+(*									07.07.2010												*)
+(*	Bloczek kopiujący plik z miejsca zrodlowego do docelowego,  							*)
+(*	jesli w miejscu docelowym jest juz plik o tej nazwie, zostanie on zastąpiony			*)
+(*	BF wykorzystuje  NT_StartProcess znajudjący się w bibliotece TcUtilities.lib			*)
+(*	Sprawdzony pod systemem Windows CE5 i CE6, wymaga pliku 	\Hard Disk\System\XCOPYCE	*)
+(*__________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_TOGGLE_WITH_RESET
+VAR_INPUT
+	bCopy : 			BOOL;	(* zbocze narastajace rozpoczyna kopiowanie *)
+	NetID: 				STRING;
+	sFileName : 		STRING;	(* nazwa pliku np: 'a.txt' *)
+	sSrcPath : 			STRING;	(* sciezka zrodlowa np: '\Hard Disk\' *)
+	sDestPath : 		STRING;	(* sciezka docelowa np: '\Hard Disk\ftp\' *)
+
+END_VAR
+VAR_OUTPUT
+	bBusy : 			BOOL;
+	bError : 			BOOL;
+	bErrID :			UDINT;
+END_VAR
+VAR
+	NtStartProcess: 	NT_StartProcess;
+	rtCopy: 			R_TRIG;
+	step: 				INT;
+	sCmd: 				STRING;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtCopy(CLK:= bCopy, Q=> );
+
+IF rtCopy.Q THEN 	step := step +10; END_IF
+
+CASE step OF
+0:	(* czeka na polecenie kopiowania *)
+	bBusy:= FALSE;
+	NtStartProcess.START := FALSE;
+10:
+	bBusy := TRUE;
+	bError := FALSE;
+	bErrID :=0;
+	sCmd:='';				(* tworzenie polecenia *)
+	sCmd := CONCAT(CONCAT(CONCAT('"', sSrcPath), sFileName), '" "');
+	sCmd := CONCAT(CONCAT(sCmd, sDestPath), '" /Y');
+	NtStartProcess.START := TRUE;
+	step := step +10;
+
+20:
+	IF NOT NtStartProcess.BUSY AND NOT NtStartProcess.ERR THEN
+		step := Step -20;
+	ELSIF  NtStartProcess.ERR THEN
+		Step := step -20;
+		bError := TRUE;
+		bErrID := NtStartProcess.ERRID;
+	END_IF
+END_CASE
+
+
+
+NtStartProcess(
+	NETID:= NetID,
+	PATHSTR:=  '\Hard Disk\System\XCOPYCE',
+	DIRNAME:=  '\Hard Disk\System',
+	COMNDLINE:= sCmd ,
+	START:= ,
+	TMOUT:= ,
+	BUSY=> ,
+	ERR=> , 
+	ERRID=> );]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

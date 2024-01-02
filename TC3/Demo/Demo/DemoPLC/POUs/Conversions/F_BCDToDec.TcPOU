@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_BCDToDec" Id="{8ba2a411-6671-4d19-aa23-08ab68f2c827}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************)
+(*								Beckhoff Automation Poland							*)
+(* 									F_BCDToDec v1.0									*)
+(* 										26.06.2014									*)
+(*					Funkcja konwertujaca BYTE (kod BCD) na BYTE (DEC)				*)
+(*__________________________________________________________________________________*)
+FUNCTION F_BCDToDec: BYTE
+VAR_INPUT
+	BIn:BYTE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE ROL(BIn AND 16#F0,4) OF
+0:	F_BCDToDec := 00;
+1:	F_BCDToDec := 10;
+2:	F_BCDToDec := 20;
+3:	F_BCDToDec := 30;
+4:	F_BCDToDec := 40;
+5:	F_BCDToDec := 50;
+6:	F_BCDToDec := 60;
+7:	F_BCDToDec := 70;
+8:	F_BCDToDec := 80;
+9:	F_BCDToDec := 90;
+ELSE
+	;
+END_CASE
+
+CASE BIn AND 16#F OF
+0..9:	F_BCDToDec := F_BCDToDec + (BIn AND 16#F);
+ELSE
+	;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

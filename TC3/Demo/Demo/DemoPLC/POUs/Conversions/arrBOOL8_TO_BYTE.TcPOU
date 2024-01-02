@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="arrBOOL8_TO_BYTE" Id="{d2c9bd6d-5fed-4c33-a21c-5c24686c4625}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								arrBOOL8_TO_BYTE v1.0									*)
+(*									15.02.2010											*)
+(*		Funkcja tworząca zmienną typu BYTE z tablicy 8 zmiennych typu BOOL				*)
+(*______________________________________________________________________________________*)
+FUNCTION arrBOOL8_TO_BYTE : BYTE
+VAR_INPUT
+	aBool8 : ARRAY [0..7] OF BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[arrBOOL8_TO_BYTE.0 := aBool8[0];
+arrBOOL8_TO_BYTE.1 := aBool8[1];
+arrBOOL8_TO_BYTE.2 := aBool8[2];
+arrBOOL8_TO_BYTE.3 := aBool8[3];
+arrBOOL8_TO_BYTE.4 := aBool8[4];
+arrBOOL8_TO_BYTE.5 := aBool8[5];
+arrBOOL8_TO_BYTE.6 := aBool8[6];
+arrBOOL8_TO_BYTE.7 := aBool8[7];]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

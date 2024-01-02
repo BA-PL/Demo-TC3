@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Dimmer1PMinMax" Id="{0b385f23-f9b4-4019-8630-0f45e28fff90}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							FB_Dimmer1PMinMax v1.0										*)
+(*									21.11.2007											*)
+(*		Blok funkcyjny do przyciemniania/rozjaśniania za pomocą 1 przycisku bistabilnego*)
+(*					z określaniem poziomu minimalnego i maksymalnego oświetlenia		*)
+(*							wykorzystywany z KL2751										*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Dimmer1PMinMax
+VAR_INPUT
+	bSwitch:		BOOL;			(*Obsługiwany przycisk*)
+	iMinLevel: 		INT; 			(*Minimalna wartość wyjścia*)
+	iMaxLevel:	 	INT; 			(*Maksymalna wartość wyjścia*)
+	bReset:			BOOL; 			(*Reset bloku funkcyjnego przez funkcję centralną*)
+END_VAR
+VAR_OUTPUT
+	iOut: 			INT;			(*Wyjscie - powinno byc zlinkowane z wyjściem modułu KL2751*)
+END_VAR
+VAR_IN_OUT
+	iOldOut: 		INT;			(*Zapamiętanie stanu w yjścia*)
+END_VAR
+VAR
+	tLong:			TIME:=T#200MS;	(*Czas określający długie wciśnięcie przycisku*)
+	iStep:			INT:=100;		(*Krok zmany wyjścia*)
+	Czas:			TON;
+	Licznik:		CTU;
+	iFunction:		INT;
+	bLong: 			BOOL:=TRUE;
+	bShort: 		BOOL;
+	ResetTrig:		R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Przywrócenie ustawień początkowych*)
+ResetTrig(CLK:=bReset);
+IF ResetTrig.Q THEN iFunction := 1; bLong := TRUE; bShort := FALSE;  END_IF;
+
+(* Wykrycie dlugiego nacisniecia *)
+Czas(IN:= bSwitch, PT:=tLong);
+(* Rozpoznanie funkcji *)
+Licznik(CU:= bSwitch, RESET:= Licznik.Q, PV:= 2);
+
+IF Licznik.CV = 0 AND bSwitch THEN iFunction := 0; END_IF;(*wlaczany przycisk, byc moze rozjasnianie*)
+IF Licznik.CV = 0 AND NOT bSwitch THEN iFunction := 1; END_IF;(*wylaczony przycisk, byc moze wlaczenie*)
+IF Licznik.CV = 1 AND bSwitch THEN iFunction := 2; END_IF;(*wlaczany przycisk, byc moze sciemnianie*)
+IF Licznik.CV = 1 AND NOT bSwitch THEN iFunction := 3; END_IF;(*wylaczony przycisk, byc moze wylaczenie*)
+(*zapamietanie, ze bylo krotkie nacisniecie*)
+IF bSwitch AND NOT Czas.Q THEN bLong := FALSE; END_IF;
+IF NOT bSwitch AND NOT bLong THEN bShort := TRUE; END_IF;
+(*zapamietanie, ze bylo dlugie nacisniecie*)
+IF bSwitch AND Czas.Q THEN bLong := TRUE; bShort := FALSE; END_IF;
+
+CASE iFunction OF
+
+0:
+(*przyciemnianie*)
+IF bLong THEN
+	iOut:=iOut-iStep;
+	IF iOut<iMinLevel+iStep THEN
+		iOut :=iMinLevel;
+	END_IF
+	iOldOut:=iOut;
+END_IF;
+
+1:
+(*wylaczenie*)
+IF bShort THEN iOut := 0; END_IF;
+
+2:
+(*rozjasnianie*)
+IF bLong THEN
+	iOut:=iOut+iStep;
+	IF iOut<0 OR iOut>iMaxLevel THEN
+		iOut :=iMaxLevel;
+	END_IF
+	iOldOut:=iOut;
+END_IF;
+
+3:
+(*wlaczenie*)
+IF bShort THEN iOut:=iOldOut; END_IF;
+
+END_CASE;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

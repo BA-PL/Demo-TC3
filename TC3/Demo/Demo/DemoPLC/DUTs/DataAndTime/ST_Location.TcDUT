@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="ST_Location" Id="{7c2dd7e3-b9a2-4b17-b5e6-a99c71fba4aa}">
+    <Declaration><![CDATA[TYPE ST_Location :
+STRUCT
+	sName: STRING(30); 	(* location's name ex. Wroclaw*)
+	rLatitude: REAL;		(* szerokosc geograficzna np. Wrocław :=51.1174 *)
+	rLongitude: REAL;		(* długosc geograficzna np. Wrocław := 17.0383 *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

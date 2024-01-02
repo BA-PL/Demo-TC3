@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBGetBitOfByte" Id="{6d8a9ab6-e793-497e-b058-2dcbc09b33d7}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								L_TBGetBitOfByte v1.0									*)
+(*									29.02.2007											*)
+(*				This function returns the state of a single bit within a ”byte” value	*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBGetBitOfByte : BOOL
+VAR_INPUT
+	byInput: BYTE;
+	byBitNr: BYTE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE byBitNr OF
+	0:
+	L_TBGetBitOfByte := byInput.0;
+	1:
+	L_TBGetBitOfByte := byInput.1;
+	2:
+	L_TBGetBitOfByte := byInput.2;
+	3:
+	L_TBGetBitOfByte := byInput.3;
+	4:
+	L_TBGetBitOfByte := byInput.4;
+	5:
+	L_TBGetBitOfByte := byInput.5;
+	6:
+	L_TBGetBitOfByte := byInput.6;
+	7:
+	L_TBGetBitOfByte := byInput.7;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

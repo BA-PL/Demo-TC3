@@ -1,0 +1,276 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_PIDBasic" Id="{1de1778d-9148-45a3-98cb-56a8fe00f3ee}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//					Beckhoff Automation Poland
+//							18.11.2016
+//		Blok funkcyjny regulatora PID w wersji podstawowej
+// 	v1.0 	|| TC v 3.1.4020.28 	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_PIDBasic
+VAR_INPUT
+	bEnable				: BOOL; 			// Pozdolenie na dzialanie, FALSE - resetuje zawartosc
+	bInvertDirection	: BOOL; 			// TRUE: Heating
+	lrSetpointValue		: LREAL; 			// Wartosc zadana
+	lrActualValue		: LREAL; 			// Wartosc aktualna
+	bReset				: BOOL;				// Restart bloku
+	bFreeze				: BOOL;				// Zatrzasniecie wyjscia
+	bManual				: BOOL;				// Tryb reczny
+	lrManual			: LREAL;			// Wartosc dla trybu recznego
+	lrYMin				: LREAL;			// Ograniczenie dolne wyjscia
+	lrYMax				: LREAL;			// Ograniczenie gorne wyjscia
+	lrKp				: LREAL;			// Wzmocnieie proporcjonalne
+	tTn					: TIME; 			// Stala czasowa ocji calkujacej
+	tTv					: TIME; 			// Stala czasowa akcji rozniczkujacej
+	tTd					: TIME; 			// Stala czasowa akcji rozniczkujacej
+	lrTaskCycleTime		: LREAL; 			// Czas tasku w ms
+	lrCycleTime			: LREAL; 			// Interwal wywolania obliczen w ms - powinna to byc wielokrotnosc cyklu
+END_VAR
+VAR_OUTPUT
+	lrY					: LREAL; 			// Wyjscie
+	lrE					: LREAL; 			// Odchylka regulacji
+	bActive				: BOOL; 			// Regulator dziala
+	bARWactive			: BOOL; 			// Ochrona calkowania
+	bMinLimit			: BOOL; 			// Limit gorny
+	bMaxLimit			: BOOL; 			// Limit dolny
+	bError				: BOOL; 			// Blad parametru
+END_VAR
+VAR
+	bExecutionCycle		: BOOL;
+	bInit				: BOOL;
+	bIPartEnabled		: BOOL;
+	bDPartEnabled		: BOOL;
+	bCtrlDisabled		: BOOL;
+	uiCycle				: UINT;
+	uiCycleCall			: UINT;
+	lrTn				: LREAL;
+	lrTv				: LREAL;
+	lrTd				: LREAL;
+	lre_1				: LREAL;
+	lrYP				: LREAL;
+	lrYI				: LREAL;
+	lrYI_1				: LREAL;
+	lrYD				: LREAL;
+	lrYD_1				: LREAL;
+	lrY_1				: LREAL;
+	lrdI				: LREAL;
+	lrdD				: LREAL;
+	lrcD				: LREAL;
+	lrY_Test			: LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[	bError		:= FALSE;
+	IF lrTaskCycleTime < 0.001 THEN bError := TRUE; END_IF
+	IF lrCycleTime < lrTaskCycleTime THEN bError	:= TRUE; END_IF
+	IF lrYMin>=lrYMax THEN bError := TRUE; END_IF
+	IF (lrKp<0.0) THEN bError := TRUE; END_IF
+	IF bError THEN RETURN; 	END_IF
+
+
+IF NOT bEnable OR NOT bInit	THEN
+	lrY				:= 0.0;
+	lrE				:= 0.0;
+	lrE_1			:= 0.0;
+	lrYP			:= 0.0;
+	lrYI			:= 0.0;
+	lrYI_1			:= 0.0;
+	lrYD			:= 0.0;
+	lrYD_1			:= 0.0;
+	lrY_Test		:= 0.0;
+	bARWactive		:= FALSE;
+	bActive			:= FALSE;
+	uiCycle			:= 1;
+	bInit			:= TRUE;
+	IF NOT bEnable THEN RETURN; END_IF
+END_IF
+(* Flagi i limity *)
+bActive	:= TRUE;
+bIPartEnabled := tTn > t#0ms; (*Czy jest czlon I?*)
+bDPartEnabled := tTv > t#0ms; (*Czy jest czlon D?*)
+lrManual := LIMIT(lrYMin, lrManual, lrYMax);	(* Manual musi byc w limitach *)
+
+(*Konwersja czasow*)
+lrTn	:= TIME_TO_LREAL(tTn);
+lrTv	:= TIME_TO_LREAL(tTv);
+lrTd	:= TIME_TO_LREAL(tTd);
+
+(*Wyliczenie co ile cykli jest obliczenie wyjscia*)
+uiCycleCall := LREAL_TO_INT(lrCycleTime/lrTaskCycleTime);
+
+(*Obliczenie wspolczynnikow czlonow I i D*)
+IF tTn>t#0ms THEN
+	lrdI :=	(lrCycleTime/2.0)/lrTn;
+END_IF
+lrdD :=	lrTv/(lrTd+(lrCycleTime/2.0));
+lrcD :=	(lrTd-(lrCycleTime/2.0))/(lrTd+(lrCycleTime/2.0));
+
+(* Obliczenia w kazdym pierwszym cyklu *)
+bExecutionCycle := uiCycle = 1;
+(* Iterowanie cykli obliczeniowych, obliczenia tylko w cyklu 1, ale to dalej *)
+uiCycle:=uiCycle+1;
+IF (uiCycle > uiCycleCall) THEN uiCycle:=1; END_IF;
+
+(* Jak obliczenia nie teraz, to wroc *)
+IF NOT bExecutionCycle	THEN
+	RETURN;
+END_IF
+
+(**********************************Regulator PID**********************************)
+(*Przepisanie wartosci z poprzedniego cyklu*)
+lrE_1	:= lrE;
+lrYI_1	:= lrYI;
+lrYD_1	:= lrYD;
+lrY_1	:= lrY;
+
+(* Kierunek - wprost czy odwrocony*)
+lrE := SEL(bInvertDirection, lrActualValue-lrSetpointValue, -(lrActualValue-lrSetpointValue)); (* bInvertDirection = TRUE --> grzanie *)
+
+(*Blokada regulacji gdy mamy minimum i odchylke mniejsza/rowna 0, lub gdy mamy maks i odchylke wieksza/rowna 0*)
+bCtrlDisabled:=(bMinLimit AND (lrE <= 0.0)) OR	(bMaxLimit AND (lrE >= 0.0));
+
+(* Jak manual to resetujemy blokadę*)
+IF	bManual	THEN bCtrlDisabled:=FALSE; END_IF
+
+bARWactive:=bCtrlDisabled;
+
+(*+++++++++++++++++++++++++++++*)
+(*P-I-D-Obliczenia*)
+IF NOT bCtrlDisabled	THEN
+	(*Czlon: P*);
+	lrYP:=lrKp*lrE;
+	(*Czlon: I*)
+	IF bIPartEnabled THEN
+		lrYI:=lrdI*(lrE+lrE_1)+lrYI_1;
+	ELSE
+		lrYI		:=0;
+		lrYI_1	:=0;
+	END_IF
+	(*Czlon: D*)
+	IF bDPartEnabled 	THEN
+		IF (lrTd <= lrCycleTime) THEN
+			lrYD:= (lrTv/lrCycleTime) * (lrE-lrE_1);
+		ELSE
+			lrYD:= (lrcD*lrYD_1)+(lrdD*(lrE-lrE_1));
+		END_IF
+	ELSE
+		lrYD		:=0;
+		lrYD_1	:=0;
+	END_IF
+END_IF
+
+(*Sprawdzenie czy nie przekroczymy limitów - w razie potrzeby obcinamy I i D zeby wyrownac do limitu*)
+lrY_Test:=lrYP+lrYI+lrYD;
+IF NOT bCtrlDisabled THEN
+	IF lrY_Test<lrYMin	THEN
+		IF		bIPartEnabled THEN
+					lrYI:=lrYMin-lrYP-lrYD;
+		ELSIF	bDPartEnabled THEN
+					lrYD:=lrYMin-lrYP;
+		END_IF
+	END_IF
+	IF lrY_Test>lrYMax THEN
+		IF		bIPartEnabled THEN
+					lrYI:=lrYMax-lrYP-lrYD;
+		ELSIF	bDPartEnabled THEN
+					lrYD:=lrYMax-lrYP;
+		END_IF
+	END_IF
+END_IF
+
+(*Jak odciecie sterowania - wyliczenie nowych czlonow I i D*)
+IF bCtrlDisabled	THEN
+	IF bMinLimit	THEN
+		IF		bIPartEnabled THEN
+					lrYI:=lrYMin-lrYP-lrYD;
+		ELSIF	bDPartEnabled THEN
+					lrYD:=lrYMin-lrYP;
+		END_IF
+	END_IF
+
+	IF bMaxLimit	THEN
+		IF		bIPartEnabled THEN
+					lrYI:=lrYMax-lrYP-lrYD;
+		ELSIF	bDPartEnabled THEN
+					lrYD:=lrYMax-lrYP;
+		END_IF
+	END_IF
+END_IF
+
+(*Wyliczenie wyjscia po limitach*)
+lrY_Test:=lrYP+lrYI+lrYD;
+
+(*Tryb reczny wyliczenie - wyliczenie nowych czlonow I i D*)
+IF bManual	THEN
+	IF		bIPartEnabled THEN
+				lrYI:=lrManual-lrYP-lrYD;
+	ELSIF	bDPartEnabled THEN
+				lrYD:=lrManual-lrYP;
+	END_IF
+END_IF
+
+(*+++++++++++++++++++++++++++++++++++++++++++++++++*)
+(*Obliczenie wyjscia*)
+lrY:=lrYP+lrYI+lrYD;
+
+(* Freeze - zatrzasniecie wyjscia*)
+IF bFreeze THEN
+	lrYI			:= lrYI_1;
+	lrYD			:= lrYD_1;
+	lrY				:= lrY_1;
+END_IF
+
+(*Ograniczenie limitów*)
+bMaxLimit	:= lrY>=lrYMax;
+bMinLimit	:= lrY<=lrYMin;
+lrY := LIMIT(lrYMin, lrY, lrYMax);
+
+IF bReset THEN
+	A_Reset();
+END_IF]]></ST>
+    </Implementation>
+    <Action Name="A_Reset" Id="{4accfbe3-0adc-49cb-b20c-7d8935fdf889}">
+      <Implementation>
+        <ST><![CDATA[	bExecutionCycle		:=FALSE;
+	bInit				:=FALSE;
+	bIPartEnabled		:=FALSE;
+	bDPartEnabled		:=FALSE;
+	bCtrlDisabled		:=FALSE;
+	uiCycle				:=0;
+	uiCycleCall			:=0;
+	lrTn				:=0;
+	lrTv				:=0;
+	lrTd				:=0;
+	lre_1				:=0;
+	lrYP				:=0;
+	lrYI				:=0;
+	lrYI_1				:=0;
+	lrYD				:=0;
+	lrYD_1				:=0;
+	lrY_1				:=0;
+	lrdI				:=0;
+	lrdD				:=0;
+	lrcD				:=0;
+	lrY_Test			:=0;
+	lrY					:=0; (* Wyjscie  *)
+	lrE					:=0; (* Odchylka regulacji *)
+	bActive				:=FALSE; (* Regulator dziala *)
+	bARWactive			:=FALSE; (* Ochrona calkowania *)
+	bMinLimit			:=FALSE; (* Limit gorny *)
+	bMaxLimit			:=FALSE; (* Limit dolny *)
+	bError				:=FALSE; (* Blad parametru *)
+]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="FB_PIDBasic">
+      <LineId Id="67" Count="162" />
+      <LineId Id="289" Count="3" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_PIDBasic.A_Reset">
+      <LineId Id="53" Count="19" />
+      <LineId Id="21" Count="7" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

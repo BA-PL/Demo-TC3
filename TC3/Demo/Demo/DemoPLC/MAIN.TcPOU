@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="MAIN" Id="{b8f4d9ad-f082-49b7-a2f8-10d87c3f7976}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//					Beckhoff Automation Poland
+//							30.05.2017
+//	v1.3	|| TC v 3.1.4020.32		|| dodany blok NC\FB_AxisParameter
+//	v1.2	|| TC v 3.1.4020.32		|| dodany blok Various\FB_AnalogTo3Point
+//	v1.1	|| TC v 3.1.4020.28		|| dodany blok Various\FB_PIDBasic
+//									|| dodany blok Various\FB_SinGenerator
+// 	v1.0 	|| TC v 3.1.4020.28 	|| pierwsza wersja
+//==================================================================================================
+PROGRAM MAIN
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

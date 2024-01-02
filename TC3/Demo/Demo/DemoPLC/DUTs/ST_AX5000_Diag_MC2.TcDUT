@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="ST_AX5000_Diag_MC2" Id="{d523536a-bff4-474d-9d89-ba1e4b21167d}">
+    <Declaration><![CDATA[TYPE ST_AX5000_Diag_MC2 :
+STRUCT
+	nClass1_Diagnostic : WORD;
+	nDiagNumber: UDINT;
+	nDC_Bus_Voltage: REAL;
+	nDC_Bus_Current: REAL;
+	nDrive_Temp: REAL;
+	nMotor_Temp: REAL;
+	sDiagnosticMessage: STRING;
+	DiagList: ST_SoE_DiagNumList;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

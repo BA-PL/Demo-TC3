@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_sDT_Ind_To_DT" Id="{eb2c2a3e-4fee-4fa3-8269-2e349cb471d8}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								F_sDT_Ind_To_DT v1.0									*)
+(*									15.02.2010											*)
+(*					Funkcja konwersji zmiennej DT z Indusoft do TC 						*)
+(*______________________________________________________________________________________*)
+FUNCTION F_sDT_Ind_To_DT : DT
+VAR_INPUT
+	sDT_Indusoft			:	STRING;
+END_VAR
+VAR
+	sDT_TC					:	STRING(22);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[sDT_TC := CONCAT('DT#',MID(sDT_Indusoft,4,7));		(*DT#YYYY*)
+sDT_TC := CONCAT(sDT_TC,'---');						(*DT#YYYY---*)
+sDT_TC := INSERT(sDT_TC,MID(sDT_Indusoft,2,1),8);	(*DT#YYYY-MM--*)
+sDT_TC := INSERT(sDT_TC,MID(sDT_Indusoft,2,4),11);	(*DT#YYYY-MM-DD-*)
+sDT_TC := INSERT(sDT_TC,MID(sDT_Indusoft,8,12),14);	(*DT#YYYY-MM-DD-GG:MM:SS*)
+F_sDT_Ind_To_DT := STRING_TO_DT(sDT_TC);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

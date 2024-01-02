@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_4BYTES_TO_DWORD" Id="{cac8c25e-a34f-4816-9472-a6a481f47fb3}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************)
+(*							Beckhoff Automation Poland						*)
+(*							F_4BYTES_TO_DWORD v1							*)
+(*									21.11.2013								*)
+(*					Funkcja zamieniająca 4 zmienne typu BYTE na DWORD 		*)
+(*__________________________________________________________________________*)
+FUNCTION F_4BYTES_TO_DWORD : DWORD
+VAR_INPUT
+	BByte0		: BYTE;
+	BByte1		: BYTE;
+	BByte2		: BYTE;
+	BByte3		: BYTE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_4BYTES_TO_DWORD := BByte3 *16#1000000 + BByte2 *16#10000 + BByte1 *16#100 + BByte0;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

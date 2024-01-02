@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_2SwM" Id="{3ce96c97-e76c-4a94-adaa-c4bd1e338f62}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_2SwM v1.1											*)
+(*									9.11.2007											*)
+(*				Blok funkcyjny symulujący pracę dwóch przycisków monostabilnych			*)
+(*						 jako sterowania światłem schodowym								*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_2SwM
+VAR_INPUT
+	bSwitch1:	BOOL;		(*Pierwszy przycisk monostabilny*)
+	bSwitch2:	BOOL;		(*Drugi przycisk monostabilny*)
+	bReset:		BOOL; 		(*Przywrócenie stanu początkowego*)
+END_VAR
+VAR_OUTPUT
+	bOut:		BOOL; 		(*Wyjscie sterujące oświetleniem*)
+END_VAR
+VAR
+	Trig1:		R_TRIG;
+	Trig2:		R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Trig1(CLK:= bSwitch1);
+Trig2(CLK:= bSwitch2);
+bOut  := SEL(Trig1.Q OR Trig2.Q, bOut , NOT bOut );
+IF bReset THEN bOut := FALSE; END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

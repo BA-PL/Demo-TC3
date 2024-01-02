@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_2Bytes_To_Word" Id="{0bcfedca-596a-4772-a3fc-9abcd797c20f}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								F_2Bytes_To_Word v1.0									*)
+(*									15.02.2010											*)
+(*		Funkcja tworząca zmienną typu WORD z dwóch zmiennych typu BYTE					*)
+(*______________________________________________________________________________________*)
+FUNCTION F_2Bytes_To_Word : WORD
+VAR_INPUT
+	byHigh	:	BYTE;
+	byLow	:	BYTE;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_2Bytes_To_Word := byHigh;
+F_2Bytes_To_Word := SHL(F_2Bytes_To_Word,8);
+F_2Bytes_To_Word := F_2Bytes_To_Word + byLow;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_ShortLong" Id="{bb9eeb78-0375-4ef0-b72b-84dfef6554e4}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_ShortLong v2											*)
+(*									2.04.2012											*)
+(*	Bloczek do rozpoznania długiego/krotkiego wcisniecia przycisku						*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_ShortLong
+VAR_INPUT
+	bSwitch: 			BOOL; 			(*Przycisk*)
+	tLong: 				TIME;			(*Czas dlugiego wcisniecia*)
+END_VAR
+VAR_OUTPUT
+	bShort: 			BOOL; 			(*TRUE gdy krotkie*)
+	bLong: 				BOOL;			(*TRUE gdy dlugie*)
+END_VAR
+VAR
+	t1: 				TON;
+	ft1: 				F_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ft1(CLK:= bSwitch , Q=> );
+IF ft1.Q THEN
+	bLong := t1.Q;
+	bShort := NOT t1.Q;
+END_IF
+t1(IN:= bSwitch, PT:= tLong, Q=> , ET=> );]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <POU Name="FB_Controller2Point" Id="{fdbcf669-448a-4a94-b0b1-35e44a445a3e}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_Controller2Point  v1									*)
+(*									06.10.2016											*)
+(*	Bloczek do regulatora 2 stawnego													*)
+(*	MinLimit < MaxLimit																	*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Controller2Point
+VAR_INPUT
+	rIn			:	REAL;(*wartosc wejsciowa*)
+	rMinLimit	:	REAL;(*wartosc dolna regulatora*)
+	rMaxLimit	:	REAL;(*wartosc gorna regulatora*)
+END_VAR
+VAR_OUTPUT
+	bOut		:	BOOL;(*wyjscie regulatora*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bOut:=SEL(rIn<rMinLimit,bOut,TRUE);(*gdy wartosc zadana jest mniejsza od wartosci mniejszej zalacza wyjscie*)
+bOut:=SEL(rIn>rMaxLimit,bOut,FALSE);(*gdy wartosc zadana jest wieksza od wartosci maksymalnej wylacza wyjscie*)]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

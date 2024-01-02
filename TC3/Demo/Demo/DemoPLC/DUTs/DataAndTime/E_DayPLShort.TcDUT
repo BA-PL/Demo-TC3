@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="E_DayPLShort" Id="{d4825304-34eb-47d6-a6d1-415586ed0281}">
+    <Declaration><![CDATA[TYPE E_DayPLShort :(Pn:=1, Wt, SR, Cz, Pt, So, N);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

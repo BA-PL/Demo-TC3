@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_PolishPublicHoliday" Id="{ea5b79f1-f1a7-42d5-8bfc-6abf24860e33}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************)
+(*						Beckhoff Automation Poland								 	*)
+(*						FB_PolishPublicHoliday v 1.0								*)
+(*							26.07.2013												*)
+(*	Blok Funkcyjny ktorego wyjscie jest TRUE w przypadku swieta						*)
+(* 			wyjscie stNextHoliday podaje nastepne swieto							*)
+(*__________________________________________________________________________________*)
+FUNCTION_BLOCK FB_PolishPublicHoliday
+VAR_INPUT
+	bEnable 			: 			BOOL; 							(*zmienna włączająca bloczek*)
+	stActTime 			:			TIMESTRUCT;						(*struktura przechowująca aktualny czas*)
+END_VAR
+VAR_OUTPUT
+	bHoliday 			:	BOOL;									(*zmienna zwracająca TRUE gdy dzisiaj jest swięto*)
+	bError				:	BOOL;									(*zmienna błędu*)
+	stNextHoliday		:	TIMESTRUCT;								(*zmienna przechowująca datę nastepnego święta*)
+END_VAR
+VAR
+	wNextEasterYear		:	WORD; 									(*Rok najbliższego święta Wielkiej Nocy*)
+	bInit				:	BOOL			:=TRUE;					(*zmienna inicjalizująca pierwszy cykl programu*)
+	arrHolidays 		:	ARRAY [1..13] OF TIMESTRUCT;   			(*Pomocnicza tablica z swietami Polskimi w danym roku*)
+	stEasterDate1		:	TIMESTRUCT;								(*Czas pierwszego dnia świąt w formie struktury*)
+	stEasterDate2		:	TIMESTRUCT; 							(*Czas drugiego dnia świąt w formie struktury*)
+	stZielSw			:	TIMESTRUCT; 							(*Czas Zielonych Świątek w formie struktury*)
+	stBCDate			:	TIMESTRUCT;								(*Czas Bożego Ciała świąt w formie struktury*)
+	stTemp				:	TIMESTRUCT;								(*zmienna pomocnicza pomagająca w przesuwaniu tablicy*)
+	iCount				:	INT;									(*zmienna pomocnicza inkremetnowana w pętli FOR*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bError:=stActTime.wYear<2000;
+IF bInit AND NOT bError THEN
+	wNextEasterYear:=stActTime.wYear;(*ustawienie roku bieżącego jako roku kolejnej Wielkiej Nocy*)
+	a_Easter();(*akcja obliczania po kolei świąt ruchomych*)
+	a_Easter2();
+	a_BC();
+	a_ZielSwiatki();
+	bInit:=FALSE;(*warunek wejścia do pierwszego cyklu programu nie będzie już spełniony*)
+	arrHolidays[1].wDay:=1;(*wyliczenie pierwszy raz na sztywno wszystkich świąt w danym roku  aby znaleźć najbliższe święto*)
+	arrHolidays[1].wMonth:=1;
+	arrHolidays[1].wYear:=stActTime.wYear;
+	arrHolidays[2].wDay:=6;
+	arrHolidays[2].wMonth:=1;
+	arrHolidays[2].wYear:=stActTime.wYear;
+	arrHolidays[3].wDay:=stEasterDate1.wDay;
+	arrHolidays[3].wMonth:=stEasterDate1.wMonth;
+	arrHolidays[3].wYear:=stEasterDate1.wYear;
+	arrHolidays[4].wDay:=stEasterDate2.wDay;
+	arrHolidays[4].wMonth:=stEasterDate2.wMonth;
+	arrHolidays[4].wYear:=stEasterDate2.wYear;
+	arrHolidays[5].wDay:=1;
+	arrHolidays[5].wMonth:=5;
+	arrHolidays[5].wYear:=stActTime.wYear;
+	arrHolidays[6].wDay:=3;
+	arrHolidays[6].wMonth:=5;
+	arrHolidays[6].wYear:=stActTime.wYear;
+	arrHolidays[7].wDay:=stZielSw.wDay;
+	arrHolidays[7].wMonth:=stZielSw.wMonth;
+	arrHolidays[7].wYear:=stZielSw.wYear;
+	arrHolidays[8].wDay:=stBCDate.wDay;
+	arrHolidays[8].wMonth:=stBCDate.wMonth;
+	arrHolidays[8].wYear:=stBCDate.wYear;
+	arrHolidays[9].wDay:=15;
+	arrHolidays[9].wMonth:=8;
+	arrHolidays[9].wYear:=stActTime.wYear;
+	arrHolidays[10].wDay:=1;
+	arrHolidays[10].wMonth:=11;
+	arrHolidays[10].wYear:=stActTime.wYear;
+	arrHolidays[11].wDay:=11;
+	arrHolidays[11].wMonth:=11;
+	arrHolidays[11].wYear:=stActTime.wYear;
+	arrHolidays[12].wDay:=25;
+	arrHolidays[12].wMonth:=12;
+	arrHolidays[12].wYear:=stActTime.wYear;
+	arrHolidays[13].wDay:=26;
+	arrHolidays[13].wMonth:=12;
+	arrHolidays[13].wYear:=stActTime.wYear;
+
+	stNextHoliday := arrHolidays[1];		(*przypisanie wartości stNextHoliday na 1. stycznia bieżącego roku*)
+
+	(*i porównywanie tej daty do daty obecnej*)
+	WHILE stActTime.wYear = stNextHoliday.wYear AND (stActTime.wMonth>stNextHoliday.wMonth OR (stActTime.wDay>stNextHoliday.wDay)) DO
+		a_MoveArray();		(*w celu przesunięcia tablicy tak, aby pierwszy element był najbliższym świętem*)
+	END_WHILE
+END_IF
+
+(*instrukcja warunkowa przesuwająca tablicę, o ile data stNextHoliday minęła*)
+IF stActTime.wYear > stNextHoliday.wYear OR (stActTime.wYear = stNextHoliday.wYear AND (stActTime.wMonth>stNextHoliday.wMonth OR (stActTime.wMonth = stNextHoliday.wMonth AND stActTime.wDay>stNextHoliday.wDay))) THEN
+	a_MoveArray();
+END_IF
+
+(*przypisanie wartości wyjścia typu bool; wartość równa 1 gdy obecna data jest datą najbliższego święta*)
+bHoliday := (stActTime.wYear = stNextHoliday.wYear) AND (stActTime.wMonth = stNextHoliday.wMonth) AND (stActTime.wDay = stNextHoliday.wDay);
+
+]]></ST>
+    </Implementation>
+    <Action Name="a_BC" Id="{c84b3b0f-16fa-4965-9fdd-1c24335e282e}">
+      <Implementation>
+        <ST><![CDATA[(*Wyliczenie daty Bożego Ciała /z przypisaniem do stBCDate/*)
+stBCDate.wMonth := stEasterDate1.wMonth+2;
+stBCDate.wDay := stEasterDate1.wDay -1;
+IF stBCDate.wDay = 0 THEN
+	stBCDate.wMonth := 5;
+	stBCDate.wDay := 31;
+END_IF
+stBCDate.wYear := stEasterDate1.wYear;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="a_Easter" Id="{a5c71781-0886-4383-9db4-e37dc710f1ed}">
+      <Implementation>
+        <ST><![CDATA[(*Akcja służąca do wyliczania daty Wielkiejnocy /z przypisaniem do stEasterDate1/*)
+stEasterDate1.wDay :=  ((((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)+((32+2*((wNextEasterYear/100) MOD 4)+2*((wNextEasterYear MOD 100)/4)-((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)-((wNextEasterYear MOD 100) MOD 4)) MOD 7)-7*(((wNextEasterYear MOD 19)+11*((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)+22*((32+2*((wNextEasterYear/100) MOD 4)+2*((wNextEasterYear MOD 100)/4)-((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)-((wNextEasterYear MOD 100) MOD 4)) MOD 7))/451)+114) MOD 31)+1;
+stEasterDate1.wMonth:=  (((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)+((32+2*((wNextEasterYear/100) MOD 4)+2*((wNextEasterYear MOD 100)/4)-((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)-((wNextEasterYear MOD 100) MOD 4)) MOD 7)-7*(((wNextEasterYear MOD 19)+11*((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)+22*((32+2*((wNextEasterYear/100) MOD 4)+2*((wNextEasterYear MOD 100)/4)-((19*(wNextEasterYear MOD 19)+(wNextEasterYear/100)-((wNextEasterYear/100)/4)-(((wNextEasterYear/100)-(((wNextEasterYear/100)+8)/25)+1)/3)+15) MOD 30)-((wNextEasterYear MOD 100) MOD 4)) MOD 7))/451)+114)/31;
+stEasterDate1.wYear := wNextEasterYear;
+
+wNextEasterYear := stEasterDate1.wYear+1;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="a_Easter2" Id="{bfb3fef5-8e08-47b6-b568-d5ceff7d6d1f}">
+      <Implementation>
+        <ST><![CDATA[(*Obliczenie drugiego dnia Wielkiejnocy /przypisanie do stEasterDate2/*)
+IF stEasterDate1.wDay=31 THEN
+	stEasterDate2.wDay:=1;
+	stEasterDate2.wMonth:=4;
+ELSE
+	stEasterDate2.wDay:=stEasterDate1.wDay+1;
+	stEasterDate2.wMonth:=stEasterDate1.wMonth;
+END_IF
+stEasterDate2.wYear := stEasterDate1.wYear;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="a_MoveArray" Id="{c38dd8cf-b42a-434d-ab13-6484cb56745a}">
+      <Implementation>
+        <ST><![CDATA[(*Akcja przesuwająca tablicę świąt. Dodatkowo za pomocą tej akcji obliczana jest data święta z arrHolidays[1] w roku kolejnym*)
+
+IF arrHolidays[1].wYear = stEasterDate1.wYear AND arrHolidays[1].wMonth = stEasterDate1.wMonth AND arrHolidays[1].wDay = stEasterDate1.wDay THEN
+	a_Easter();						(*Dla świąt ruchomych obliczana jest nowa data; Wielkanoc*)
+	arrHolidays[1] := stEasterDate1;
+ELSIF arrHolidays[1].wYear = stEasterDate2.wYear AND arrHolidays[1].wMonth = stEasterDate2.wMonth AND arrHolidays[1].wDay = stEasterDate2.wDay THEN
+	a_Easter2();						(*Drugi dzień świąt*)
+	arrHolidays[1] := stEasterDate2;
+ELSIF arrHolidays[1].wYear = stZielSw.wYear AND arrHolidays[1].wMonth = stZielSw.wMonth AND arrHolidays[1].wDay = stZielSw.wDay THEN
+	a_ZielSwiatki();						(*Zielone świątki*)
+	arrHolidays[1] := stZielSw;
+ELSIF arrHolidays[1].wYear = stBCDate.wYear AND arrHolidays[1].wMonth = stBCDate.wMonth AND arrHolidays[1].wDay = stBCDate.wDay THEN
+	a_BC();							(*Boż Ciało*)
+	arrHolidays[1] := stBCDate;
+ELSE								(*Jeżeli jest to święto stałe, dodawany jest tylko rok*)
+	arrHolidays[1].wYear := arrHolidays[1].wYear+1;
+END_IF;
+
+(*Następnie elementy tablicy są przesuwane; Pierwszy element tablicy (po zapisaniu do stTemp) idzie na koniec tablicy (arrHolidays[13]); Reszta elementów przesuwa się o 1 wyżej*)
+stTemp := arrHolidays[1];
+FOR iCount := 1 TO 12 DO
+	arrHolidays[iCount] := arrHolidays[iCount+1];
+END_FOR
+arrHolidays[13] := stTemp;
+
+(*wpisanie poprawnej wartości najbliższego święta do stNextHoliday*)
+stNextHoliday := arrHolidays[1];]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="a_ZielSwiatki" Id="{abff61c1-3dcb-4d34-930e-ec598f7afee6}">
+      <Implementation>
+        <ST><![CDATA[(*Akcja służąca do obliczania daty Zielonych Świątek /w strukturze stZielSw/*)
+IF stEasterDate1.wMonth =3 THEN
+	stZielSw.wMonth := 5;
+	stZielSw.wDay := stEasterDate1.wDay-12;
+ELSIF stEasterDate1.wDay < 13 THEN
+	stZielSw.wMonth := 5;
+	stZielSw.wDay := stEasterDate1.wDay+19;
+ELSE
+	stZielSw.wMonth := 6;
+	stZielSw.wDay := stEasterDate1.wDay-12;
+END_IF
+stZielSw.wYear := stEasterDate1.wYear;]]></ST>
+      </Implementation>
+    </Action>
+  </POU>
+</TcPlcObject>

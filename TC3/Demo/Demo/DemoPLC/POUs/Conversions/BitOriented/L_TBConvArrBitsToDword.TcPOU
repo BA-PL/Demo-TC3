@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBConvArrBitsToDword" Id="{b131d12c-c182-43ce-83b0-735883441a42}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBConvArrBitsToDword  v1.0								*)
+(*									7.04.2009											*)
+(*		This function converts array 32 single bits into a value of type ”double word”	*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBConvArrBitsToDword : DWORD
+VAR_INPUT
+	arrBits: ARRAY [0..31] OF BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBConvArrBitsToDword.0 := arrBits[0];
+L_TBConvArrBitsToDword.1 := arrBits[1];
+L_TBConvArrBitsToDword.2 := arrBits[2];
+L_TBConvArrBitsToDword.3 := arrBits[3];
+L_TBConvArrBitsToDword.4 := arrBits[4];
+L_TBConvArrBitsToDword.5 := arrBits[5];
+L_TBConvArrBitsToDword.6 := arrBits[6];
+L_TBConvArrBitsToDword.7 := arrBits[7];
+L_TBConvArrBitsToDword.8 := arrBits[8];
+L_TBConvArrBitsToDword.9 := arrBits[9];
+L_TBConvArrBitsToDword.10 := arrBits[10];
+L_TBConvArrBitsToDword.11 := arrBits[11];
+L_TBConvArrBitsToDword.12 := arrBits[12];
+L_TBConvArrBitsToDword.13 := arrBits[13];
+L_TBConvArrBitsToDword.14 := arrBits[14];
+L_TBConvArrBitsToDword.15 := arrBits[15];
+L_TBConvArrBitsToDword.16 := arrBits[16];
+L_TBConvArrBitsToDword.17 := arrBits[17];
+L_TBConvArrBitsToDword.18 := arrBits[18];
+L_TBConvArrBitsToDword.19 := arrBits[19];
+L_TBConvArrBitsToDword.20 := arrBits[20];
+L_TBConvArrBitsToDword.21 := arrBits[21];
+L_TBConvArrBitsToDword.22 := arrBits[22];
+L_TBConvArrBitsToDword.23 := arrBits[23];
+L_TBConvArrBitsToDword.24 := arrBits[24];
+L_TBConvArrBitsToDword.25 := arrBits[25];
+L_TBConvArrBitsToDword.26 := arrBits[26];
+L_TBConvArrBitsToDword.27 := arrBits[27];
+L_TBConvArrBitsToDword.28 := arrBits[28];
+L_TBConvArrBitsToDword.29 := arrBits[29];
+L_TBConvArrBitsToDword.30 := arrBits[30];
+L_TBConvArrBitsToDword.31 := arrBits[31];]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

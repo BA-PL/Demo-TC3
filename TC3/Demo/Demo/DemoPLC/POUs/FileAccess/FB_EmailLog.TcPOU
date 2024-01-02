@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_EmailLog" Id="{a6b550c7-5b05-4ca4-b16b-6a21b38faeea}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_EmailLog  v2.0										*)
+(*									26.06.2014											*)
+(*			v2.0 - zmiana układu wejsc, zapis zmiennej STRING(1000)						*)
+(*			Blok funkcyjny pozwalający logowac dane poprzez e-mail						*)
+(*						wymaga biblioteki TcSmtp.lib									*)
+(*	Uwaga - blok nie posiada reakcji na zbocze narastajace,								*)
+(*	aby mogl byc wykorzystany wielokrotnie w jednym cyklu programu. 					*)
+(*	Reakcja na zbocze musi byc wykonana na zewnatrz bloku. 								*)
+(*	W przypadku pojawiania sie komunikatow czesciej niz blok jest w stanie wyslac,		*)
+(*	dane sa buforowane w pamieci w zmiennej arrSMTPBuffer: ARRAY [1..4] OF STRING; 		*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_EmailLog
+VAR_INPUT
+	bAdd					: BOOL;			(* Dodaj wpis *)
+	sMessage				: STRING;		(* Tresc wpisu *)
+	bNoAndTime				: BOOL:= TRUE; (* TRUE - dodaj nr porzadkowy i stempel czasowy *)
+	sActTime				: STRING;		(* Aktualny czas *)
+(* Ustawienia serwera *)
+	AmsNetId				: T_AmsNetId;	(* AMS NET ID obiektu docelowego, gdy lokalnie, to zmienna moze byc pusta *)
+	sSmtpServer				: STRING;
+	sUsername				: STRING;
+	sPassword				: STRING;
+	sFrom					: STRING;
+	sTo						: STRING;
+	sCc						: STRING;
+	sBcc					: STRING;
+	sSubject				: STRING;
+
+END_VAR
+VAR_OUTPUT
+	bBusy					: BOOL;
+	bError					: BOOL;
+END_VAR
+VAR
+(* Wysyłanie maila *)
+	fbSMTPv3: 				FB_SmtpV3;
+	fbSMTPBuffer:			FB_StringRingBuffer;
+	arrSMTPBuffer:	 		ARRAY [1..4] OF STRING;
+	wMessageNo: 			WORD;
+	sEMailMessage: 			STRING;
+	nStep: 					BYTE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbSMTPBuffer(pBuffer:= ADR(arrSMTPBuffer),
+			cbBuffer:= SIZEOF(arrSMTPBuffer));
+
+IF bAdd THEN
+	IF bNoAndTime THEN
+		wMessageNo:=wMessageNo + 1;
+		sMessage := CONCAT(CONCAT(CONCAT(CONCAT(CONCAT(WORD_TO_STRING(wMessageNo),'.$t'),sActTime),'$t'),sMessage),'$n');
+	END_IF
+	fbSMTPBuffer.A_AddTail(putValue:= sMessage);
+END_IF
+
+CASE nStep OF
+	0:
+	(* Jesli jest komunikat do wyslania to wyslij *)
+	IF fbSMTPBuffer.nCount>0 THEN
+		fbSMTPBuffer.A_RemoveHead(getValue=> sEMailMessage);
+		fbSMTPv3.bExecute:=TRUE;
+		nStep := nStep + 10;
+	END_IF
+	10:
+	fbSMTPv3.bExecute:=FALSE;
+	(* Jak wyslanie zakonczone sukcesem - to wroc do kroku 0 *)
+	IF NOT bBusy AND NOT bError THEN
+		nStep := 0;
+	END_IF
+	(* Jak blad to zresetuj bloczek i podejmij próbę ponownie *)
+	IF bError THEN
+		nStep := nStep + 10;
+	END_IF
+	20:
+		fbSMTPv3.bExecute:=TRUE;
+		nStep := nStep - 10;
+END_CASE
+
+fbSMTPv3(
+	sNetId			:= AmsNetId,
+	sSmtpServer		:= sSmtpServer,
+	sUsername		:= sUsername,
+	sPassword		:= sPassword,
+	nEncryption     := 2,
+	sFrom			:= sFrom,
+	sTo				:= sTo,
+	sCc				:= sCc,
+	sBcc			:= sBcc,
+	sSubject		:= sSubject,
+	pMessage		:= ADR(sEMailMessage),
+	cbMessage		:= SIZEOF(sEMailMessage),
+	bBusy			=> bBusy,
+	bError			=> bError);]]></ST>
+    </Implementation>
+    <LineIds Name="FB_EmailLog">
+      <LineId Id="138" Count="47" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

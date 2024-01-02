@@ -1,0 +1,254 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_TorqueMonitoringEx2" Id="{6db45370-a2d7-4714-b39c-3821e4a10333}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*							FB_TorqueMonitoringEx2 v1.1												*)
+(*									23.04.2015														*)
+(*			v1.1 - poprawiona obsługa błedów, optymalizacja obliczeń								*)
+(*	Blok funkcyjny pozwala na monitorowanie i ograniczanie momentu oraz monitoring parametru I2T	*)
+(*									dla AX5xxx.														*)
+(*	Zmienne do zlinkowania zadeklarowane są wewnątrz bloku. 										*)
+(*					Ograniczenie i monitorowanie momentu											*)
+(*	Ograniczenie momentu podawane jest przez wejście rTorqueLimit. 									*)
+(*	Na wyjściu podana jest wartość surowa w %, jak i przeskalowana na A (prąd) i Nm (moment).	 	*)
+(*	Blok zwraca wartości bieżące, przefiltrowane i maksymalne. 										*)
+(*	Wartości maksymalne mogą być wyzerowane za pomocą zmiennej bReset. 								*)
+(*	Wewnętrznie wykorzystany jest blok FB_Filter.													*)
+(*		I2T: 	Określamy okno czasowe pomiaru														*)
+(* 	Wymaga biblioteki TcMc2Drive.lib 																*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_TorqueMonitoringEx2
+VAR_INPUT
+	bCalculate					: BOOL		 := TRUE; 				(* Calculation request - initial value - TRUE *)
+	bReset						: BOOL		 := TRUE;				(* Calculation request - initial value - TRUE *)
+	rTorqueLimit				: REAL		 := 100.0; 				(* 0.0-100.0 %, rozdzielczość 0.1% *)
+	tI2T_Window					: TIME		 :=T#1M;
+END_VAR
+VAR_OUTPUT
+	bError						: BOOL; 							(* Communication error *)
+	uiErrorID					: UINT;
+	iTorque 			AT %I*	: INT; 								(* Raw data, linked to Torque feedback value AT, S-0-0084 *)
+	rCurrent					: REAL; 							(* [A] *)
+	rTorque						: REAL; 							(* [Nm] *)
+	rCurrentF					: REAL;								(* Filtered *)
+	rTorqueF					: REAL;								(* Filtered *)
+	rCurrentMax					: REAL;								(* Max *)
+	rTorqueMax					: REAL;								(* Max *)
+	rI2T						: REAL; 							(* % nominal *)
+	rI2TMax						: REAL;
+END_VAR
+VAR_IN_OUT
+	Axis						: AXIS_REF;
+END_VAR
+VAR
+	rtCalculate					: R_TRIG;
+	fbSoERead					: FB_SoERead;
+	iStep						: INT;
+	P_0_0092_Value				: DWORD;
+	P_0_0093_Value				: DWORD;
+	P_0_0070_Value				: WORD;
+	S_0_0111_Value				: DWORD;
+	iBipolarTorqueLimitValue  	AT %Q*:		INT; 					(* Raw data, linked to Bipolar torque limit value MDT, S-0-0092 *)
+	rPeakCurrent				: REAL; 							(* P_0_0092_Value in [A] *)
+	rFactor						: REAL; 							(* iTorque -1000..1000 --> - rPeakCurrent .. rPeakCurrent *)
+	rContinuousStallTorque		: REAL;								(* P_0_0070_Value [Nm] *)
+	rContinuousStallCurrent		: REAL;								(* S_0_0111_Value [A] *)
+	rTorqueConstant				: REAL; 							(* P_0_0070_Value/S_0_0111_Value [Nm/A] *)
+	fbFilter					: FB_Filter;
+
+	rI2T_pom					: REAL 		:= 0.0;
+	rRatedCurrent				: REAL;	 							(* P_0_0093_Value in [A] *)
+	rI2T_Window					: REAL;
+	bFlag_1						: BOOL 		:= FALSE;
+	bFlag_2						: BOOL 		:= FALSE;
+	iCycles						: INT;
+	iCycles_pom					: INT;
+	rCycleTime_pom				: REAL;
+	iCounter					: INT;
+	rBuffer						: ARRAY[1..100] OF REAL;
+	rBuffer_2					: ARRAY[1..100] OF REAL;
+
+	rCycleTime					: REAL;                            	(* Ustawiony czas Tasku w ms*)
+	fbGETCURTASKINDEX   		: GETCURTASKINDEX;                 	(* Blok sprawdzajcy numer Tasku *)
+	BIndex						: BYTE;                             (* Nr Tasku *)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtCalculate(CLK:= bCalculate, Q=> );
+IF rtCalculate.Q THEN iStep := 0; END_IF
+
+CASE iStep OF
+	0: (*Init*)
+	bError := FALSE;
+	iStep := iStep+ 10;
+
+	10: (*Read P_0_0092*)
+	fbSoERead.Idn 		:= P_0_IDN + 92;
+	fbSoERead.Element	:= EC_SOE_ELEMENT_VALUE;
+	fbSoERead.pDstBuf	:= ADR(P_0_0092_Value);
+	fbSoERead.BufLen	:= SIZEOF(P_0_0092_Value);
+	fbSoERead.Execute	:= TRUE;
+	iStep := iStep+ 5;
+
+	15:
+	IF NOT fbSoERead.Busy AND NOT fbSoERead.Error THEN
+		rPeakCurrent := DWORD_TO_REAL(P_0_0092_Value)/1000.0;
+		rFactor := DWORD_TO_REAL(P_0_0092_Value)/1000000.0;
+		fbSoERead.Execute	:= FALSE;
+		iStep := iStep+ 5;
+	END_IF
+	IF fbSoERead.Error THEN
+		iStep := 100;
+	END_IF
+
+	20:
+	(*Read P_0_0070*)
+	fbSoERead.Idn 		:= P_0_IDN + 70;
+	fbSoERead.Element	:= EC_SOE_ELEMENT_VALUE;
+	fbSoERead.pDstBuf	:= ADR(P_0_0070_Value);
+	fbSoERead.BufLen	:= SIZEOF(P_0_0070_Value);
+	fbSoERead.Execute	:= TRUE;
+	iStep := iStep+ 5;
+
+	25:
+	IF NOT fbSoERead.Busy AND NOT fbSoERead.Error THEN
+		rContinuousStallTorque := WORD_TO_REAL(P_0_0070_Value)/100;
+		fbSoERead.Execute	:= FALSE;
+		iStep := iStep+ 5;
+	END_IF
+	IF fbSoERead.Error THEN
+		iStep := 100;
+	END_IF
+
+	30: (* Read S_0_0111*)
+	fbSoERead.Idn 		:= S_0_IDN + 111;
+	fbSoERead.Element	:= EC_SOE_ELEMENT_VALUE;
+	fbSoERead.pDstBuf	:= ADR(S_0_0111_Value);
+	fbSoERead.BufLen	:= SIZEOF(S_0_0111_Value);
+	fbSoERead.Execute	:= TRUE;
+	iStep := iStep+ 5;
+
+	35:
+	IF NOT fbSoERead.Busy AND NOT fbSoERead.Error THEN
+		rContinuousStallCurrent := DWORD_TO_REAL(S_0_0111_Value)/1000;
+		rTorqueConstant := rContinuousStallTorque/rContinuousStallCurrent;
+		fbSoERead.Execute	:= FALSE;
+		iStep := iStep+ 5;
+	END_IF
+	IF fbSoERead.Error THEN
+		iStep := 100;
+	END_IF
+
+	40: (* Read P_0_0093*)
+	fbSoERead.Idn 		:= P_0_IDN + 93;
+	fbSoERead.Element	:= EC_SOE_ELEMENT_VALUE;
+	fbSoERead.pDstBuf	:= ADR(P_0_0093_Value);
+	fbSoERead.BufLen	:= SIZEOF(P_0_0093_Value);
+	fbSoERead.Execute	:= TRUE;
+	iStep := iStep+ 5;
+
+	45:
+	IF NOT fbSoERead.Busy AND NOT fbSoERead.Error THEN
+		rRatedCurrent := DWORD_TO_REAL(P_0_0093_Value)/1000;
+		fbSoERead.Execute	:= FALSE;
+		iStep := iStep+ 5;
+	END_IF
+	IF fbSoERead.Error THEN
+		iStep := 100;
+	END_IF
+
+	50: (*Calculations*)
+	rCurrent := INT_TO_REAL(iTorque) * rFactor;
+	rTorque := rCurrent * rTorqueConstant;
+
+	100:
+	iStep := 0;
+	fbSoERead(Execute:= FALSE,Axis:= Axis);
+	bError := TRUE;
+	uiErrorID := fbSoERead.AdsErrId;
+END_CASE
+
+(*Read cycle time*)
+fbGETCURTASKINDEX(index => BIndex);
+rCycleTime := UDINT_TO_REAL(_TaskInfo[BIndex].cycleTime)/10000.0;
+
+(*Calculate algorithm sampling time*)
+rI2T_Window := TIME_TO_REAL(tI2T_Window);
+rCycleTime_pom := rI2T_Window/100 ;
+
+IF rCycleTime_pom < rCycleTime THEN
+	rCycleTime_pom := rCycleTime;
+END_IF
+
+(*Filter current value*)
+
+fbFilter(In:= rCurrent, tSamplingTime:= REAL_TO_TIME(rCycleTime), tMeasureTime:= REAL_TO_TIME(rCycleTime_pom), Out=> rCurrentF);
+rTorqueF := rCurrentF * rTorqueConstant;
+
+(*Save torque and current max values*)
+IF rCurrentMax < rCurrentF THEN
+	rCurrentMax := rCurrentF;
+	rTorqueMax := rTorqueF;
+END_IF
+
+(*b_Flag_1 is set to TRUE when PLC cycle matches with algorythm sampling rate*)
+
+IF rCycleTime <> 0 THEN
+	IF iCycles < rCycleTime_pom/rCycleTime  THEN
+		iCycles := iCycles + 1;
+		bFlag_1 := FALSE;
+	ELSE
+		iCycles := 0;
+		bFlag_1 := TRUE;
+	END_IF
+END_IF
+
+(*Save momentary I2T values in ring buffer*)
+
+IF bFlag_1 THEN
+	FOR iCounter :=1 TO 99 DO
+		rBuffer[iCounter] := rBuffer[iCounter+1];
+		rBuffer_2[iCounter] := rBuffer_2[iCounter+1];
+	END_FOR
+	rBuffer[100] := rCurrentF *rCurrentF* rCycleTime_pom;
+	rBuffer_2[100] := rRatedCurrent *rRatedCurrent* rCycleTime_pom;
+END_IF
+
+rI2T := 0;
+rI2T_pom := 0;
+
+(*Calculate I2T parameter*)
+
+FOR iCounter:=1 TO 100 BY 1 DO
+	rI2T := rI2T + rBuffer[iCounter];
+	rI2T_pom := rI2T_pom + rBuffer_2[iCounter];
+END_FOR
+
+(*Scale I2T to 0-100% range*)
+
+IF rI2T_pom  <> 0  THEN
+	rI2T := rI2T/rI2T_pom*100;
+END_IF
+
+IF rI2TMax < rI2T THEN
+	rI2TMax := rI2T;
+END_IF
+
+IF bReset THEN
+	rCurrentMax := 0;
+	rTorqueMax := 0;
+	rI2TMax := 0;
+	FOR iCounter:=1 TO 100 BY 1 DO
+		rBuffer[iCounter] := 0;
+		rBuffer_2[iCounter] := 0;
+	END_FOR;
+END_IF
+iBipolarTorqueLimitValue := REAL_TO_INT(LIMIT(0.0,(rTorqueLimit)*10,1000.0));
+
+fbSoERead(
+	NetId:= '',
+	Timeout:= T#1s,
+	Axis:= Axis);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

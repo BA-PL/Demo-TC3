@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_WriteRegister" Id="{e45ce09d-51e1-4cd7-927d-ae7c6541456e}" SpecialFunc="None">
+    <Declaration><![CDATA[(***************************************************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_WriteRegister	 v1.0										*)
+(*									9.9.2009												*)
+(*			Blok funkcyjny zapisujacy wartosc do rejestru modułu analogowego KLxxxx				*)
+(*				Szczegolowe informacje dotyczace komunikacji z rejestrami						*)
+(*				i wartosci w nich przechowywanych znajduja sie w dokumentacji modulu			*)
+(*				W programie może być jednocześnie wywołany 1 blok dla 1 kanalu 				*)
+(*_______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_WriteRegister
+VAR_INPUT
+	bWrite: 		BOOL;	(*Rozkaz zapisu*)
+	iRegNo:		INT;		(*Numer zapisywanego  rejestru*)
+	Value: 		INT;		(*Wpisana wartosc*)
+	State: 		BYTE;	(*Nalezy zlinkowac do State przy konkretnym kanale w module KLxxxx*)
+	DataIn: 		INT;		(*Nalezy zlinkowac do Data_In przy konkretnym kanale w module KLxxxx*)
+END_VAR
+VAR_OUTPUT
+	bBusy:		BOOL; 	(*Blok wykonuje akcje*)
+	bError: 		BOOL;	(*Wystapil blad*)
+	Ctrl: 			BYTE;	(*Nalezy zlinkowac do Ctrl przy konkretnym kanale w module KLxxxx*)
+	DataOut: 	INT;		(*Nalezy zlinkowac do Data_Out przy konkretnym kanale w module KLxxxx*)
+END_VAR
+VAR
+	Step: 		INT;		(*Krok instrukcji CASE*)
+	Temp: 		BYTE;	(*Zapamietanie wartosci CTRL przez zapisem*)
+	rtWrite:		R_TRIG;	(*Zlapanie rozkazu zapisu*)
+	Timeout:		TON;	(*Wykrycie bledu*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Sprawdzanie czy nie uplynal czas*)
+	Timeout(IN:=Step<>0 , PT:= T#200ms, Q=> bError);
+	IF bError THEN Step := 99; END_IF
+
+(*Wykrycie sygnalu do odczytu*)
+	rtWrite(CLK:= bWrite, Q=> );
+
+(*Zapis*)
+	CASE Step OF
+	0:	(*Mierzymy chyba ze otrzymamy sygnal startu*)
+		IF rtWrite.Q THEN
+			bBusy := TRUE;
+			Step := Step+10;
+		END_IF
+	10:	(*Otwarcie rejestrow do zapisu*)
+		Ctrl:=2#11011111; (* otwieramy do zapisu R31*)
+		DataOut:=16#1235; (* i wpisujemy 1235 hex*)
+		Step:=Step+10;
+	20:	(*Jezeli sa otwarte to wpisujemy*)
+		IF State=2#10011111 THEN
+			Ctrl :=INT_TO_BYTE(192+iRegNo); (*1|1|Reg_No*)
+			DataOut :=Value;
+			Step:=Step+10;
+		END_IF
+	30:	(*Jezeli udalo sie wpisac, to zamykamy rejestry*)
+		IF State=INT_TO_BYTE(128+iRegNo) THEN
+			Ctrl:=2#11011111; (* otwieramy do zapisu R31*)
+			DataOut:=16#0; (* i wpisujemy 1235 hex*)
+			Step:=Step+10;
+		END_IF
+	40:	(*Zamykamy rejestry*)
+		IF State=2#10011111 THEN
+			Ctrl :=Temp;
+			DataOut :=0;
+			bBusy := FALSE;
+			Step:=0;
+		END_IF
+	99:	(*Gdy blad*)
+		Ctrl := Temp;
+		DataOut := 0;
+		bBusy := FALSE;
+		Step := 0;
+	END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_DST" Id="{1a119eef-216c-482a-bd6a-e2b541d2ce3d}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*									FB_DST v 1.0													*)
+(*									24.10.2014														*)
+(*		Blok funkcyjny sprawdzajacy czy jest czas letni i obliczajacy czas lokalny CET z GMT		*)
+(*					Działa w latach 2011 - 2030, poza tym zakresem podaje błąd						*)
+(* 			Jesli chcemy obliczyc czas CET to wejsciu powienien być podany aktualny czas GMT		*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_DST
+VAR_INPUT
+	dtActualTimeGMT: 	DT; 				(* Aktulany czas GMT*)
+END_VAR
+VAR_OUTPUT
+	bSummerTime: 		BOOL;				(* TRUE gdy czas letni *)
+	dtActualTimeCET: 	DT; 				(* Aktulany czas CET*)
+	bError: 			BOOL;				(* TRUE jeśli podano nieprawidłowy rok *)
+END_VAR
+VAR
+	dwActualTime: 		DWORD;
+	dwYear: 			DWORD;
+	t1: 				TON;
+END_VAR
+VAR CONSTANT
+	(* Tablice z datami zmiany czasu *)
+	aMarch:		ARRAY [2011..2030] OF DT := 	[DT#2011-03-27-01:00,DT#2012-03-25-01:00,DT#2013-03-31-01:00,DT#2014-03-30-01:00,DT#2015-03-29-01:00,
+											DT#2016-03-27-01:00,DT#2017-03-26-01:00,DT#2018-03-25-01:00,DT#2019-03-31-01:00,DT#2020-03-29-01:00,
+											DT#2021-03-28-01:00,DT#2022-03-27-01:00,DT#2023-03-26-01:00,DT#2024-03-31-01:00,DT#2025-03-30-01:00,
+											DT#2026-03-29-01:00,DT#2027-03-28-01:00,DT#2028-03-26-01:00,DT#2029-03-25-01:00,DT#2030-03-31-01:00];
+	aOctober:	ARRAY [2011..2030] OF DT	:=	[DT#2011-10-30-01:00,DT#2012-10-28-01:00,DT#2013-10-27-01:00,DT#2014-10-26-01:00,DT#2015-10-25-01:00,
+											DT#2016-10-30-01:00,DT#2017-10-29-01:00,DT#2018-10-28-01:00,DT#2019-10-27-01:00,DT#2020-10-25-01:00,
+											DT#2021-10-31-01:00,DT#2022-10-30-01:00,DT#2023-10-29-01:00,DT#2024-10-27-01:00,DT#2025-10-26-01:00,
+											DT#2026-10-25-01:00,DT#2027-10-31-01:00,DT#2028-10-29-01:00,DT#2029-10-28-01:00,DT#2030-10-27-01:00];
+	tInterval: 		TIME := T#1s; 			(*Częstotliwość aktualizacji czasu*)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[t1(IN:= NOT t1.Q, PT:= tInterval);
+(* Obliczenia raz na sekunde lub podczas inicjalizacji*)
+IF t1.Q THEN
+	(* konwersja aktualnego czasy GMT na DWORD *)
+	dwActualTime := DT_TO_DWORD(dtActualTimeGMT);
+	dwYear := dwActualTime/31536000 + 1970; (* Obliczenie roku *)
+	bError := (dwYear<2011) OR (dwYear > 2030); (* jesli jestesmy poza obszarem dzialania blocza - ustawiamy flage bledu *)
+	dwActualTime := dwActualTime + 3600; (* czas zimowy GMT + 1 (UTC + 1) *)
+	(*czas letni *)
+	bSummerTime := (dtActualTimeGMT > aMarch[dwYear]) AND (dtActualTimeGMT < aOctober[dwYear]);
+	IF bSummerTime THEN dwActualTime := dwActualTime + 3600; END_IF
+	dtActualTimeCET := DWORD_TO_DT(dwActualTime);
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,242 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_WriteReportToFile" Id="{5174aa85-0536-4bfe-aa9c-2fe3e6dd142b}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*							FB_WriteReportToFile v1.5												*)
+(*					v1.2 - internal optimizations													*)
+(*					v1.3 - internal optimizations													*)
+(*					v1.4 - zmiana funkcjonalności, obsługa błędów, większa elastyczność				*)
+(*					v1.5 - dodanie bufora zapisu, poprawienie zapisu Header							*)
+(*									06.06.2012														*)
+(*				Blok funkcyjny slużący do zapisywania danych do pliku *.xls.						*)
+(*					Pierwszy wiersz kazdego pliku stanowi sHeader.									*)
+(*	Zapisywane sData, podawane są na wejście bloku funkcyjnego jako zmienna typu STRING.			*)
+(*				Pierwsza kolumna zawiera datę i godzinę wykonania wpisu.							*)
+(*				Możliwe jest ustawienie częstości zapisywania do pliku,								*)
+(* 			Konieczne jest dodanie biblioteki TcUtilities.lib, TcSystem.lib oraz TcBase.lib			*)
+(*		UWAGA!!!																					*)
+(*		Blok ten korzysta z czasu systemowego, podawanego na wejście bloku.							*)
+(*		Nie można wywoływać tego bloku bez podania czasu na wejściu,								*)
+(*		ponieważ wówczas przyjmuje on wartości zerowe i blok nie wykona zapisu						*)
+(*		BLOK FUNKCYJNY DZIAŁA TYLKO DLA "PC OR CX( x86)"											*)
+(*__________________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_WriteReportToFile
+VAR_INPUT
+	sHeader:				STRING(255);(*:='Czas$tKolumna1$tKolumna2$tKolumna3$n';*)(* Naglowki kolumn - cała górna linia - powinna być zakończona '$n'*)
+ 	sData: 					STRING(255);(*:='Zmienna1$tZmienna2$tZmienna3$n'; *)		(* sData do zapisu w postaci napisu, np 'test$n', 10 znaków zajmie stempel czasowy z przodu - dołączony zostanie automatycznie, więc max długość linii 245 znaków!!!!!! *)
+	sPath:					STRING(255);(*:='c:\';*)										(* sPath zapisu pliku bez nazwy pliku, np 'c:\' *)
+	stActTime:				TIMESTRUCT;												(* Aktualny czas w formie struktury - TIMESTRUCT*)
+	tWriteFrequency:		TIME:=T#10s; 												(* Częstotliwość zapisu do pliku*)
+	wNewFileFrequency:		WORD:=0;													(* Częstotliwość tworzenia nowego pliku: dzien (0), tydzien(1), miesiac(2) *)
+	bWrite: 				BOOL; 														(* Zapis na rozkaz*)
+END_VAR
+VAR_OUTPUT
+	bBusy: 					BOOL;		(* Sygnał zajętości bloczka *)
+	bError:					BOOL;		(* Flaga błedu, bloczek sam się resetuje, więc flaga mnoże samoczynnie zniknąć *)
+	dwErrors:				DWORD;	(* Suma błędów od uruchomienia programu PLC *)
+	dwErrorsInCurrentFile:	DWORD;	(* Suma błedów zapisu do nowego pliku lub od uruchomienia *)
+END_VAR
+
+VAR
+	sFileName: 				STRING;
+	fbFileOpen: 			FB_FileOpen;
+	fbFileWrite:  			FB_FilePuts;
+	fbFileClose: 			FB_FileClose;
+	Step: 					INT;
+	TrigerName:				R_TRIG;
+	sTime: 					STRING(10);(*odciecie min rozmiarem*)
+	sTimeExcel: 			STRING(19);(*odciecie min rozmiarem*)
+	stActTimeName:			TIMESTRUCT;												(* Aktualny czas w formie struktury użyty do tworzenia nazwy pliku *)
+	sOldName:				STRING:='start';
+	bInitialization: 		BOOL:=TRUE;
+	WriteTimer: 			TON;
+	WatchDog:				TON;
+	rtWrite: 				R_TRIG; (* 1-krotny zapis na zadanie *)
+	fbBuffer:				FB_StringRingBuffer;				(*Bufor zapisu*)
+	arrBuffer: 				ARRAY [1..20] OF STRING(255);	(*Tablica bufora zapisu*)
+	sLine:					STRING(255);						(*Linia do zapisu*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Akcja wywołująca bloki w tle *)
+CallBackgroundFBs();
+(*Akcja Name*)
+Name();
+(*Obsługa bufora zapisu*)
+fbBuffer(pBuffer:= ADR(arrBuffer),
+		cbBuffer:= SIZEOF(arrBuffer));
+(*Dodawanie elementów do bufora*)
+IF rtWrite.Q OR WriteTimer.q  THEN
+	fbBuffer.A_AddTail(putValue:= sData);
+END_IF
+CASE Step OF
+	0: (* Initialization *)
+		IF stActTime.wYear<>0 THEN
+			(*format daty  w pliku Excela*)
+			sTimeExcel:=SYSTEMTIME_TO_STRING(stActTime);
+			WatchDog.IN:= TRUE;
+			fbFileOpen.bExecute:= TRUE;
+			bBusy := TRUE;
+			bError := FALSE;
+			bInitialization:=FALSE;
+			fbFileOpen.bExecute := TRUE;
+			fbFileOpen.nMode := FOPEN_MODEREAD;
+			Step:= Step+5;
+		END_IF
+	5:	(*Sprawdzenie czy plik jest stworzony*)
+		IF fbFileOpen.bBusy = FALSE AND NOT fbFileOpen.bError THEN
+			Step := 60;
+			sOldName := sFileName;
+			fbFileOpen.bExecute := FALSE;
+			fbFileClose.bExecute:= TRUE;
+			fbFileOpen.nMode:= FOPEN_MODEAPPEND OR FOPEN_MODEPLUS ;
+		ELSIF fbFileOpen.bError THEN
+			Step := 20;
+			fbFileOpen.bExecute := FALSE;
+			fbFileOpen.nMode:= FOPEN_MODEAPPEND OR FOPEN_MODEPLUS ;
+		END_IF
+	10: (* Waiting for write request *)
+		fbBuffer.A_RemoveHead(getValue=> sLine);
+		IF fbBuffer.bOk AND sLine <> '' THEN
+			(*format daty  w pliku Excela*)
+			sTimeExcel:=SYSTEMTIME_TO_STRING(stActTime);
+			WatchDog.IN:= TRUE;
+			fbFileOpen.bExecute:= TRUE;
+			bBusy := TRUE;
+			bError := FALSE;
+			Step := Step + 10;
+		END_IF
+
+	20:	(*Otwieramy plik*)
+		fbFileOpen.bExecute := TRUE;
+		IF fbFileOpen.bBusy = FALSE AND NOT fbFileOpen.bError THEN
+			fbFileOpen.bExecute:= FALSE;
+		(*Tworzene nowego pliku z naglowkiem*)
+			IF sOldName = sFileName THEN
+				(*do istniejacego pliku dopisujemy sData*)
+				Step := Step + 20;
+			ELSE
+				(* Kasujemy błedy bieżącego pliku *)
+				dwErrorsInCurrentFile := 0;
+				(*Wysylamy sHeader*)
+				fbFileWrite.bExecute:= TRUE;
+				fbFileWrite.sLine := sHeader;
+				sOldName := sFileName;
+				Step := Step + 10;
+			END_IF
+		END_IF
+
+	30:
+		IF fbFileWrite.bBusy = FALSE AND NOT fbFileWrite.bError THEN
+			fbFileWrite.bExecute:= FALSE;
+			Step :=  50;
+		END_IF
+
+	40:	(*Wysylamy sLine*)
+		fbFileWrite.bExecute:= TRUE;
+		sTimeExcel := DELETE (sTimeExcel,1,11);(*usuniecie znaku' -' przed godzina*)
+		sTimeExcel := INSERT (sTimeExcel,' ',10);(*wstawienie znaku ' ' przed godzina *)
+
+		sLine:=CONCAT('$t',sLine);
+		sLine:=CONCAT(sTimeExcel,sLine);
+		fbFileWrite.sLine := sLine;
+		Step := Step + 10;
+	50:
+		IF fbFileWrite.bBusy = FALSE AND NOT fbFileWrite.bError THEN
+			fbFileWrite.bExecute:= FALSE;
+			fbFileClose.bExecute:= TRUE;
+			Step := Step + 10;
+		END_IF
+
+	60:	(*Zamykanie pliku*)
+		IF fbFileClose.bBusy = FALSE AND fbFileClose.bError = FALSE THEN
+			fbFileClose.bExecute:= FALSE;
+			bBusy := FALSE;
+			WatchDog.IN:= FALSE;
+			Step := 10;
+		END_IF
+	99: (* Error *)
+		fbFileOpen.bExecute:= FALSE;
+		fbFileWrite.bExecute:= FALSE;
+		fbFileClose.bExecute:= FALSE;
+		WatchDog.IN:= FALSE;
+		bError := TRUE;
+		dwErrors := dwErrors + 1;
+		dwErrorsInCurrentFile := dwErrorsInCurrentFile + 1;
+		Step := 10;
+END_CASE
+CallFileFBs();]]></ST>
+    </Implementation>
+    <Action Name="CallBackgroundFBs" Id="{9803b87f-f4c3-44e2-a072-b3e97852affa}">
+      <Implementation>
+        <ST><![CDATA[(*Wywolanie blokow funkcyjnych*)
+TrigerName();
+rtWrite(CLK:= bWrite);
+
+(*Reset bloczka w przypadku bledu*)
+WatchDog(PT:=T#10s);
+IF WatchDog.Q THEN  Step:=99; END_IF
+
+(*Ustalenie czestotliwosci zapisu do pliku*)
+WriteTimer(IN:= NOT WriteTimer.Q, PT:= tWriteFrequency, Q=> , ET=> );]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="CallFileFBs" Id="{609d689b-4253-4ed7-b59c-9ff32393d2d5}">
+      <Implementation>
+        <ST><![CDATA[(*Wywołanie bloków odpowiedzialnych za zapisywanie*)
+fbFileOpen(
+	sNetId:= '',
+	sPathName:= sFileName,
+	ePath:= PATH_GENERIC,
+	tTimeout:= T#200ms);
+
+fbFileWrite(
+	sNetId:= '',
+	hFile:= fbFileOpen.hFile,
+	tTimeout:= T#250ms);
+
+fbFileClose(
+	sNetId:= '',
+	hFile:= fbFileOpen.hFile,
+	tTimeout:= t#200ms);]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Name" Id="{16da0a9a-07c1-446a-b28a-a02f275a1033}">
+      <Implementation>
+        <ST><![CDATA[(*xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+				Ustalenie częstotliwości twrzenia nowego pliku i zmiana nazwy pliku
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx*)
+CASE wNewFileFrequency OF
+	0:	(*Tworzenie pliku raz dziennie*)
+		stActTimeName := stActTime;
+		stActTimeName.wHour := 0;
+		stActTimeName.wMinute := 0;
+
+	1:	(*Tworzenie pliku raz w tygodniu*)
+		IF bInitialization THEN
+			stActTimeName := stActTime;
+			stActTimeName.wHour := 0;
+			stActTimeName.wMinute := 0;
+		ELSIF stActTime.wDayOfWeek = 1 THEN
+			stActTimeName := stActTime;
+			stActTimeName.wHour := 0;
+			stActTimeName.wMinute := 0;
+		END_IF
+ELSE
+		(*Tworzenie pliku raz w miesiącu*)
+		stActTimeName := stActTime;
+		stActTimeName.wDay := 1;
+		stActTimeName.wHour := 0;
+		stActTimeName.wMinute := 0;
+
+END_CASE
+
+sTime := SYSTEMTIME_TO_STRING(stActTimeName);
+sTime := DELETE (sTime,1,11);(*usuniecie znaku' -' przed godzina*)
+sFileName:=CONCAT(sPath,sTime);
+sFileName:=CONCAT(sFileName,'.xls');]]></ST>
+      </Implementation>
+    </Action>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_CLEAN_S2040" Id="{0029ef1c-7190-4cb8-9f78-ffa77f2b5c7b}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								F_CLEAN_S2040	 v1.0									*)
+(*									24.5.2011											*)
+(*				Funkcja czyszcząca zawartość zmiennej typu ST_STRING_2040				*)
+(*______________________________________________________________________________________*)
+FUNCTION F_CLEAN_S2040 : ST_STRING_2040
+VAR_INPUT
+                VeryLongString: ST_STRING_2040;
+END_VAR
+VAR
+                i: INT;                    (*iterator*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i := 1 TO 8 DO
+                VeryLongString[i] := '$N';
+END_FOR]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

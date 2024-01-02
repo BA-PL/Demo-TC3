@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_ExcelDateSec" Id="{0b3df4f8-efa3-4314-b5d5-7d928aa6827a}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								F_ExcelDateSec v1.1										*)
+(*									9.11.2007											*)
+(*		Funkcja konwerująca strukturę TIMESTRUCT  na zmienną typu STRING(20).			*)
+(*		Nowa zmienna zawiera datę dzienną z dokładnością sekundy.						*)
+(*		Format daty pozwala na bezpośrednie wykorzystanie jej w programie Excel.		*)
+(*______________________________________________________________________________________*)
+
+FUNCTION F_ExcelDateSec : STRING(19)
+VAR_INPUT
+	strCzas									:	TIMESTRUCT;			(*Czas w formie struktury*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_ExcelDateSec  := SYSTEMTIME_TO_STRING(strCzas);
+F_ExcelDateSec  := REPLACE (F_ExcelDateSec,' ' ,1,11);(*zamiana znaku "-" na " " przed godziną*)]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="F_Convert_4BBCD_To_Real" Id="{2c42b93a-6c8a-4f82-91d0-b074ea38b8c7}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*								Beckhoff Automation Poland										*)
+(* 									F_Convert_4BBCD_To_Real v1.0								*)
+(* 										26.06.2014												*)
+(*	Funkcja konwertujaca 4 zmienne typu BYTE (BCD) na REAL - czesto spotykane w protokole M-Bus	*)
+(*______________________________________________________________________________________________*)
+FUNCTION F_Convert_4BBCD_To_Real : REAL
+VAR_INPUT
+	Byte1: BYTE; (* LSB *)
+	Byte2: BYTE;
+	Byte3: BYTE;
+	Byte4: BYTE; (* MSB *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_Convert_4BBCD_To_Real := udint_to_real(F_BCDToDec(Byte1)*1+F_BCDToDec(Byte2)*100+F_BCDToDec(Byte3)*10000+F_BCDToDec(Byte4)*1000000);]]></ST>
+    </Implementation>
+    <LineIds Name="F_Convert_4BBCD_To_Real">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

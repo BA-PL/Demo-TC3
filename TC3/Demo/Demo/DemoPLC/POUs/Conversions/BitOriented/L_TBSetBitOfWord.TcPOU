@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBSetBitOfWord" Id="{f6c05a83-8149-4788-bc58-f7357cf0834c}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBSetBitOfWord v1.0										*)
+(*									29.02.2007											*)
+(*				This function sets a single bit in a value of type ”word” to “1”		*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBSetBitOfWord : WORD
+VAR_INPUT
+	wInput: WORD;
+	byBitNr: BYTE;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBSetBitOfWord := wInput;
+CASE byBitNr OF
+	0:
+	L_TBSetBitOfWord.0 := TRUE;
+	1:
+	L_TBSetBitOfWord.1 := TRUE;
+	2:
+	L_TBSetBitOfWord.2 := TRUE;
+	3:
+	L_TBSetBitOfWord.3 := TRUE;
+	4:
+	L_TBSetBitOfWord.4 := TRUE;
+	5:
+	L_TBSetBitOfWord.5 := TRUE;
+	6:
+	L_TBSetBitOfWord.6 := TRUE;
+	7:
+	L_TBSetBitOfWord.7 := TRUE;
+	8:
+	L_TBSetBitOfWord.8 := TRUE;
+	9:
+	L_TBSetBitOfWord.9 := TRUE;
+	10:
+	L_TBSetBitOfWord.10 := TRUE;
+	11:
+	L_TBSetBitOfWord.11 := TRUE;
+	12:
+	L_TBSetBitOfWord.12 := TRUE;
+	13:
+	L_TBSetBitOfWord.13 := TRUE;
+	14:
+	L_TBSetBitOfWord.14 := TRUE;
+	15:
+	L_TBSetBitOfWord.15 := TRUE;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

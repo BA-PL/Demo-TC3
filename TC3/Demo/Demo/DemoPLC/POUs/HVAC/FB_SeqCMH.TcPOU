@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_SeqCMH" Id="{e865f6c6-46b8-4a42-b588-665b4d3e1e96}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*								FB_SeqCMH  v1														*)
+(*									27.05.2008														*)
+(*	Bloczek do kontroli  ogrzewania,chlodzenia														*)
+(*	jezeli temp(X) jest wieksza od zadanych wartosci podanych w przedzialach to wykonywane sa 		*)
+(*	dzialania majace na celu podanie na wyjsciu wartosciu w procent. Trzeba podac na wejsciu		*)
+(*	ktora wartosc chce sie otrzymac poprzez podanie na wejsciach : enC,enM;enH	wartosci 1			*)
+(*																									*)
+(*__________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_SeqCMH
+VAR_INPUT
+	X:				REAL;(*sygnal wejsciowy*)
+	enC:			BOOL;(*zmienna odpowiedzialna za uruchomienie chlodzenia Cooling*)
+	enM:			BOOL;(*zmienna odpowiedzialna za uruchomienie chlodzenia Mixing*)
+	enH:			BOOL;(*zmienna odpowiedzialna za uruchomienie grzania Heating*)
+	CoolingLow:		REAL;(*zmienna z zakresu dolnego do chlodzenia*)
+	CoolingHi:		REAL;(*zmienna z zakresu gornego do chlodzenia*)
+	MLow:			REAL;(*zmienna z zakresu dolnego*)
+	MHi:			REAL;(*zmienna z zakresu gornego*)
+	HeatLow:		REAL;(*zmienna z zakresu dolnego do ogrzewania*)
+	HeatHi:			REAL;(*zmienna z zakresu gornego do ogrzewania*)
+	Tinside:		REAL;(**)
+	Toutside:		REAL;(**)
+END_VAR
+VAR_OUTPUT
+	OutC:			REAL;(*zmienna wyjsciowa chlodzenia*)
+	OutM:			REAL;(**)
+	OutH:			REAL;(*zmienna wyjsciowa ogrzewania*)
+END_VAR
+VAR
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF X>=CoolingLow AND X<=CoolingHi AND enC THEN
+	OutC:= (CoolingHi-X)*100/(CoolingHi-CoolingLow);
+	OutM:=0;
+	OutH:=0;
+END_IF
+IF X>=MLow AND X<=MHi AND enM  THEN
+	IF Tinside > Toutside THEN
+		OutC:=0;
+		OutM:= (MHi-X)*100/(MHi-MLow);
+		OutH:=0;
+	ELSE
+		OutC:=0;
+		OutM:= 100- (MHi-X)*100/(MHi-MLow);
+		OutH:=0;
+	END_IF
+END_IF
+
+IF X>=HeatLow AND X<=HeatHi AND enH THEN
+	OutC:=0;
+	OutM:=0;
+	OutH:= (X-HeatLow)*100/(HeatHi-HeatLow);
+END_IF
+
+IF NOT enC THEN outC:=0; END_IF
+IF NOT enM THEN outM:=0; END_IF
+IF NOT enH THEN outH:=0; END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Enc20bitToDWORD" Id="{b2d9d58b-6e0d-47d5-98bc-e42317b130fe}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_Enc20bitToDWORD  v2										*)
+(*									20.07.2010												*)
+(*	Blok funkcyjny do poszerzania zakresu odczytu z encoderow,								*)
+(*	wartosc wejsciowa typu DWORD przystosowana do 20 bitow <0; 1048575>						*)
+(*	przenoszona jest na wyjscie typu DWORD <0; 4294967295>									*)
+(*	Przepetlenie wartosci wejsciowej nie powoduje w tym przypadku bledu						*)
+(*__________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Enc20bitToDWORD
+VAR_INPUT
+	dwInput: 		DWORD;					(* wartosc wejsciowa *)
+END_VAR
+VAR_IN_OUT
+	dwOutput: 		DWORD;					(*wartosc wyjsciowa*)
+END_VAR
+VAR
+	dwLastInput: 	DWORD;
+	mask20: 		DWORD := 16#000FFFFF;	(*20 bitow, 1048575 Dec*)
+	dwOutputHW:		DWORD; 					(*Gorna czesc dworda*)
+	bFirstCycle:	BOOL := TRUE;
+END_VAR
+VAR CONSTANT
+	dwLow: 			DWORD := 250000;
+	dwHigh: 		DWORD := 800000;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[dwInput := mask20 AND dwInput;
+
+(*pierwszy cykl*)
+IF bFirstCycle THEN
+	dwOutputHW := dwOutput AND 16#FFF00000;
+	bFirstCycle := FALSE;
+ELSE
+	IF dwInput < dwLow AND dwLastInput > dwHigh THEN
+		(*Przekroczylismy zakres w gore*)
+		dwOutputHW := dwOutputHW + 16#00100000;
+	END_IF
+
+	IF dwInput > dwHigh AND dwLastInput < dwLow THEN
+		(*Przekroczylismy zakres w dol*)
+		dwOutputHW := dwOutputHW - 16#00100000;
+	END_IF
+END_IF
+
+dwLastInput := dwInput;
+dwOutput := dwOutputHW + dwInput;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

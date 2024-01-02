@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Average" Id="{17ce9430-64ca-43ef-97e6-e7bc60f88f26}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_Average	 v1.2											*)
+(*									2.02.2011												*)
+(*								v1.2 Optymalizacja wewnętrzna								*)
+(*					Blok funkcyjny obliczający średnią z wartości wejściowej rValue			*)
+(*					w zadanym przedziale czasowym lub z określonej ilości pomiarów			*)
+(*__________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Average
+VAR_INPUT
+	rValue : 			REAL;			(*Uśredniana wartość*)
+	tInterval : 		TIME;			(*Co jaki czas ma byc robiony wpis*)
+END_VAR
+VAR_OUTPUT
+	rAverage: 			REAL; 			(*Wartość średnia*)
+END_VAR
+VAR CONSTANT
+	MAX_INDEX: 			USINT 	:= 20 ;	(*Ilość wpisów do uśredniania*)
+END_VAR
+VAR
+	aData: 				ARRAY[0..MAX_INDEX] OF REAL;
+	nIndex:		 		USINT;			(*Ostatni wpis, czyli przyjmuje wartosci od 0 do MAX_INDEX - 1*)
+	i:					USINT;			(*Iterator*)
+	ttimer: 			TON;
+	suma: 				REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ttimer(IN:= NOT ttimer.Q, PT:= tInterval, Q=> , ET=> );
+
+IF nIndex = 0 THEN	(*Na poczatku wypelniamy pierwsza komorke w tablicy*)
+	nIndex := 1;
+	aData[0] := rValue;
+END_IF
+
+IF ttimer.Q THEN
+	suma := 0;
+	FOR i := 1 TO nIndex DO
+		aData[i - 1] := aData[i];
+		suma := suma + aData[i];
+	END_FOR
+	IF	nIndex < (MAX_INDEX) THEN
+		nIndex := nIndex + 1;
+	END_IF
+	aData[nIndex] := rValue;
+END_IF
+
+rAverage := suma/nIndex;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

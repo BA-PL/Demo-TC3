@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBConvBitsToDword" Id="{2788f159-d118-49d8-be7d-3f6101587df2}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBConvBitsToDword  v1.0									*)
+(*									29.02.2007											*)
+(*		This function converts 32 single bit values into a value of type ”double word”	*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBConvBitsToDword : DWORD
+VAR_INPUT
+	bBit0: BOOL;
+	bBit1: BOOL;
+	bBit2: BOOL;
+	bBit3: BOOL;
+	bBit4: BOOL;
+	bBit5: BOOL;
+	bBit6: BOOL;
+	bBit7: BOOL;
+	bBit8: BOOL;
+	bBit9: BOOL;
+	bBit10: BOOL;
+	bBit11: BOOL;
+	bBit12: BOOL;
+	bBit13: BOOL;
+	bBit14: BOOL;
+	bBit15: BOOL;
+	bBit16: BOOL;
+	bBit17: BOOL;
+	bBit18: BOOL;
+	bBit19: BOOL;
+	bBit20: BOOL;
+	bBit21: BOOL;
+	bBit22: BOOL;
+	bBit23: BOOL;
+	bBit24: BOOL;
+	bBit25: BOOL;
+	bBit26: BOOL;
+	bBit27: BOOL;
+	bBit28: BOOL;
+	bBit29: BOOL;
+	bBit30: BOOL;
+	bBit31: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBConvBitsToDword.0 := bBit0;
+L_TBConvBitsToDword.1 := bBit1;
+L_TBConvBitsToDword.2 := bBit2;
+L_TBConvBitsToDword.3 := bBit3;
+L_TBConvBitsToDword.4 := bBit4;
+L_TBConvBitsToDword.5 := bBit5;
+L_TBConvBitsToDword.6 := bBit6;
+L_TBConvBitsToDword.7 := bBit7;
+L_TBConvBitsToDword.8 := bBit8;
+L_TBConvBitsToDword.9 := bBit9;
+L_TBConvBitsToDword.10 := bBit10;
+L_TBConvBitsToDword.11 := bBit11;
+L_TBConvBitsToDword.12 := bBit12;
+L_TBConvBitsToDword.13 := bBit13;
+L_TBConvBitsToDword.14 := bBit14;
+L_TBConvBitsToDword.15 := bBit15;
+L_TBConvBitsToDword.16 := bBit16;
+L_TBConvBitsToDword.17 := bBit17;
+L_TBConvBitsToDword.18 := bBit18;
+L_TBConvBitsToDword.19 := bBit19;
+L_TBConvBitsToDword.20 := bBit20;
+L_TBConvBitsToDword.21 := bBit21;
+L_TBConvBitsToDword.22 := bBit22;
+L_TBConvBitsToDword.23 := bBit23;
+L_TBConvBitsToDword.24 := bBit24;
+L_TBConvBitsToDword.25 := bBit25;
+L_TBConvBitsToDword.26 := bBit26;
+L_TBConvBitsToDword.27 := bBit27;
+L_TBConvBitsToDword.28 := bBit28;
+L_TBConvBitsToDword.29 := bBit29;
+L_TBConvBitsToDword.30 := bBit30;
+L_TBConvBitsToDword.31 := bBit31;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="ST_STRING_2040" Id="{ebc6a24b-e2b1-4af2-a7fd-a7fbd272f498}">
+    <Declaration><![CDATA[TYPE
+	ST_STRING_2040 :  ARRAY[1..8] OF STRING(255);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

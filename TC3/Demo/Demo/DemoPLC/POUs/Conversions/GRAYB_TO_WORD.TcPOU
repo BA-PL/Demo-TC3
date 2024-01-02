@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="GRAYB_TO_WORD" Id="{2e96e714-edd7-467d-973c-943d57d26beb}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							GRAYB_TO_WORD	 v1.0										*)
+(*									29.12.2008											*)
+(*		Funkcja konwerująca 16 sygnalow typu BOOL tworzacych kod Graya					*)
+(*						 na wartosc decymalna typu WORD									*)
+(*______________________________________________________________________________________*)
+FUNCTION GRAYB_TO_WORD : WORD
+VAR_INPUT
+	bIn0: BOOL;
+	bIn1: BOOL;
+	bIn2: BOOL;
+	bIn3: BOOL;
+	bIn4: BOOL;
+	bIn5: BOOL;
+	bIn6: BOOL;
+	bIn7: BOOL;
+	bIn8: BOOL;
+	bIn9: BOOL;
+	bIn10: BOOL;
+	bIn11: BOOL;
+	bIn12: BOOL;
+	bIn13: BOOL;
+	bIn14: BOOL;
+	bIn15: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[GRAYB_TO_WORD.15 := bIn15 XOR 0;
+GRAYB_TO_WORD.14 := bIn14 XOR GRAYB_TO_WORD.15;
+GRAYB_TO_WORD.13 := bIn13 XOR GRAYB_TO_WORD.14;
+GRAYB_TO_WORD.12 := bIn12 XOR GRAYB_TO_WORD.13;
+GRAYB_TO_WORD.11 := bIn11 XOR GRAYB_TO_WORD.12;
+GRAYB_TO_WORD.10 := bIn10 XOR GRAYB_TO_WORD.11;
+GRAYB_TO_WORD.9 := bIn9 XOR GRAYB_TO_WORD.10;
+GRAYB_TO_WORD.8 := bIn8 XOR GRAYB_TO_WORD.9;
+GRAYB_TO_WORD.7 := bIn7 XOR GRAYB_TO_WORD.8;
+GRAYB_TO_WORD.6 := bIn6 XOR GRAYB_TO_WORD.7;
+GRAYB_TO_WORD.5 := bIn5 XOR GRAYB_TO_WORD.6;
+GRAYB_TO_WORD.4 := bIn4 XOR GRAYB_TO_WORD.5;
+GRAYB_TO_WORD.3 := bIn3 XOR GRAYB_TO_WORD.4;
+GRAYB_TO_WORD.2 := bIn2 XOR GRAYB_TO_WORD.3;
+GRAYB_TO_WORD.1 := bIn1 XOR GRAYB_TO_WORD.2;
+GRAYB_TO_WORD.0 := bIn0 XOR GRAYB_TO_WORD.1;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

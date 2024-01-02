@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Click" Id="{e52a785d-433b-46fd-8ccd-828ec52e3809}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************************)
+(*							Beckhoff Automation Poland													*)
+(*								FB_Click	 v1.1														*)
+(*								16.06.2008																*)
+(*	Blok funkcyjny rozpoznajacy pojedyncze klikniecie, klikniecie podwojne lub nacisniecie przycisku	*)
+(*______________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Click
+VAR_INPUT
+	bSwitch: 		BOOL;		 		(*Przycisk*)
+	tTime: 			TIME 	:= T#1S; 	(*Czas kiedu mozna kliknac dwukrotnie*)
+	tPress: 		TIME := T#500MS;	(*Rozpoznanie nacisniecia*)
+END_VAR
+VAR_OUTPUT
+	bDouble: 		BOOL;(*Przyjmuje wartosc TRUE dla dwukrotnego klikniecia*)
+	bSingle: 		BOOL;(*Przyjmuje wartosc TRUE dla pojedynczego klikniecia*)
+	bPress: 		BOOL;(*Przyjmuje wartosc TRUE dla przytrzymania przycisku*)
+END_VAR
+VAR
+	nCounter: 		SINT;
+	timer: 			TON;
+	timerPress: 	TON;
+	rtrig: 			R_TRIG;
+	ftrig: 			F_TRIG;
+	pom: 			BOOL; 				(*zmienna pomocnicza*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Zeby tylko przez jeden cykl byly ustawione wyjscia*)
+bDouble := FALSE;
+bSingle := FALSE;
+
+timer(IN:= , PT:=tTime , Q=> , ET=> );
+timerPress(IN:= bSwitch, PT:= tPress, Q=>bPress , ET=> );
+rtrig(CLK:= bSwitch, Q=> );
+ftrig(CLK:= bSwitch, Q=> );
+
+(*Wyzerowanie licznika jak jest Press*)
+IF timerPress.Q THEN
+	nCounter := 0;
+END_IF
+
+(*Obsługa krótkiego sygnału*)
+IF rtrig.Q THEN
+	timer.IN := TRUE;
+	pom := TRUE;
+END_IF
+IF ftrig.Q AND pom THEN
+	pom := FALSE;
+	nCounter := nCounter + 1;
+END_IF
+
+IF timer.Q THEN
+	timer.IN := FALSE;
+	IF nCounter = 1 THEN
+		bSingle := TRUE;
+	ELSIF nCounter > 1 THEN
+		bDouble := TRUE;
+	END_IF
+	nCounter := 0;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBGetBitOfWord" Id="{ade07f71-a1ef-4cec-bcbe-dda4441d0356}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBGetBitOfWord v1.0										*)
+(*									29.02.2007											*)
+(*			This function returns the state of a single bit within a ”word” value		*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBGetBitOfWord : BOOL
+VAR_INPUT
+	wInput:WORD;
+	byBitNr:BYTE;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE byBitNr OF
+	0:
+	L_TBGetBitOfWord:=wInput.0;
+	1:
+	L_TBGetBitOfWord:=wInput.1;
+	2:
+	L_TBGetBitOfWord:=wInput.2;
+	3:
+	L_TBGetBitOfWord:=wInput.3;
+	4:
+	L_TBGetBitOfWord:=wInput.4;
+	5:
+	L_TBGetBitOfWord:=wInput.5;
+	6:
+	L_TBGetBitOfWord:=wInput.6;
+	7:
+	L_TBGetBitOfWord:=wInput.7;
+	8:
+	L_TBGetBitOfWord:=wInput.8;
+	9:
+	L_TBGetBitOfWord:=wInput.9;
+	10:
+	L_TBGetBitOfWord:=wInput.10;
+	11:
+	L_TBGetBitOfWord:=wInput.11;
+	12:
+	L_TBGetBitOfWord:=wInput.12;
+	13:
+	L_TBGetBitOfWord:=wInput.13;
+	14:
+	L_TBGetBitOfWord:=wInput.14;
+	15:
+	L_TBGetBitOfWord:=wInput.15;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

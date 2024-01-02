@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_AirMixer" Id="{88a7f0fc-d117-492a-88d5-29210a445fac}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_AiRMixer  v1											*)
+(*									27.05.2008											*)
+(*							Bloczek do mieszania powietrza								*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_AirMixer
+VAR_INPUT
+	Set:			REAL;
+	Tin:			REAL;
+	Tout:			REAL:=1;
+	UpperLimit:		REAL;
+	LowerLimit:		REAL;
+END_VAR
+VAR_OUTPUT
+	Y:				REAL;
+	Cool:			BOOL;
+	Heat:			BOOL;
+END_VAR
+VAR
+	deltaT:			REAL;
+	a:				REAL;
+	b:				REAL;
+	Wyjscie: 		REAL;
+	deltaLimit: 	REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[deltaT:=Tout-Tin;
+deltaLimit:=UpperLimit-LowerLimit;
+(*a:=deltaLimit/deltaT;*)
+(*b:=(-deltaLimit*Tin)/deltaT;*)
+Wyjscie:=a*Set+b;
+IF Wyjscie < LowerLimit THEN
+	Y:= LowerLimit;
+	Cool:=TRUE;
+ELSE Y:=Wyjscie;
+END_IF
+IF Wyjscie >UpperLimit THEN
+	 Y:= UpperLimit;
+	Heat:=TRUE;
+ELSE Y:= Wyjscie;
+END_IF
+IF cool = TRUE AND Wyjscie>(LowerLimit+0.2*deltaLimit) THEN cool:=FALSE; END_IF
+IF heat = TRUE AND Wyjscie>(UpperLimit-0.2*deltaLimit) THEN heat:=FALSE; END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

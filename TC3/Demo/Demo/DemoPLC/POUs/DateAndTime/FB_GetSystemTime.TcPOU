@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_GetSystemTime" Id="{5828e1d8-376f-4550-9beb-7f5c41ae6f3d}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_GetSystemTime  v1.2									*)
+(*									26.07.2013											*)
+(*		v1.2 - zmiana nazwy bloku z FB_Time na FB_GetSystemTime, dodanie wyjscia DT		*)
+(*		v1.1 - dodano na wyjściu zmienną czasu w formie struktury TIMESTRUCT 			*)
+(*				Blok funkcyjny podający dokładną datę w odrębnych zmiennych				*)
+(*						może być wywołany raz w programie PLC							*)
+(*						Wymaga dodania biblioteki TcUtilities.lib						*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_GetSystemTime
+VAR_INPUT
+	bEnable:			BOOL;				(*Aktywuje pobieranie czasu systemowego*)
+END_VAR
+VAR_OUTPUT
+	stActTime			:	TIMESTRUCT;
+	dtActTime: DT;
+(*Poszczególne składowe daty*)
+	wYear 				:	WORD;
+	wMonth 				:	WORD;
+	wDayOfWeek 			: 	WORD;
+	wDay 				:	WORD;
+	wHour 				:	WORD;
+	wMinute 			:	WORD;
+	wSecond 			:	WORD;
+	wMilliseconds 		: 	WORD;
+END_VAR
+VAR
+	fbGetTime			:	NT_GetTime;
+	Get					:	TON;
+END_VAR
+VAR CONSTANT
+	tFrequency			:	TIME			:= T#1s;				(*Częstotliwość pobierania czasu*)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Get(IN:= NOT Get.Q AND bEnable, PT:=tFrequency);
+fbGetTime(
+	NETID:= '',
+	START:= Get.Q,
+	TMOUT:= T#200ms,
+	TIMESTR=>stActTime);
+
+dtActTime 		:= SYSTEMTIME_TO_DT(stActTime);
+wDay 			:= stActTime.wDay;
+wDayOfWeek 	:= stActTime.wDayOfWeek;
+wHour 			:= stActTime.wHour;
+wMilliseconds 	:= stActTime.wMilliseconds;
+wMinute 		:= stActTime.wMinute;
+wMonth 		:= stActTime.wMonth;
+wSecond 		:= stActTime.wSecond;
+wYear 			:= stActTime.wYear;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

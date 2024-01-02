@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Ramp" Id="{ceb9bb99-4b48-4ce2-a969-e78f11d52c00}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_Ramp v1.0											*)
+(*									31.09.2011											*)
+(*							Blok rampy, narastanie liniowe								*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Ramp
+VAR_INPUT
+	rIn:			REAL; 			(* Aktualna wartość regulowana *)
+	tTime:			TIME;			(* Czas co jaki dodajemy gradient wartości *)
+	rMaxUp:			REAL;			(* Maksymalna wartość o jaką jednorazowo możemy zwiększyć warość wyjścia *)
+	rMaxDown:		REAL;			(* Maksymalna wartość o jaką jednorazowo możemy zmniejszyć warość wyjścia *)
+END_VAR
+VAR_OUTPUT
+	rOut:			REAL;			(* Wartość wyjściowa *)
+END_VAR
+VAR
+	clock:			TP;
+	lastOut:	 	REAL;
+	stan: 			BOOL;
+	oldstan: 		BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CLOCK();
+clock.PT:=tTime;
+IF CLOCK.Q=FALSE THEN
+	CLOCK(IN:=FALSE);
+	stan := NOT stan;
+	CLOCK(IN:=TRUE);
+END_IF
+IF(oldstan <> stan) THEN
+	IF(rIn>=lastout + rMaxUp) THEN rOut := lastout + rMaxUp; END_IF
+	IF (rIn<= lastout - rMaxDown) THEN rOut := lastout - rMaxDown;END_IF
+	IF(rIn<lastout + rMaxUp AND rIn > lastout - rMaxDown) THEN rOut:= rIn;END_IF
+END_IF
+lastout := rOut;
+oldstan:=stan;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

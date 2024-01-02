@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_4BYTES_TO_REAL" Id="{7e344452-e371-406f-9188-370749642c90}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************)
+(*							Beckhoff Automation Poland								*)
+(*							F_4BYTES_TO_REAL v1										*)
+(*									21.11.2013										*)
+(*					Funkcja zamieniająca 4 zmienne typu BYTE na REAL	 			*)
+(*__________________________________________________________________________________*)
+FUNCTION F_4BYTES_TO_REAL : REAL
+VAR_INPUT
+	BByte0		: BYTE;
+	BByte1		: BYTE;
+	BByte2		: BYTE;
+	BByte3		: BYTE;
+END_VAR
+VAR
+	dwDword	: DWORD;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[dwDword := BByte3 *16#1000000 + BByte2 *16#10000 + BByte1 *16#100 + BByte0;
+MEMCPY(ADR(F_4BYTES_TO_REAL),ADR(dwDword), 4);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

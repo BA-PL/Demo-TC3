@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_LimitHVAC" Id="{782e656f-f5d1-4a10-ab06-ed2bf7e0c448}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************)
+(*							Beckhoff Automation Poland											*)
+(*								FB_LimitHVAC  v1												*)
+(*									27.05.2008													*)
+(*	Bloczek do kontroli temperatury z zadanymi wartosciami minimalna i maksymalna				*)
+(*	gdy temp jest z  przedzialu (MiniOut,MaxOut) to na wyjsciu pojawia sie temp z wejscia		*)
+(*	w przeciwnym razie pokazuje sie ostatania wskazywana temperatura							*)
+(*______________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_LimitHVAC
+VAR_INPUT
+	In:			REAL;
+	MaxOut:		REAL;
+	MiniOut:	REAL;
+END_VAR
+VAR_OUTPUT
+	Out:		REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Out:= SEL(In>MaxOut,Out,MaxOut);
+Out:= SEL(In<MiniOut,Out,MiniOut);
+Out:= SEL(In>MiniOut AND In<MaxOut,Out,In);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

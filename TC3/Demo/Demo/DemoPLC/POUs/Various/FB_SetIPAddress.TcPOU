@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_SetIPAddress" Id="{e5d21359-d738-4b5f-84af-c1b844aa577d}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************************************************)
+(*							Beckhoff Automation Poland								*)
+(*								FB_SetIPAddress	 v1.0									*)
+(*							v1.0 - implementacja										*)
+(*									02.11.2015										*)
+(*							Blok zmieniający adres IP									*)
+(*	Działa na: CP6606-0020															*)
+(*_______________________________________________________________________________*)
+FUNCTION_BLOCK  FB_SetIPAddress
+VAR_INPUT
+	bSetIP				:	BOOL;
+	bDHCP				:	BOOL;
+	sMachineIP			: 	STRING(15);	(*192.168.1.14*)
+	sMachineMask		:	STRING(15);	(*255.255.255.0*)
+	sMachineGateway 	: 	STRING(15);	(*192.168.1.1*)
+END_VAR
+VAR_OUTPUT
+	bBusy				:	BOOL;
+	bError				:	BOOL;
+	nErrorID				:	UDINT;
+END_VAR
+VAR
+	iState				:	INT;
+	rtSetIP				:	R_TRIG;
+	fbRestart 			: 	NT_Reboot;
+	fbScan				: 	FB_MDP_ScanModules;
+	fbWrite				: 	FB_MDP_Write;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE iState OF
+0:
+	rtSetIP(CLK := bSetIP);
+	IF rtSetIP.Q THEN
+		iState := 10;
+		bBusy := TRUE;
+		bError := FALSE;
+		nErrorID := 0;
+	END_IF
+10:
+	fbScan(bExecute:=TRUE ,nModuleType:=eMDP_ModT_NIC ,iModIdx:=0);
+	IF NOT fbScan.bBusy THEN
+		IF NOT fbScan.bError THEN
+			iState := iState + 10;
+		ELSE
+			iState := 999;
+			nErrorID := fbScan.nErrID;
+		END_IF
+		fbScan( bExecute:= FALSE );
+	END_IF
+
+20: (* set DHCP *)
+	fbWrite.stMDP_DynAddr.nArea     := INT_TO_BYTE(eMDP_Area_ConfigArea);
+	fbWrite.stMDP_DynAddr.nModuleId := fbScan.nDynModuleId;
+	fbWrite.stMDP_DynAddr.nTableId  := 1;
+	fbWrite.stMDP_DynAddr.nSubIdx := 4;		(* DHCP *)
+	fbWrite(bExecute:= TRUE, pSrcBuf:= ADR(bDHCP),cbSrcBufLen:= SIZEOF(bDHCP));
+	IF NOT fbWrite.bBusy THEN
+		IF NOT fbWrite.bError THEN
+			iState := iState + 10;
+		ELSE
+			iState := 999;
+			nErrorID := fbWrite.nErrID;
+		END_IF
+		fbWrite( bExecute:= FALSE );
+	END_IF
+30:
+	fbWrite.stMDP_DynAddr.nSubIdx := 2;	(* IP address *)
+	fbWrite(bExecute:= TRUE, pSrcBuf:= ADR(sMachineIP),cbSrcBufLen:= INT_TO_UDINT(LEN(sMachineIP)));
+	IF NOT fbWrite.bBusy THEN
+		IF NOT fbWrite.bError THEN
+			iState := iState + 10;
+		ELSE
+			iState := 999;
+			nErrorID := fbWrite.nErrID;
+		END_IF
+		fbWrite( bExecute:= FALSE );
+	END_IF
+40:
+	fbWrite.stMDP_DynAddr.nSubIdx := 3;	(* Mask *)
+	fbWrite(bExecute:= TRUE, pSrcBuf:= ADR(sMachineMask), cbSrcBufLen:= INT_TO_UDINT(LEN(sMachineMask)));
+	IF NOT fbWrite.bBusy THEN
+		IF NOT fbWrite.bError THEN
+			iState := iState + 10;
+		ELSE
+			iState := 999;
+			nErrorID := fbWrite.nErrID;
+		END_IF
+		fbWrite( bExecute:= FALSE );
+	END_IF
+
+50:
+	fbWrite.stMDP_DynAddr.nSubIdx := 5;	(* Gateway *)
+	fbWrite(bExecute:= TRUE, pSrcBuf:= ADR(sMachineGateway), cbSrcBufLen:= INT_TO_UDINT(LEN(sMachineGateway)));
+	IF NOT fbWrite.bBusy THEN
+		IF NOT fbWrite.bError THEN
+			iState := iState + 10;
+		ELSE
+			iState := 999;
+			nErrorID := fbWrite.nErrID;
+		END_IF
+		fbWrite( bExecute:= FALSE );
+	END_IF
+60:
+	fbRestart(
+		NETID:= ,
+		DELAY:= ,
+		START:=TRUE ,
+		TMOUT:= ,
+		BUSY=> ,
+		ERR=> ,
+		ERRID=> );
+	IF NOT fbRestart.BUSY THEN
+		IF NOT fbRestart.ERR THEN
+			iState := 0;
+			bBusy := FALSE;
+		ELSE
+			iState := 999;
+			nErrorID := fbRestart.ERRID;
+		END_IF
+	END_IF
+999:
+	iState :=0;
+	bError := TRUE;
+	bBusy := FALSE;
+	fbWrite( bExecute:= FALSE );
+	fbRestart(START:=FALSE);
+	fbScan( bExecute:= FALSE );
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

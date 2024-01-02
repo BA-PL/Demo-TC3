@@ -1,0 +1,175 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_Worktime" Id="{e7cc3be5-9681-4134-92ef-4e4856bf0967}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************************)
+(*							Beckhoff Automation Poland													*)
+(*								FB_Worktime  v3															*)
+(*									3.11.2011															*)
+(*							v3 - unifikacja wejść i wyjść, przejście z j. polskiego na j. angielski		*)
+(*	Bloczek zliczajacy czas zalaczenia wejscia bInput													*)
+(*	Pozwala zadac wartosc startowa czasu lub dodac dowolna wartosc do mierzonego czasu					*)
+(*	Zliczony czas podaje w postaci sumarycznej liczy minut lub z podzialem na poszczegolne skladowe		*)
+(*	Posiada możliwość wpisania czasu (limitu), którego upłynięcie będzie sygnalizowane wyjściem  bLimit	*)
+(*______________________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Worktime
+VAR_INPUT
+	bInput : 			BOOL;				(*Gdy bInput = TRUE to zliczamy czas*)
+	bAdd : 				BOOL;				(*Dodanie do sumarycznego czasu wartości z wStartwDzien, wStartwGodz i wStartMinute*)
+	bReset :	 		BOOL;				(*Ustawienie jako czas sumaryczny wartosci wStartwDzien, wStartwGodz i wStartMinute*)
+	wStartDay: 			WORD;				(*Dodawana/ustawiana podczas resetu liczba dni*)
+	wStartHour: 		WORD;				(*Dodawana/ustawiana podczas resetu  liczba godzin*)
+	wStartMinute: 		WORD;				(*Dodawana/ustawiana podczas resetu liczba minut*)
+	wDaysLimit:			WORD;				(*Wprowadzanie limitu dni*)
+	wHoursLimit:		WORD;				(*Wprowadzanie limitu godzin*)
+	wMinutesLimit:		WORD;				(*Wprowadzanie limitu min*)
+END_VAR
+VAR_OUTPUT
+	bLimit:				BOOL;				(* Pokazuje czy upłynął zadany czas*)
+END_VAR
+VAR_IN_OUT
+	dwSummaryMinutes: 	DWORD;				(*Czas sumaryczny w minutach*)
+	wDays:				WORD;				(*Podzial na czesci*)
+	wHours:				WORD;
+	wMinutes:			WORD;
+END_VAR
+VAR
+	Odliczanie_Czasu: 	TON; 				(*Glowny timer liczacy*)
+	Obliczenia: 		TON; 				(*Timer ustalajacy co ile wykonywane sa obliczenia*)
+	rtDodaj: 			R_TRIG; 			(*Wyzwalanie dodania wartosci*)
+	rtReset: 			R_TRIG; 			(*Wyzwalanie resetu licznika*)
+	ftKoniecPracy: 		F_TRIG; 			(*Wykrycie konca zliczanego sygnalu*)
+	tET: 				TIME; 				(*Czas ktory uplynal od ostatniego zalaczenia sygnalu*)
+	bFirstCycle: 		BOOL	:=TRUE;		(*Flaga pierwszego cyklu*)
+	(*Aktualnie dodawany czas*)
+	wDodatkoweMinuty : 	WORD;
+	wDodatkoweGodziny : WORD;
+	wDodatkoweDni : 	WORD;
+	wMiliSek: 			DWORD;
+	(*Ostatnio zapisane wartosci*)
+	wMinOld: 			WORD;
+	wGodzOld: 			WORD;
+	wDzienOld: 			WORD;
+	dwSumMinOld: 		DWORD;
+	wMiliSekOld: 		DWORD;
+	(*Limit*)
+	wMinLimit:			WORD;
+	wGodzLimit:			WORD;
+	wDzienLimit:		WORD;
+	wMinOldLimit:		WORD;
+	wGodzOldLimit:		WORD;
+	wDzienOldLimit:		WORD;
+	wLimitDzienOld:		WORD;
+	wLimitGodzOld:		WORD;
+	wLimitMinOld:		WORD;
+
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Wpisanie wartosci z podtrzymania zasialnia*)
+	IF bFirstCycle THEN
+		wDzienOld := wDays;
+		wGodzOld := wHours;
+		wMinOld := wMinutes;
+		dwSumMinOld := dwSummaryMinutes;
+		bFirstCycle := FALSE;
+	END_IF
+(*Dodanie wartosci startowej*)
+	rtDodaj(CLK:=bAdd );
+	IF rtDodaj.Q THEN
+		wDodatkoweGodziny := ((wMinOld + wStartMinute) -((wMinOld + wStartMinute) MOD 60))/60;(*Obliczenie dodatkowych godzin*)
+		wDodatkoweDni := ((wGodzOld + wStartHour + wDodatkoweGodziny) -((wGodzOld + wStartHour + wDodatkoweGodziny )MOD 24))/24;(*Obliczenie dodatkowych dni*)
+		wDzienOld := wDzienOld + wStartDay + wDodatkoweDni;(*Obliczenie dni*)
+		wGodzOld := (wGodzOld + wStartHour + wDodatkoweGodziny) MOD 24; (*Dodanie godzin, jeżeli więcej niż 24, to dodanie zostanie to do dni*)
+		wMinOld := (wMinOld + wStartMinute) MOD 60; (*Dodanie minut, jeżeli więcej niż 60, to dodanie zostanie to do godziny*)
+		dwSumMinOld := dwSumMinOld + wStartDay*1440 + wStartHour*60 + wStartMinute; (*24*60 = 1440*)
+		wDays := wDzienOld; (*Przepisanie obliczen na wyjscia*)
+		wHours := wGodzOld;
+		wMinutes := wMinOld;
+		dwSummaryMinutes:= dwSumMinOld;
+	END_IF
+(*Reset licznika*)
+	rtReset(CLK:= bReset);
+	IF rtReset.Q THEN
+		wDodatkoweGodziny := (wStartMinute -(wStartMinute MOD 60))/60;(*Obliczenie dodatkowych godzin*)
+		wDodatkoweDni := ((wStartHour + wDodatkoweGodziny) -((wStartHour + wDodatkoweGodziny) MOD 24))/24;(*Obliczenie dodatkowych godzin*)
+		wDzienOld := wStartDay + wDodatkoweDni;(*Dodanie sumarycznego*)
+		wGodzOld := (wStartHour + wDodatkoweGodziny) MOD 24; (*Dodanie godzin, jeżeli więcej niż 24, to dodanie zostanie to do dni*)
+		wMinOld := wStartMinute MOD 60; (*Dodanie minut, jeżeli więcej niż 60, to dodanie zostanie to do godziny*)
+		dwSumMinOld := wStartDay*1440 + wStartHour*60 + wStartMinute;(*24*60 = 1440*)
+		wDays := wDzienOld;(*Przepisanie obliczen na wyjscia*)
+		wHours := wGodzOld;
+		wMinutes := wMinOld;
+		dwSummaryMinutes:= dwSumMinOld;
+	END_IF
+
+(*Zliczanie czasu pracy*)
+	ftKoniecPracy(CLK:= bInput OR Odliczanie_Czasu.Q, Q=> );
+	Odliczanie_Czasu(IN:= (bInput AND NOT Odliczanie_Czasu.Q AND NOT bReset) OR ftKoniecPracy.Q, PT:= T#24h, ET=> tET);
+	Obliczenia(IN:= NOT Obliczenia.Q, PT:= T#59s); (*Aby nie liczyc caly czas*)
+	IF ftKoniecPracy.Q THEN
+		wMiliSek := TIME_TO_DWORD(tET) + wMiliSekOld;
+		wDodatkoweMinuty := DWORD_TO_WORD(wMiliSek/60000) MOD 60; (*Obliczenie dodatkowych minut*)
+		wDodatkoweGodziny := DWORD_TO_WORD(wMiliSek/3600000) MOD 24; (*Obliczenie dodatkowych godzin 60 000*60 = 3 600 000*)
+		wDodatkoweDni := DWORD_TO_WORD(wMiliSek/86400000);(*Obliczenie dodatkowych dni 60000*60*24 = 86 400 000*)
+
+		wMinutes := (wMinOld + wDodatkoweMinuty) MOD 60;
+		wHours := (wGodzOld + wDodatkoweGodziny + ((wMinOld + wDodatkoweMinuty) - wMinutes)/60) MOD 24; (*Dodanie godzin, jeżeli więcej niż 24, to dodanie zostanie to do dni*)
+		wDays := wDzienOld + wDodatkoweDni + ((wGodzOld + wDodatkoweGodziny + ((wMinOld + wDodatkoweMinuty) - wMinutes)/60) - wHours)/24;(*Dodanie sumarycznego*)
+		dwSummaryMinutes := dwSumMinOld + DWORD_TO_WORD(wMiliSek/60000);
+		(*Przepisanie obliczen na wyjscia*)
+		wDzienOld := wDays;
+		wGodzOld := wHours;
+		wMinOld := wMinutes;
+		dwSumMinOld := dwSummaryMinutes;
+		wMiliSekOld := wMiliSek MOD 60000; (*Obliczenie ile mili sec zostalo nieuwzglednionych*)
+	ELSIF Obliczenia.Q THEN
+		wMiliSek := TIME_TO_DWORD(tET) + wMiliSekOld;
+		wDodatkoweMinuty := DWORD_TO_WORD(wMiliSek/60000) MOD 60; (*Obliczenie dodatkowych minut*)
+		wDodatkoweGodziny := DWORD_TO_WORD(wMiliSek/3600000) MOD 24; (*Obliczenie dodatkowych godzin*)
+		wDodatkoweDni := DWORD_TO_WORD(wMiliSek/86400000);(*Obliczenie dodatkowych dni*)
+		(*Przepisanie obliczen na wyjscia*)
+		wMinutes := (wMinOld + wDodatkoweMinuty) MOD 60;
+		wHours := (wGodzOld + wDodatkoweGodziny + ((wMinOld + wDodatkoweMinuty) - wMinutes)/60) MOD 24; (*Dodanie godzin, jeżeli więcej niż 24, to dodanie zostanie to do dni*)
+		wDays := wDzienOld + wDodatkoweDni + ((wGodzOld + wDodatkoweGodziny + ((wMinOld + wDodatkoweMinuty) - wMinutes)/60) - wHours)/24;(*Dodanie sumarycznego*)
+		dwSummaryMinutes := dwSumMinOld + DWORD_TO_WORD(wMiliSek/60000);
+	END_IF
+
+	IF Odliczanie_Czasu.Q THEN wDzienOld := wDzienOld + 1; END_IF (*Reset zegara po dobie, dodajemy 1 dzien*)
+
+(*Dodawanie limitu*)
+
+	IF 	wLimitDzienOld<>wDaysLimit OR wLimitGodzOld<>wHoursLimit OR wLimitMinOld<>wMinutesLimit THEN
+		wDodatkoweGodziny := (wMinutesLimit -(wMinutesLimit MOD 60))/60;(*Obliczenie dodatkowych godzin*)
+		wDodatkoweDni := ((wHoursLimit + wDodatkoweGodziny) -((wHoursLimit + wDodatkoweGodziny) MOD 24))/24;(*Obliczenie dodatkowych godzin*)
+		wDzienOldLimit := wDaysLimit + wDodatkoweDni;(*Dodanie sumarycznego*)
+		wGodzOldLimit := (wHoursLimit + wDodatkoweGodziny) MOD 24; (*Dodanie godzin, jeżeli więcej niż 24, to dodanie zostanie to do dni*)
+		wMinOldLimit := wMinutesLimit MOD 60; (*Dodanie minut, jeżeli więcej niż 60, to dodanie zostanie to do godziny*)
+		wDzienLimit := wDzienOldLimit;(*Przepisanie obliczen na wyjscia*)
+		wGodzLimit := wGodzOldLimit;
+		wMinLimit := wMinOldLimit;
+	END_IF
+(*sprawdzanie limitu*)
+	IF wDzienLimit<>0 OR wGodzLimit <>0 OR wMinLimit <>0 THEN
+		IF wDays > wDzienLimit THEN
+			bLimit:=TRUE;
+		ELSIF wDays=wDzienLimit THEN
+			IF wHours > wGodzLimit THEN
+				bLimit:=TRUE;
+			ELSIF wHours = wGodzLimit THEN
+				IF wMinutes >= wMinLimit THEN
+					bLimit:=TRUE;
+				ELSE
+					bLimit:=FALSE;
+				END_IF
+			ELSE
+				bLimit:=FALSE;
+			END_IF
+		ELSE
+			bLimit:=FALSE;
+		END_IF
+	END_IF
+	wLimitDzienOld:=wDaysLimit;
+	wLimitGodzOld:=wHoursLimit;
+	wLimitMinOld:=wMinutesLimit;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

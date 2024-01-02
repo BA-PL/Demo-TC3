@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TIMER" Id="{2d10ccdf-8e36-4806-8a58-5c4ec6ec2148}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK TIMER
+VAR_INPUT
+	IN 			: BOOL;		// Start input
+	RIN			: BOOL;		// Reset input
+END_VAR
+VAR_OUTPUT
+	ET			: TIME;		// Accumulated time
+END_VAR
+VAR
+	startTime 	: TIME;
+	inputTrig	: R_TRIG;
+	resetTrig	: R_TRIG;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Update start time *)
+inputTrig(CLK := IN AND NOT RIN);
+startTime := SEL(inputTrig.Q, startTime, TIME() - ET); 
+
+(* Reset timer *)
+resetTrig(CLK := RIN);
+ET := SEL(resetTrig.Q, ET, T#0S);
+
+(* Set output time *)
+ET 	:= SEL(IN AND NOT RIN, ET, TIME() - startTime);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

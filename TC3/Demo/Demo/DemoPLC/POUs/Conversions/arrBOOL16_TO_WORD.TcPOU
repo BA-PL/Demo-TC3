@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="arrBOOL16_TO_WORD" Id="{19278620-c04a-45c8-bab2-b79c3f8252d8}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************)
+(*							Beckhoff Automation Poland								*)
+(*								arrBOOL16_TO_WORD v1.0								*)
+(*									15.02.2010										*)
+(*		Funkcja tworząca zmienną typu WORD z tablicy 16 zmiennych typu BOOL			*)
+(*__________________________________________________________________________________*)
+FUNCTION arrBOOL16_TO_WORD : WORD
+VAR_INPUT
+	aBool16 : ARRAY [0..15] OF BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[arrBOOL16_TO_WORD.0 := aBool16[0];
+arrBOOL16_TO_WORD.1 := aBool16[1];
+arrBOOL16_TO_WORD.2 := aBool16[2];
+arrBOOL16_TO_WORD.3 := aBool16[3];
+arrBOOL16_TO_WORD.4 := aBool16[4];
+arrBOOL16_TO_WORD.5 := aBool16[5];
+arrBOOL16_TO_WORD.6 := aBool16[6];
+arrBOOL16_TO_WORD.7 := aBool16[7];
+arrBOOL16_TO_WORD.8 := aBool16[8];
+arrBOOL16_TO_WORD.9 := aBool16[9];
+arrBOOL16_TO_WORD.10 := aBool16[10];
+arrBOOL16_TO_WORD.11 := aBool16[11];
+arrBOOL16_TO_WORD.12 := aBool16[12];
+arrBOOL16_TO_WORD.13 := aBool16[13];
+arrBOOL16_TO_WORD.14 := aBool16[14];
+arrBOOL16_TO_WORD.15 := aBool16[15];]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

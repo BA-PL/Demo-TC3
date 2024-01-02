@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBConvDwordToArrBits" Id="{aec16199-8abf-4859-86d8-0b8ec4db748a}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBConvDwordToArrBits v1.0									*)
+(*									7.04.2009											*)
+(* 				This F returns the 32 corresponding ARRAY of bit values 				*)
+(*					for an input value of type ”double word”							*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBConvDwordToArrBits: ARRAY [0..31] OF BOOL
+VAR_INPUT
+	dwInput: DWORD;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_TBConvDwordToArrBits[0]:=dwInput.0;
+L_TBConvDwordToArrBits[1]:=dwInput.1;
+L_TBConvDwordToArrBits[2]:=dwInput.2;
+L_TBConvDwordToArrBits[3]:=dwInput.3;
+L_TBConvDwordToArrBits[4]:=dwInput.4;
+L_TBConvDwordToArrBits[5]:=dwInput.5;
+L_TBConvDwordToArrBits[6]:=dwInput.6;
+L_TBConvDwordToArrBits[7]:=dwInput.7;
+L_TBConvDwordToArrBits[8]:=dwInput.8;
+L_TBConvDwordToArrBits[9]:=dwInput.9;
+L_TBConvDwordToArrBits[10]:=dwInput.10;
+L_TBConvDwordToArrBits[11]:=dwInput.11;
+L_TBConvDwordToArrBits[12]:=dwInput.12;
+L_TBConvDwordToArrBits[13]:=dwInput.13;
+L_TBConvDwordToArrBits[14]:=dwInput.14;
+L_TBConvDwordToArrBits[15]:=dwInput.15;
+L_TBConvDwordToArrBits[16]:=dwInput.16;
+L_TBConvDwordToArrBits[17]:=dwInput.17;
+L_TBConvDwordToArrBits[18]:=dwInput.18;
+L_TBConvDwordToArrBits[19]:=dwInput.19;
+L_TBConvDwordToArrBits[20]:=dwInput.20;
+L_TBConvDwordToArrBits[21]:=dwInput.21;
+L_TBConvDwordToArrBits[22]:=dwInput.22;
+L_TBConvDwordToArrBits[23]:=dwInput.23;
+L_TBConvDwordToArrBits[24]:=dwInput.24;
+L_TBConvDwordToArrBits[25]:=dwInput.25;
+L_TBConvDwordToArrBits[26]:=dwInput.26;
+L_TBConvDwordToArrBits[27]:=dwInput.27;
+L_TBConvDwordToArrBits[28]:=dwInput.28;
+L_TBConvDwordToArrBits[29]:=dwInput.29;
+L_TBConvDwordToArrBits[30]:=dwInput.30;
+L_TBConvDwordToArrBits[31]:=dwInput.31;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

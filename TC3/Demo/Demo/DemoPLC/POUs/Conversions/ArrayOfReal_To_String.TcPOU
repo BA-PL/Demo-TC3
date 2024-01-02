@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="ArrayOfReal_To_String" Id="{5bdcb2c2-2068-4c2d-8fe2-692aa3b33e0d}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							ArrayOfReal_To_String	 v1.2								*)
+(*									30.12.2009											*)
+(*								v1.2 - dynamiczny rozmiar tablic						*)
+(*		Funkcja konwerująca tablicę zmiennych typu REAL na zmienną typu STRING(255)		*)
+(*		Zmienne typu REAL oddzielone są znakiem tabulacji ($t)							*)
+(*		Powstały napis nie posiada znaku końca linii ($n)								*)
+(*		Uwaga!!																			*)
+(*		Należy zwrócić uwagę na ilość znaków przypadającą na każdą zmienną typu REAL	*)
+(*______________________________________________________________________________________*)
+
+FUNCTION ArrayOfReal_To_String: STRING(255)
+VAR_INPUT
+	pData: POINTER TO REAL;
+	Length : 	UDINT;
+END_VAR
+VAR
+	pos : UDINT;
+	bBusy: BOOL;
+	sTemp: STRING(7);
+	rTemp: REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[pos := 1;
+REPEAT
+	IF pos > Length THEN
+		bBusy := FALSE;
+	ELSE
+		rTemp := pData^;
+		sTemp := LREAL_TO_FMTSTR(rTemp,2,TRUE);
+		ArrayOfReal_To_String := CONCAT( ArrayOfReal_To_String,CONCAT(sTemp,'$t'));
+		pos := pos + 4;
+		(* increment pointer *)
+		pData := pData+4;
+		bBusy := TRUE;
+	END_IF
+UNTIL  NOT bBusy
+END_REPEAT]]></ST>
+    </Implementation>
+    <LineIds Name="ArrayOfReal_To_String">
+      <LineId Id="3" Count="13" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

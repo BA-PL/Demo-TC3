@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="GRAYW_TO_WORD" Id="{18ed0d3f-424d-46cf-8b12-fcb1fd2aa7c2}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							GRAYW_TO_WORD	 v1.0										*)
+(*									29.12.2008											*)
+(*		Funkcja konwerująca wartosc wejsciowa typu WORD zapisana w kodzie Graya			*)
+(*						 na wartosc decymalna typu WORD									*)
+(*______________________________________________________________________________________*)
+FUNCTION GRAYW_TO_WORD : WORD
+VAR_INPUT
+	wIn:WORD;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[GRAYW_TO_WORD.15 := wIn.15 XOR 0;
+GRAYW_TO_WORD.14 := wIn.14 XOR GRAYW_TO_WORD.15;
+GRAYW_TO_WORD.13 := wIn.13 XOR GRAYW_TO_WORD.14;
+GRAYW_TO_WORD.12 := wIn.12 XOR GRAYW_TO_WORD.13;
+GRAYW_TO_WORD.11 := wIn.11 XOR GRAYW_TO_WORD.12;
+GRAYW_TO_WORD.10 := wIn.10 XOR GRAYW_TO_WORD.11;
+GRAYW_TO_WORD.9 := wIn.9 XOR GRAYW_TO_WORD.10;
+GRAYW_TO_WORD.8 := wIn.8 XOR GRAYW_TO_WORD.9;
+GRAYW_TO_WORD.7 := wIn.7 XOR GRAYW_TO_WORD.8;
+GRAYW_TO_WORD.6 := wIn.6 XOR GRAYW_TO_WORD.7;
+GRAYW_TO_WORD.5 := wIn.5 XOR GRAYW_TO_WORD.6;
+GRAYW_TO_WORD.4 := wIn.4 XOR GRAYW_TO_WORD.5;
+GRAYW_TO_WORD.3 := wIn.3 XOR GRAYW_TO_WORD.4;
+GRAYW_TO_WORD.2 := wIn.2 XOR GRAYW_TO_WORD.3;
+GRAYW_TO_WORD.1 := wIn.1 XOR GRAYW_TO_WORD.2;
+GRAYW_TO_WORD.0 := wIn.0 XOR GRAYW_TO_WORD.1;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

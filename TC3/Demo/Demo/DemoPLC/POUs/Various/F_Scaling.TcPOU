@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_Scaling" Id="{fd7f2724-0dcb-4582-bb37-1e9bd80eb0d2}" SpecialFunc="None">
+    <Declaration><![CDATA[(************************************************************************************)
+(*							Beckhoff Automation Poland								*)
+(*								F_Scaling v2										*)
+(*									3.11.2011										*)
+(*					Funkcja skalująca wartość wejściową rValue na wyjściową 		*)
+(*__________________________________________________________________________________*)
+FUNCTION F_Scaling: REAL
+VAR_INPUT
+	rValue	:	REAL;	(*Zmienna skalowana*)
+	rXmin	:	REAL;	(*Dolny zakres zmiennej przeskalowanej*)
+	rXmax	:	REAL;	(*Górny zakres zmiennej przeskalowanej*)
+	rYmin	:	REAL;	(*Dolny zakres zmiennej skalowanej*)
+	rYmax	:	REAL;	(*Górny zakres zmiennej skalowanej*)
+END_VAR
+VAR
+	rfA		:	REAL;	(*Wspólczynnik kierunkowy prostej*)
+	rfB		:	REAL;	(*Współczynnik przesunięcia prostej*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF (rValue > rXmax) THEN
+	F_Scaling := rYmax;
+ELSIF (rValue <= rXmin) THEN
+	F_Scaling := rYmin;
+ELSE
+	IF (((rXmax - rXmin) < 0.01) AND ((rXmax - rXmin) > -0.01)) THEN
+		F_Scaling := rYmin;
+	ELSE
+		rfA := (rYmax - rYmin) / (rXmax - rXmin);
+		rfB := rYmax - rfA * rXmax;
+		F_Scaling := rfA * rValue + rfB;
+	END_IF;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

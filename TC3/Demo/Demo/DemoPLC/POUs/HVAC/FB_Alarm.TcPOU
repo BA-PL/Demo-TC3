@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_Alarm" Id="{4efe4de0-50d4-4191-b4b4-b7584daa3b91}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_Alarm  v1												*)
+(*									27.05.2008												*)
+(*				Podstawowy blok funkcyjny kontroli alarmow									*)
+(*__________________________________________________________________________________________*)
+FUNCTION_BLOCK FB_Alarm
+VAR_INPUT
+	bIn:		BOOL;	(*sygnal wejsciowy alarmu*)
+	bAck:		BOOL;	(*sygnal potwierdzenia alarmu*)
+END_VAR
+VAR_OUTPUT
+	bOut1:		BOOL;	(*gdy zmienna =1  wystapil alarm*)
+	bOut2:		BOOL;	(*gdy zmienna = 1 wystapil alarm  i nie zostal zatwierdzony*)
+END_VAR
+VAR
+	lastin: 	BOOL;
+	lastAck: 	BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF lastIn<bIn THEN bOut1:=TRUE; bOut2:=TRUE; END_IF(*wystapil alarm*)
+IF lastAck<bAck AND bIn THEN bOut1:=TRUE; bOut2:=FALSE; END_IF(*alarm zostal zatwierdzony ale wciaz wystepuje  *)
+IF lastAck<bAck AND NOT bIn THEN bOut1:=FALSE; bOut2:=FALSE; END_IF
+IF lastIn>bIn AND bOut2=FALSE THEN bOut1:=FALSE; END_IF
+lastIn:=bIn;
+lastAck:=bAck;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

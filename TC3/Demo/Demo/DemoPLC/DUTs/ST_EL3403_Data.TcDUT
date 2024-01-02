@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="ST_EL3403_Data" Id="{a2503927-b180-49f8-a7b9-137f8451a63e}">
+    <Declaration><![CDATA[TYPE ST_EL3403_Data :
+STRUCT
+	rCurrent1				: REAL; (* Unit 1 A *)
+	rCurrent2				: REAL; (* Unit 1 A *)
+	rCurrent3				: REAL; (* Unit 1 A *)
+	rVoltage1				: REAL; (* Unit 1 V *)
+	rVoltage2				: REAL; (* Unit 1 V *)
+	rVoltage3				: REAL; (* Unit 1 V *)
+	rActivePower1			: REAL; (* Unit 1 W *)
+	rActivePower2			: REAL; (* Unit 1 W *)
+	rActivePower3			: REAL; (* Unit 1 W *)
+	rApparentPower1		: REAL; (* Unit 1 VA *)
+	rApparentPower2		: REAL; (* Unit 1 VA *)
+	rApparentPower3		: REAL; (* Unit 1 VA *)
+	rReactivePower1		: REAL; (* Unit 1 VAR *)
+	rReactivePower2		: REAL; (* Unit 1 VAR *)
+	rReactivePower3		: REAL; (* Unit 1 VAR *)
+	rEnergy1				: REAL; (* Unit 1 Wh *)
+	rEnergy2				: REAL; (* Unit 1 Wh *)
+	rEnergy3				: REAL; (* Unit 1 Wh *)
+	rCosPhi1				: REAL; (* Unit 1 *)
+	rCosPhi2				: REAL; (* Unit 1 *)
+	rCosPhi3				: REAL; (* Unit 1 *)
+	rFrequency1			: REAL; (* Unit 1 Hz *)
+	rFrequency2			: REAL; (* Unit 1 Hz *)
+	rFrequency3			: REAL; (* Unit 1 Hz *)
+	rEnergyNegative1		: REAL; (* Unit 1 Wh *)
+	rEnergyNegative2		: REAL; (* Unit 1 Wh *)
+	rEnergyNegative3		: REAL; (* Unit 1 Wh *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

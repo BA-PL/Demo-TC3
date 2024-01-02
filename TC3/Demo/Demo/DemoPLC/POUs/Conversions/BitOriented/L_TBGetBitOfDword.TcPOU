@@ -1,0 +1,86 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="L_TBGetBitOfDword" Id="{b0f87ecf-18c7-46fb-9c6e-3b60eccdfe9d}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							L_TBGetBitOfDword v1.0										*)
+(*									29.02.2007											*)
+(*		This function returns the state of a single bit within a ”double word” value	*)
+(*______________________________________________________________________________________*)
+FUNCTION L_TBGetBitOfDword : BOOL
+VAR_INPUT
+	dwInput:DWORD;
+	byBitNr:BYTE;
+END_VAR
+VAR
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE byBitNr OF
+	0:
+	L_TBGetBitOfDword:=dwInput.0;
+	1:
+	L_TBGetBitOfDword:=dwInput.1;
+	2:
+	L_TBGetBitOfDword:=dwInput.2;
+	3:
+	L_TBGetBitOfDword:=dwInput.3;
+	4:
+	L_TBGetBitOfDword:=dwInput.4;
+	5:
+	L_TBGetBitOfDword:=dwInput.5;
+	6:
+	L_TBGetBitOfDword:=dwInput.6;
+	7:
+	L_TBGetBitOfDword:=dwInput.7;
+	8:
+	L_TBGetBitOfDword:=dwInput.8;
+	9:
+	L_TBGetBitOfDword:=dwInput.9;
+	10:
+	L_TBGetBitOfDword:=dwInput.10;
+	11:
+	L_TBGetBitOfDword:=dwInput.11;
+	12:
+	L_TBGetBitOfDword:=dwInput.12;
+	13:
+	L_TBGetBitOfDword:=dwInput.13;
+	14:
+	L_TBGetBitOfDword:=dwInput.14;
+	15:
+	L_TBGetBitOfDword:=dwInput.15;
+	16:
+	L_TBGetBitOfDword:=dwInput.16;
+	17:
+	L_TBGetBitOfDword:=dwInput.17;
+	18:
+	L_TBGetBitOfDword:=dwInput.18;
+	19:
+	L_TBGetBitOfDword:=dwInput.19;
+	20:
+	L_TBGetBitOfDword:=dwInput.20;
+	21:
+	L_TBGetBitOfDword:=dwInput.21;
+	22:
+	L_TBGetBitOfDword:=dwInput.22;
+	23:
+	L_TBGetBitOfDword:=dwInput.23;
+	24:
+	L_TBGetBitOfDword:=dwInput.24;
+	25:
+	L_TBGetBitOfDword:=dwInput.25;
+	26:
+	L_TBGetBitOfDword:=dwInput.26;
+	27:
+	L_TBGetBitOfDword:=dwInput.27;
+	28:
+	L_TBGetBitOfDword:=dwInput.28;
+	29:
+	L_TBGetBitOfDword:=dwInput.29;
+	30:
+	L_TBGetBitOfDword:=dwInput.30;
+	31:
+	L_TBGetBitOfDword:=dwInput.31;
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

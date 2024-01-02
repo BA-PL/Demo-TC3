@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="F_Words_to_Real" Id="{4b7d83e9-860f-4642-8220-e277b0168541}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*							F_Words_to_Real													*)
+(*									12.05.2011												*)
+(*			Funkcja składa dwie wartości typu WORD  i zamienia na watrosc typu REAL			*)
+(*__________________________________________________________________________________________*)
+
+FUNCTION F_Words_to_Real : REAL
+VAR_INPUT
+	wUpperWord : WORD;
+	wLowerWord :WORD;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[MEMCPY(ADR(F_Words_to_Real),ADR(wUpperWord),2);
+MEMCPY(ADR(F_Words_to_Real)+2,ADR(wLowerWord),2);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

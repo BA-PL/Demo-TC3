@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_SimpleWorkTime" Id="{c9a69df4-bfc4-40bd-8953-4fbbee48153c}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									30.03.2017
+//	Proste zliczanie czasu pracy, podaje czas aktualnego zalaczenia, ostatniego zalaczenia, sumarycznego zalaczenia
+// 	v1.0	|| TC v 3.1.4020.32		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_SimpleWorkTime
+VAR_INPUT
+	bIn										: BOOL;
+	bReset									: BOOL;					// Zerowanie wartosci
+END_VAR
+VAR_OUTPUT
+	tCurrentTime							: TIME;					// Aktualny czas zalaczenia
+	tLastTime								: TIME;					// Ostatni czas zalaczenia
+	tSummaryTime							: TIME;					// Sumaryczny czas zalaczenia
+END_VAR
+VAR
+	fbTimeMeasure							: FB_TimeMeasureEx;		// Licznik czasu
+	tLastSummaryTime						: TIME;					// Zmienna do wewnetrznych przeliczen
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbTimeMeasure(bOn:= bIn, bReset := bReset, tCurrentTime=> tCurrentTime, tLastTime=> tLastTime);
+IF bIn THEN
+	tSummaryTime 		:= tLastSummaryTime + tCurrentTime;
+ELSE
+	tLastSummaryTime 	:= tSummaryTime;
+END_IF
+
+IF bReset THEN
+	tSummaryTime 		:= T#0S;
+	tLastSummaryTime 	:= T#0S;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SimpleWorkTime">
+      <LineId Id="16" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="23" Count="1" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="25" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

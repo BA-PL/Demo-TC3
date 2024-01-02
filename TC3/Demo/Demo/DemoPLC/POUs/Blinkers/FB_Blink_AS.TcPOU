@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <POU Name="FB_Blink_AS" Id="{308ba326-d075-48da-b682-df9e6ba1d528}" SpecialFunc="None">
+    <Declaration><![CDATA[(********************************************************************************************)
+(*							Beckhoff Automation Poland										*)
+(*								FB_Blink_AS	 v1.1											*)
+(*									9.11.2007												*)
+(*						Blok funkcyjny zegara asynchronicznego								*)
+(*__________________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_Blink_AS
+VAR_INPUT
+	T1										:	TIME;				(*Czas, gdy wyjście przyjmuje wartość TRUE*)
+	T0										:	TIME;				(*Czas, gdy wyjście przyjmuje wartość FALSE*)
+END_VAR
+VAR_OUTPUT
+	Q										:	BOOL;				(*Wyjscie*)
+END_VAR
+VAR
+	ton1									:	TON;
+	ton2									:	TON;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ton1(IN:= NOT ton2.Q, PT:=T0);
+Q:=ton1.Q;
+ton2(IN:=ton1.Q , PT:=T1);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

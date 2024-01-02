@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4019.2">
+  <DUT Name="ST_Holiday" Id="{f3b5d387-e062-4615-b491-95df005f1020}">
+    <Declaration><![CDATA[TYPE ST_Holiday :
+STRUCT
+	sName : STRING(30); 	(* holiday's name *)
+	wDay : WORD ;		(* holiday's day, part of date *)
+	wMonth : WORD;		(* holiday's month, part of date *)
+	iExecute : INT;		(* 0 - nie swietujemy, -1 = dzien wczesniej, +1 = dzien pozniej *)
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

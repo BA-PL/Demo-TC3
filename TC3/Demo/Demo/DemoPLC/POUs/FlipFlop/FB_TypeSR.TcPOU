@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_TypeSR" Id="{164dabca-5c6e-4c45-8813-834ae2986628}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*								FB_TypeSR  v1											*)
+(*									27.05.2008											*)
+(*				Bloczek przerzutnika SR	(przewaga SET)									*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_TypeSR
+VAR_INPUT
+	bR:			BOOL;
+	bS:			BOOL;
+END_VAR
+VAR_OUTPUT
+	bQ:			BOOL;
+END_VAR
+VAR
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF(bS=1) THEN bQ:=1;
+ELSIF(bR=1) THEN bQ:=0;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

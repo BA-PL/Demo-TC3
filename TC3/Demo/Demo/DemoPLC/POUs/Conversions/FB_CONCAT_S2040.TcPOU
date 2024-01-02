@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.3">
+  <POU Name="FB_CONCAT_S2040" Id="{d3074641-a858-4cd3-a972-98fd6cf00554}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*							FB_CONCAT_S2040	 v1.0										*)
+(*									24.5.2011											*)
+(*				Blok funkcyjny łączący do 8 zmiennych trypu STRING(max 255 znaków)		*)
+(*						w jedną zmienną typu ST_STRING_2040								*)
+(*______________________________________________________________________________________*)
+FUNCTION_BLOCK FB_CONCAT_S2040
+VAR_INPUT
+	sString1								:	STRING(255);
+END_VAR
+VAR
+	i										:	INT;				(*iterator*)
+	k										:	INT;				(*ostatni zaczety string*)
+	wLength									:	WORD;				(*dlugosc ostatniego STRINGa*)
+END_VAR
+VAR_IN_OUT
+	VeryLongString							:	ST_STRING_2040;
+END_VAR
+VAR_OUTPUT
+	wIloscWszystkichZnakow					:	WORD;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[k:=0;
+wLength:=0;
+FOR i := 1 TO 8 DO
+	IF LEN(VeryLongString[i]) <> 0 THEN
+		wLength := INT_TO_WORD(LEN(VeryLongString[i]));
+		k := i;
+	END_IF
+END_FOR
+(* Nie bylo jeszce nic wpisane *)
+IF k = 0 THEN
+	wIloscWszystkichZnakow := INT_TO_WORD(LEN(sString1));
+	MEMCPY(ADR(VeryLongString), ADR(sString1), INT_TO_UINT(LEN(sString1)));
+ELSE
+	wIloscWszystkichZnakow := INT_TO_WORD((k-1)*256+WORD_TO_INT(wLength));
+	IF (WORD_TO_INT(wIloscWszystkichZnakow)+LEN(sString1)) > 2047 THEN
+		MEMCPY(ADR(VeryLongString)+wIloscWszystkichZnakow, ADR(sString1), 2047 - wIloscWszystkichZnakow );
+	ELSE
+		MEMCPY(ADR(VeryLongString)+wIloscWszystkichZnakow, ADR(sString1), INT_TO_UINT(LEN(sString1)));
+	END_IF
+	wIloscWszystkichZnakow := int_to_word(word_to_int(wIloscWszystkichZnakow) + LEN(sString1));
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
