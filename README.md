@@ -1,2 +1,2 @@
 # Demo
-Demo project
+This project contains sample function blocks
