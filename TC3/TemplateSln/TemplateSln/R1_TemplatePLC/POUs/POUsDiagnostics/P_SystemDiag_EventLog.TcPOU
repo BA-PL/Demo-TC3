@@ -1,0 +1,314 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.4">
+  <POU Name="P_SystemDiag_EventLog" Id="{cb923396-3f21-4aea-84ad-bd1b8f90d78d}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									29.09.2020
+//	Program logowanie do EventLoggera wraz z zabepieczeniem przed zbyt szybkim logowaniem zdarzen
+//	Dziala tylko w polaczeniu z podprogramami i z blokami FB_AdvancedLogEvent, FB_AntiBlinkAlarmFilter
+// 
+//	v2.0	|| TC v 3.1.4024.10		|| Transformation to EventLogger TC 3 - in progress
+//	v1.2	|| TC v 3.1.4022.25		|| Usuniecie wejscia bEnable
+//	v1.1	|| TC v 3.1.4022.25		|| Dodane ACT_EtherCAT_ChangeCounter i Wejscie bEnable
+//	v1.0	|| TC v 3.1.4022.20		|| Pierwsza wersja
+//==================================================================================================
+PROGRAM P_SystemDiag_EventLog
+VAR
+(*//======================== Checks ===============================
+	fbBounds						: FB_AdvancedLogEvent;	// Logowanie wystapienia przekroczenia zakresu indexow
+	fbDivDint						: FB_AdvancedLogEvent;	// Logowanie wystapienia proby dzielenia DINT przez 0
+	fbDivLInt						: FB_AdvancedLogEvent;	// Logowanie wystapienia proby dzielenia LINT przez 0
+	fbDivLReal						: FB_AdvancedLogEvent;	// Logowanie wsytapienia proby dzielenia LREAL przez 0
+	fbDivReal						: FB_AdvancedLogEvent;	// Logowanie wystapienia proby dzielenia REAL przez 0
+	fbRangeSigned					: FB_AdvancedLogEvent;	// Logowanie wystapienia przekroczenia liczby znakowej
+	fbRangeUnsigned					: FB_AdvancedLogEvent;	// Logowanie wystapienia przekroczenia liczby bezznakowej
+	
+	fbBoundsBlockMessage			: FB_AdvancedLogEvent;	// Logowanie wystapienia przekroczenia zakresu indexow
+	fbDivDintBlockMessage			: FB_AdvancedLogEvent;	// Logowanie wystapienia proby dzielenia DINT przez 0
+	fbDivLIntBlockMessage			: FB_AdvancedLogEvent;	// Logowanie wystapienia proby dzielenia LINT przez 0
+	fbDivLRealBlockMessage			: FB_AdvancedLogEvent;	// Logowanie wsytapienia proby dzielenia LREAL przez 0
+	fbDivRealBlockMessage			: FB_AdvancedLogEvent;	// Logowanie wystapienia proby dzielenia REAL przez 0
+	fbRangeSignedBlockMessage		: FB_AdvancedLogEvent;	// Logowanie wystapienia przekroczenia liczby znakowej
+	fbRangeUnsignedBlockMessage		: FB_AdvancedLogEvent;	// Logowanie wystapienia przekroczenia liczby bezznakowej
+
+//===============================================================
+//======================= Persistent ============================
+	ftPersistentSave				: F_TRIG;
+	fbPersistentEventLoad			: FB_AdvancedLogEvent;
+	fbPersistentEventSave			: FB_AdvancedLogEvent;
+//===============================================================
+//======================== EtherCAT =============================
+	bEBusDiagLogPermission			: BOOL	:= TRUE;
+	bEBusInitialized				: BOOL;
+	iEBusIterator					: INT;
+	(*DevDiag SourceID 901*)
+	fbEBusDiag						: ARRAY[0..12] OF FB_AdvancedLogEvent;
+	fbEtherCATStateChanged			: FB_AdvancedLogEvent;		// ID: 101
+	fbEtherCATNotPresent			: FB_AdvancedLogEvent;		// ID: 102
+	(*FrmWcState SourceID 902*)
+	fbFrmWcDiag						: ARRAY[1..P_EtherCAT_Diag.iNumOfFrames] OF FB_AdvancedLogEvent;
+	stFrmDiag						: ARRAY[1..P_EtherCAT_Diag.iNumOfFrames] OF ST_FrmWcDiag;
+	fbString						: FB_FormatString;	(*Blok funkcyjny konwertujący FrmWcState na format binarny*)
+	tArg							: T_Arg;
+	//Filtrowanie zbyt częstego logowania
+	fbEBusDiagFilter				: ARRAY[0..12] OF FB_AntiBlinkAlarmFilter;
+	fbEBusDiagBlockMessage			: FB_AdvancedLogEvent;
+	bFrmDiagLogPermission			: ARRAY[1..P_EtherCAT_Diag.iNumOfFrames] OF BOOL;
+	fbFrmDiagFilter					: ARRAY[1..P_EtherCAT_Diag.iNumOfFrames] OF FB_AntiBlinkAlarmFilter;
+	fbFrmDiagBlockMessage			: ARRAY[1..P_EtherCAT_Diag.iNumOfFrames] OF FB_AdvancedLogEvent;
+//===============================================================
+//========================== KBus ===============================
+	fbKBusDiag						: ARRAY[0..15] OF FB_AdvancedLogEvent;
+	nKbusIterator					: INT;
+	bKBusDiagLogPermission			: BOOL := TRUE;
+	fbKBusDiagFilter				: ARRAY[0..15] OF FB_AntiBlinkAlarmFilter;
+	fbKBusDiagBlockMessage			: FB_AdvancedLogEvent;
+//===============================================================
+*)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ACT_Checks();
+ACT_PersistentLogs();
+ACT_EtherCAT_Diag();
+ACT_EtherCAT_ChangeCounter();
+// ACT_KBus(); 
+//===============================================================
+//==================== In preparation ===========================
+//======================== TaskInfo =============================
+//===============================================================]]></ST>
+    </Implementation>
+    <Action Name="ACT_Checks" Id="{bf30234b-914c-4aa8-8055-5f231e67ab9e}">
+      <Implementation>
+        <ST><![CDATA[(*fbBounds(
+	bSetEvent		:= P_Checks.bCheckBounds,
+	eEventClass 	:= TCEVENTCLASS_ALARM,
+	bQuit			:= FALSE, 
+	udiSourceID		:= 905, 
+	udiEventID		:= 1);
+
+fbDivDint(
+	bSetEvent		:= P_Checks.bCheckDivDint,
+	eEventClass 	:= TCEVENTCLASS_ALARM,
+	bQuit			:= FALSE, 
+	udiSourceID		:= 905, 
+	udiEventID		:= 2);
+	
+fbDivLInt(
+	bSetEvent		:= P_Checks.bCheckDivLInt,
+	eEventClass 	:= TCEVENTCLASS_ALARM,
+	bQuit			:= FALSE, 
+	udiSourceID		:= 905, 
+	udiEventID		:= 3);
+	
+fbDivLReal(
+	bSetEvent		:= P_Checks.bCheckDivLReal,
+	eEventClass 	:= TCEVENTCLASS_ALARM,
+	bQuit			:= FALSE, 
+	udiSourceID		:= 905, 
+	udiEventID		:= 4);
+	
+fbDivReal(
+	bSetEvent		:= P_Checks.bCheckDivReal,
+	eEventClass 	:= TCEVENTCLASS_ALARM,
+	bQuit			:= FALSE, 
+	udiSourceID		:= 905, 
+	udiEventID		:= 5);
+	
+fbRangeSigned(
+	bSetEvent		:= P_Checks.bCheckRangeSigned,
+	eEventClass 	:= TCEVENTCLASS_ALARM,
+	bQuit			:= FALSE, 
+	udiSourceID		:= 905, 
+	udiEventID		:= 6);
+	
+fbRangeUnsigned(
+	bSetEvent		:= P_Checks.bCheckRangeUnsigned,
+	eEventClass 	:= TCEVENTCLASS_ALARM,
+	bQuit			:= FALSE, 
+	udiSourceID		:= 905, 
+	udiEventID		:= 7);
+	*)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_EtherCAT_ChangeCounter" Id="{74926e62-383b-42c2-8b99-9f72b6032f98}">
+      <Implementation>
+        <ST><![CDATA[(*fbEtherCATStateChanged(	bSetEvent		:= P_EtherCAT_ChangeCounter.bAbnormalStateChangeCounterChanged, 
+						bQuit			:= FALSE, 
+						udiSourceID		:= 901, 
+						udiEventID		:= 101, 
+						sFormat			:= '%d', 
+						eEventClass		:= TCEVENTCLASS_ALARM, 
+						pDataAddress	:= ADR(P_EtherCAT_ChangeCounter.wAbnormalStateChangeCounterPosition), 
+						udiDataLenght	:= SIZEOF(P_EtherCAT_ChangeCounter.wAbnormalStateChangeCounterPosition));
+
+fbEtherCATNotPresent(	bSetEvent		:= P_EtherCAT_ChangeCounter.bPresentStateChangeCounterChanged, 
+						bQuit			:= FALSE, 
+						udiSourceID		:= 901, 
+						udiEventID		:= 102, 
+						sFormat			:= '%d', 
+						eEventClass		:= TCEVENTCLASS_ALARM, 
+						pDataAddress	:= ADR(P_EtherCAT_ChangeCounter.wPresentStateChangeCounterPosition), 
+						udiDataLenght	:= SIZEOF(P_EtherCAT_ChangeCounter.wPresentStateChangeCounterPosition));
+*)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_EtherCAT_Diag" Id="{eac05f83-10c0-4f1b-b976-e2e4de7f4eba}">
+      <Implementation>
+        <ST><![CDATA[(*// Wstępne zezwolenie na logowanie alarmów
+IF NOT bEBusInitialized THEN
+	FOR iEBusIterator := 1 TO P_EtherCAT_Diag.iNumOfFrames DO
+		bFrmDiagLogPermission[iEBusIterator]	:= TRUE;
+	END_FOR
+	bEBusInitialized					:= TRUE;
+END_IF
+
+// DevState
+FOR iEBusIterator := 0 TO 12 DO
+	fbEBusDiag[iEBusIterator](
+						bSetEvent		:= GETBIT32(P_EtherCAT_Diag.uiDevState,INT_TO_SINT(iEBusIterator)) AND bEBusDiagLogPermission,
+						eEventClass 	:= TCEVENTCLASS_ALARM,
+						bQuit			:= FALSE,
+						udiSourceID		:= 901,
+						udiEventID		:= INT_TO_UDINT(iEBusIterator + 1));
+END_FOR
+
+// FrmWcState
+FOR iEBusIterator := 1 TO P_EtherCAT_Diag.iNumOfFrames DO
+	stFrmDiag[iEBusIterator].iNum		:= iEBusIterator;
+	IF P_EtherCAT_Diag.uiFrmWcState[iEBusIterator] <> 0 THEN
+		tArg.cbLen						:= SIZEOF(P_EtherCAT_Diag.uiFrmWcState[iEBusIterator]);
+		tArg.eType						:= ARGTYPE_UINT;
+		tArg.pData						:= ADR(P_EtherCAT_Diag.uiFrmWcState[iEBusIterator]);
+		fbString(sFormat := '%b', arg1 := tArg);
+		stFrmDiag[iEBusIterator].sBin 	:= fbString.sOut;
+	END_IF
+	fbFrmWcDiag[iEBusIterator](
+						bSetEvent		:= NOT(P_EtherCAT_Diag.uiFrmWcState[iEBusIterator] = 0) AND bFrmDiagLogPermission[iEBusIterator],
+						eEventClass 	:= TCEVENTCLASS_ALARM,
+						bQuit			:= FALSE, 
+						udiSourceID		:= 902,
+						udiEventID		:= INT_TO_UDINT(iEBusIterator),
+						sFormat			:= '%d%s',
+						pDataAddress	:= ADR(stFrmDiag[iEBusIterator]),
+						udiDataLenght	:= SIZEOF(stFrmDiag[iEBusIterator]) );
+END_FOR
+*)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_KBus" Id="{f2220261-d217-49c1-9db3-2e8af02cbded}">
+      <Implementation>
+        <ST><![CDATA[(*// Send errors to event logger
+FOR nKbusIterator := 0 TO 15 DO
+	fbKBusDiag[nKbusIterator](
+		bSetEvent					:= GETBIT32(P_KBus.uiKbusState,INT_TO_SINT(nKbusIterator)) AND bKBusDiagLogPermission,	// maskowanie bitów
+		eEventClass 				:= TCEVENTCLASS_ALARM,
+		bQuit						:= FALSE,
+		udiSourceID					:= 904,
+		udiEventID					:= INT_TO_UDINT(nKbusIterator),
+		sFormat						:= '');
+	// Filter
+	fbKBusDiagFilter[nKbusIterator](bEvent := GETBIT32(P_KBus.uiKbusState,INT_TO_SINT(nKbusIterator)),
+		tTime						:= T#1S,
+		uiLimit						:= 2,
+		bPermission					:= bKBusDiagLogPermission);
+END_FOR
+
+fbKBusDiagBlockMessage(
+	bSetEvent						:= NOT bKBusDiagLogPermission,
+	eEventClass 					:= TCEVENTCLASS_MESSAGE,
+	bQuit							:= FALSE , 
+	udiSourceID						:= 904, 
+	udiEventID						:= 100);
+	*)]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_PersistentLogs" Id="{787a2af1-2c36-47ba-9b83-895b520b042c}">
+      <Implementation>
+        <ST><![CDATA[(*IF _TaskInfo[1].FirstCycle THEN
+	fbPersistentEventLoad.bSetEvent 			:= TRUE;
+	IF _AppInfo.BootDataLoaded AND _AppInfo.OldBootData = FALSE THEN 	// wczytano poprawnie zmienne nieulotne
+		fbPersistentEventLoad.udiEventID		:= 1;
+		fbPersistentEventLoad.eEventClass		:= TCEVENTCLASS_MESSAGE;
+	ELSIF _AppInfo.BootDataLoaded AND _AppInfo.OldBootData THEN 		// wczytano zmienne z kopii
+		fbPersistentEventLoad.udiEventID		:= 2;
+		fbPersistentEventLoad.eEventClass		:= TCEVENTCLASS_WARNING;
+	ELSE //blad wczytania zmiennych
+		fbPersistentEventLoad.udiEventID		:= 3;
+		fbPersistentEventLoad.eEventClass		:= TCEVENTCLASS_ALARM;
+	END_IF
+ELSE
+	//gdy nie wczytało zmiennych nieulotnych to wyswietlaj ostrzezenie w eventach aktywnych
+	IF NOT (_AppInfo.BootDataLoaded = FALSE AND _AppInfo.OldBootData = FALSE) THEN
+		fbPersistentEventLoad.bSetEvent			:= FALSE;
+	END_IF
+END_IF
+
+fbPersistentEventLoad(udiSourceID := 900);
+
+ftPersistentSave (CLK := P_Persistent.fbWritePersistentData.BUSY);
+IF ftPersistentSave.Q THEN
+	fbPersistentEventSave.bSetEvent 			:= TRUE;
+	IF P_Persistent.fbWritePersistentData.ERR THEN
+		fbPersistentEventSave.sFormat 			:= '%d';
+		fbPersistentEventSave.udiEventID		:= 11;
+		fbPersistentEventSave.eEventClass		:= TCEVENTCLASS_ALARM;
+		fbPersistentEventSave.pDataAddress		:= ADR(P_Persistent.fbWritePersistentData.ERRID);
+		fbPersistentEventSave.udiDataLenght		:= SIZEOF(P_Persistent.fbWritePersistentData.ERRID);
+	ELSE
+		fbPersistentEventSave.sFormat			:= '';
+		fbPersistentEventSave.udiEventID		:= 10;
+		fbPersistentEventSave.eEventClass		:= TCEVENTCLASS_MESSAGE;
+	END_IF
+ELSE
+	fbPersistentEventSave.bSetEvent				:= FALSE;
+END_IF
+
+fbPersistentEventSave(udiSourceID:= 900);
+*)]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="P_SystemDiag_EventLog">
+      <LineId Id="389" Count="7" />
+      <LineId Id="109" Count="0" />
+    </LineIds>
+    <LineIds Name="P_SystemDiag_EventLog.ACT_Checks">
+      <LineId Id="74" Count="0" />
+      <LineId Id="3" Count="3" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="26" Count="39" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="75" Count="0" />
+    </LineIds>
+    <LineIds Name="P_SystemDiag_EventLog.ACT_EtherCAT_ChangeCounter">
+      <LineId Id="25" Count="0" />
+      <LineId Id="27" Count="5" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="40" Count="6" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="P_SystemDiag_EventLog.ACT_EtherCAT_Diag">
+      <LineId Id="52" Count="36" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="89" Count="0" />
+    </LineIds>
+    <LineIds Name="P_SystemDiag_EventLog.ACT_KBus">
+      <LineId Id="2" Count="7" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="29" Count="2" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="16" Count="4" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="32" Count="0" />
+    </LineIds>
+    <LineIds Name="P_SystemDiag_EventLog.ACT_PersistentLogs">
+      <LineId Id="61" Count="38" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="100" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

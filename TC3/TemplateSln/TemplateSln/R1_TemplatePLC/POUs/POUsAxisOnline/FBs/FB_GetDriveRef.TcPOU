@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_GetDriveRef" Id="{8789b1f0-f301-49cd-bbfe-fee0e4d04569}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									28.03.2018
+//	Blok funkcyjny tworzacy strukture ST_DriveRef z AXIS_REF
+//	Przydatny w komunikacji CoE w AX8000
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_GetDriveRef
+VAR_INPUT
+	bExecute								: BOOL;							// rising edge starts sequence
+END_VAR
+VAR_OUTPUT
+	bBusy									: BOOL;
+	bError									: BOOL;	
+	udiErrorID								: UDINT;						// bError=TRUE AND udiErrorID=0 means state request timeout
+	stDriveRef								: ST_DriveRef;					// come from stPlcDriveRef
+END_VAR
+VAR_IN_OUT
+	Axis									: AXIS_REF;
+END_VAR
+VAR
+	fbAdsRead								: ADSREAD;
+	ftADSRead								: F_TRIG;
+	stPlcDriveRef							: ST_PlcDriveRef;				// ADS buffer (need to change aNetId into sNetId)
+END_VAR
+VAR CONSTANT
+	NCIDXG_AXPARMS							: UDINT			:= 16#4000;		// ADS group number to axis parameters 
+	NCIDXO_AXP_HWAMSADDR					: UDINT			:= 16#31;		// ADS offset to drive channel
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbAdsRead(	NETID			:= '', 
+			PORT			:= AMSPORT_R0_NC, 								// set ADS Port to NC
+			IDXGRP			:= NCIDXG_AXPARMS + Axis.NcToPlc.AxisId,		// set ADS Group to AXIS Parameters 
+			IDXOFFS			:= NCIDXO_AXP_HWAMSADDR,						// set ADS offset to channel number 
+			LEN				:= SIZEOF(stPlcDriveRef), 
+			DESTADDR		:= ADR(stPlcDriveRef), 
+			READ			:= bExecute, 
+			BUSY			=> bBusy, 
+			ERR				=> bError, 
+			ERRID			=> udiErrorID);
+			
+ftADSRead(CLK:= bBusy);
+
+IF ftADSRead.Q AND NOT fbAdsRead.ERR THEN	
+	stDriveRef.sNetId		:= F_CreateAmsNetId(stPlcDriveRef.aNetId);		// change AmsNetId array into string
+	stDriveRef.nSlaveAddr	:= stPlcDriveRef.nSlaveAddr;
+	stDriveRef.nDriveNo		:= stPlcDriveRef.nDriveNo;			
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_GetDriveRef">
+      <LineId Id="556" Count="16" />
+      <LineId Id="336" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

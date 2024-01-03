@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_KBusState" Id="{abc3fe6b-abe9-4b0a-9c03-ad12eee4bf9f}">
+    <Declaration><![CDATA[TYPE ST_KBusState :							// K_Bus_diagnostic flags structure
+STRUCT
+		bK_BusErr				:	BOOL;	// Bit 0 = K-Bus Err
+		bTerminalStateErr		:	BOOL;	// Bit 1 = Terminal State Err
+		bProcessDataLengthErr	:	BOOL;	// Bit 2 = Process Data Length Err
+		bK_BusInvalid			:	BOOL;	// Bit 7 = K-Bus invalid
+		bNoValidInputs			:	BOOL;	// Bit 8 = No valid Inputs
+		bK_BusInputUpdateBusy	:	BOOL;	// Bit 9 = K-Bus Input Update busy
+		bK_BusOutputUpdateBusy	:	BOOL;	// Bit 10 = K-Bus Output Update busy
+		bWatchDogErr			:	BOOL;	// Bit 11 = Watchdog Err
+		bAcycFunctionActive		:	BOOL;	// Bit 15 = Acyc. Function atcive (e.g. K-Bus Reset)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

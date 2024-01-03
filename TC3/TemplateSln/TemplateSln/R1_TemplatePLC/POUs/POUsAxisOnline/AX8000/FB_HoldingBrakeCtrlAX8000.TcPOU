@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_HoldingBrakeCtrlAX8000" Id="{53f74e01-16e6-4f84-b28b-e957b293a916}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									12.04.2018
+//	Blok funkcyjny kontroli luzownika w silniku podpietym do AX8000. Przewaga ForceLock
+//	Dzialania na obiekcie: 3000:07 Motor brake force
+//	Index:			AxisMainSlot: 16#3000 (Ch A)/ 16#3400 (Ch B)
+//	Subindex:		16#07
+//	Datatype:		ENUM (INT16)
+//	Enum Value:		0 (0x00): 	Release_force
+//					1 (0x01): 	Force_lock
+//					2 (0x02): 	Force_unlock
+//
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_HoldingBrakeCtrlAX8000
+VAR_INPUT
+	bForceLock 						: BOOL;								// 
+	bForceUnlock					: BOOL;								// 
+	stDriveRef						: ST_DriveRef;
+END_VAR
+VAR_OUTPUT
+	bBusy							: BOOL;
+	bError							: BOOL; 							// General error: parameter or CoE read.
+																		// If bError = TRUE and bInitialized = FALSE - error during read motor data.
+																		// If bError = TRUE and bInitialized = TRUE and (iAdsErrId <> 0 or iCANopenErrId <> 0) then I2T read error
+																		// If bError = TRUE and bInitialized = TRUE and iAdsErrId = 0 and iCANopenErrId = 0 then parameter error: rTorqueLimit outside permitted range rTorqueLimitLow..rTorqueLimitHigh or Empty stDriveRef
+	iAdsErrId						: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	iCANopenErrId					: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+END_VAR
+VAR
+	bExecute						: BOOL;
+	iMotorBrakeForce				: INT;								// 0 - Release_force, 1 - Force_lock, 2 - Force_unlock
+	rtForceLock						: R_TRIG;
+	rtForceUnlock					: R_TRIG;
+	ftForceLock						: F_TRIG;
+	ftForceUnlock					: F_TRIG;
+	fbForceLockUnlock				: FB_CoEWrite_ByDriveRef;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[{region "Call triggers"}
+//======================= Call triggers =========================
+rtForceLock(CLK:= bForceLock);
+ftForceLock(CLK:= bForceLock);
+rtForceUnlock(CLK:= bForceUnlock);
+ftForceUnlock(CLK:= bForceUnlock);
+bExecute								:= rtForceLock.Q OR ftForceLock.Q OR rtForceUnlock.Q OR ftForceUnlock.Q;
+//===============================================================
+{endregion}
+{region "Main code"}
+//========================= Main code ===========================
+IF bExecute THEN
+	iMotorBrakeForce 						:= 0;										// Clear value
+	iMotorBrakeForce.1 						:= bForceUnlock;							// Set force unlock bit
+	iMotorBrakeForce 						:= SEL(bForceLock, iMotorBrakeForce, 1);	// Set force lock bit, it has higher priority than unlock
+END_IF
+
+fbForceLockUnlock(	stDriveRef				:= stDriveRef, 
+					nIndex					:= 16#3000 + (stDriveRef.nDriveNo * 16#400), 
+					nSubIndex				:= 16#07, 
+					pSrcBuf					:= ADR(iMotorBrakeForce), 
+					cbBufLen				:= SIZEOF(iMotorBrakeForce), 
+					bExecute				:= bExecute,
+					bBusy					=> bBusy, 
+					bError					=> bError, 
+					iAdsErrId				=> iAdsErrId, 
+					iCANopenErrId			=> iCANopenErrId);
+//===============================================================
+{endregion}]]></ST>
+    </Implementation>
+    <LineIds Name="FB_HoldingBrakeCtrlAX8000">
+      <LineId Id="50" Count="1" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="129" Count="14" />
+      <LineId Id="127" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="126" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

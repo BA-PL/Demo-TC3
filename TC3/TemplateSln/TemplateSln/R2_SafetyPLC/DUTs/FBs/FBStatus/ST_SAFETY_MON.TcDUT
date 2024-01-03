@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_MON" Id="{7ce8de5e-1c02-4e13-9424-01f1fd6dca13}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_MON :
+STRUCT
+	{attribute 'hide'}
+	BUnknown						: BYTE;
+	BState							: BYTE;
+(* wDiagnosis *)
+	bDiag_DiscErrorMONIn1_2			: BIT; 		(* Discrepancy error input group 1 (MONIn1/2) *)
+	bDiag_DiscErrorMONIn3_4			: BIT;		(* Discrepancy error input group 2 (MONIn3/4) *)
+	bDiag_DiscErrorMONInSec			: BIT;		(* Discrepancy error in Secure input group (MONInSec)*) 
+	{attribute 'hide'}
+	bDiagBIT3						: BIT; 		(* Empty *)
+	bDiag_EDM1Error					: BIT;		(* EDM monitoring error EDM1*)
+	bDiag_EDM2Error					: BIT;		(* EDM monitoring error EDM2*) 
+	{attribute 'hide'}
+	bDiagBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT10						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT11						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT15						: BIT; 		(* Empty *)
+(* wInputs *)
+	bIn_Restart						: BIT; 		(* .0 *)
+	bIn_EDM1						: BIT; 		(* .1 *)
+	bIn_EDM2						: BIT; 		(* .2 *)
+	bIn_MONSec1						: BIT; 		(* .3 *)
+	bIn_MONSec2						: BIT; 		(* .4 *)
+	{attribute 'hide'}
+	bInputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT7						: BIT; 		(* Empty *)
+	bIn_MONIn1						: BIT; 		(* .8 *)
+	bIn_MONIn2						: BIT; 		(* .9 *)
+	bIn_MONIn3						: BIT; 		(* .10 *)
+	bIn_MONIn4						: BIT; 		(* .11 *)
+	{attribute 'hide'}
+	bInputBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT15						: BIT; 		(* Empty *)
+(* wOutputs *)
+	bOut_Error						: BIT; 		(* .0 *)
+	bOut_MONOut						: BIT; 		(* .1 *)
+	bOut_MONDelOut					: BIT; 		(* .2 *)
+	{attribute 'hide'}
+	bOutputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT10					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT11					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT12					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT13					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT14					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT15					: BIT; 		(* Empty *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

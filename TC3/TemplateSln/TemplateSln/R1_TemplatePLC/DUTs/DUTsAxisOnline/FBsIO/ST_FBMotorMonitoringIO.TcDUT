@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_FBMotorMonitoringIO" Id="{fd46209f-d900-476c-a1cf-055b86bee058}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									21.05.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_FBMotorMonitoringIO:
+STRUCT
+	bReset							: BOOL;								// Reset FB
+	rTorqueLimit					: REAL		:=	500; 				// Bipolar torque limit: 0-500%, resolution 0.1%, value goes to: 16#6072 (Ch A)/ 16#6872 (Ch B)
+
+	bError							: BOOL; 							// General error: parameter or CoE read.
+																		// If bError = TRUE and bInitialized = FALSE - error during read motor data.
+																		// If bError = TRUE and bInitialized = TRUE and (iAdsErrId <> 0 or iCANopenErrId <> 0) then I2T read error
+																		// If bError = TRUE and bInitialized = TRUE and iAdsErrId = 0 and iCANopenErrId = 0 then parameter error: rTorqueLimit outside permitted range rTorqueLimitLow..rTorqueLimitHigh or Empty stDriveRef
+	uiAdsErrId						: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	uiSecErrId						: UINT;								// Sercos Error ID for AX5000, CanOpen error ID for AX8000
+	bInitialized					: BOOL;								// TRUE - Motor data read without errors, so it's possible to calculate torqe and current values in metric units
+	bWarning						: BOOL;								// rCurrentF > rWarningCurrent, be aware to be over permitted range
+	rWarningCurrent					: REAL; 							// Continuous Stall Current - motor parameter: 16#6075 (Ch A)/ 16#6875 (Ch B); scalled: [A]
+	rTorquePerc						: REAL;								// [%]
+	rTorquePercMax					: REAL;								// Max [%]
+	rTorque							: REAL; 							// [Nm]
+	rTorqueF						: REAL;								// Filtered [Nm]
+	rTorqueMax						: REAL;								// Max [Nm]
+	rCurrent						: REAL; 							// [A]
+	rCurrentF						: REAL;								// Filtered [A]
+	rCurrentMax						: REAL;								// Max [A]
+	rI2T							: REAL; 							// Thermal Motor Utilization: 16#32C1:02 (Ch A)/ 16#36C1:02 (Ch B); units: [%]
+	rI2TMax							: REAL; 							// Max % Nominal
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

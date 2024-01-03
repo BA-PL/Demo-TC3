@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_AntiBlinkAlarmFilter" Id="{ee86e843-ab76-4901-a36e-d9e2f7a1a2fa}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//								FB_AntiBlinkAlarmFilter
+//									20.12.2016
+//				Blok służący do wyłączania logowania zdarzeń które pojawiają się zbyt często
+// 	v1.0 || TC v 3.1.4020.28 || - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_AntiBlinkAlarmFilter
+VAR_INPUT
+	bEvent			: BOOL;		// Status zdarzenia
+	tTime			: TIME;		// Zadane okno czasowe
+	uiLimit			: UINT;		// Maksymalna liczba zdarzeń jaka może się pojawić w oknie czasowym
+END_VAR
+VAR_IN_OUT
+	bPermission		: BOOL;		// Flaga zezwolenia na logowanie zdarzeń
+END_VAR
+VAR
+	tStartTime		: TIME;		// Zmienna przechowująca czas rozpoczęcia zliczania
+	uiActCount		: UINT;		// Aktualna wartość licznika
+	rtEdge			: R_TRIG;	// Zbocze narastające
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtEdge(CLK:=bEvent);
+IF rtEdge.Q THEN							// Blok podejmuje akcję w przypadku wystapienia zdarzenia
+	IF uiActCount = 0 THEN	
+		tStartTime		:= TIME();			// W przypadku gdy licznik wynosi zero, zapisywany jest czas rozpoczęcia zliczania
+	END_IF
+	uiActCount			:= uiActCount + 1;	// Inkrementacja licznika liczby zdarzeń
+	IF uiActcount >= uiLimit THEN			// W przypadku gdy liczba zdarzeń osiągnie zadany limit, sprawdzany jest czas w jakim one wystapiły. Jeśli czas jest większy niż dopuszczalny, resetowana jest flaga zezwolenia
+		IF TIME() - tStartTime < tTime THEN
+			bPermission	:= FALSE;		
+		END_IF
+		uiActCount 		:= 0;
+	END_IF
+	IF NOT bPermission THEN
+		uiActCount		:= 0;
+	END_IF
+END_IF;]]></ST>
+    </Implementation>
+    <LineIds Name="FB_AntiBlinkAlarmFilter">
+      <LineId Id="51" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="30" Count="1" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="37" Count="1" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="58" Count="2" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

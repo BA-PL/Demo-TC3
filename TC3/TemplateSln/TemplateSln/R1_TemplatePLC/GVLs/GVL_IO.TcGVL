@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <GVL Name="GVL_IO" Id="{ddfb60a6-ca8e-46a4-96e6-75eb11b7fa38}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+// =============== SAMPLE NAMES =================
+
+	di_PBStart 					AT %I*	: BOOL;					// Push button - Start
+	di_PBStop 					AT %I*	: BOOL;					// Push button - Stop
+	di_PBReset 					AT %I*	: BOOL;					// Push button - Reset
+// ==============================================
+// =================== SAFETY ===================
+	bSAFETY_Error				AT %I*	: BOOL;
+	bSAFETY_ResetCMD 			AT %Q*	: BOOL;
+	bSAFETY_ResetBusy			AT %I*	: BOOL;
+	bSAFETY_PermissionSS1		AT %I*	: BOOL; 				// Sygnal NC - TRUE - pozwolenie na prace
+	bSAFETY_PermissionSS2		AT %I*	: BOOL; 				// Sygnal NC - TRUE - pozwolenie na prace
+// ======== Error and states collection =========
+	dwGroupErrors				AT %I*	: DWORD;				// Group Error collection - Communication, FB, Other...
+	dwAXStatesSTO				AT %I*	: DWORD;
+	dwAXStatesSOS				AT %I*	: DWORD;
+	dwAXErrors					AT %I*	: DWORD;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

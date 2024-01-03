@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_MCReadDriveAddressIO" Id="{19450707-caa4-4cc1-99e2-c1788dfbf712}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.04.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_MCReadDriveAddressIO:
+STRUCT
+	bExecute						: BOOL;								// Rising edge executes cmd
+	bDone							: BOOL;
+	bBusy							: BOOL;
+	bError							: BOOL;
+	udiErrorID						: UDINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

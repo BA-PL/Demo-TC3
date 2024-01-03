@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_ELxxxx_Data" Id="{644ce050-3682-4736-bd01-a16f49765eca}">
+    <Declaration><![CDATA[TYPE ST_ELxxxx_Data :
+STRUCT
+	sDeviceName				: STRING;	(* 1008 *)
+	sHardwareVersion		: STRING;	(* 1009 *)
+	sSoftwareVersion		: STRING;	(* 100A *)
+	dwFSoEAddress			: DWORD;	(* F980:01 *)
+	dwSerialNumber			: DWORD;	(* F980:02 *)
+	sSerialNumber			: STRING(8);	
+	wTemperaturePrimaryMC	: WORD;		(* FA80:01 Temperature 1 - Temperature measurement 1 *)
+	wTemperatureSecondaryMC	: WORD;		(* FA80:02 Temperature 2 - Temperature measurement 2 *)
+	bGeneralError			: BOOL; 	(* Gdy wystapi chociaz jeden Error *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

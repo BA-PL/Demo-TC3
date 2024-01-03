@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_McAxisStatus" Id="{fc3ec117-11de-47a7-867d-a0d2bfeacbec}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									24.04.2018
+//	Struktura zawierajaca najwazniejsze statusy osi
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_McAxisStatus :
+STRUCT
+	stAxisStatus			: Tc2_MC2.ST_AxisStatus;
+	sAxisName				: STRING(31);				// 
+	dwAxisId				: DWORD;					// Axis ID
+	bNcError				: BOOL;						// Nc Eror flag
+	udiNcErrorCode			: UDINT;					// Nc axis error code
+	{attribute 'displaymode':='hex'}
+	udiNcErrorCodeHex		: UDINT;					// Nc axis error code - hex format
+	lrActPos				: LREAL;					// Actual position (absolut value from NC)
+	lrModuloActPos			: LREAL;					// Actual modulo position (absolut value from NC)
+	lrActVelo				: LREAL;					// Actual velocity
+	lrActAcc				: LREAL;					// Actual acceleration
+	lrActTorque				: LREAL;
+	lrSetPos				: LREAL;					// Set position (absolut value from NC)
+	lrSetVelo				: LREAL;					// Set velocity
+	lrSetAcc				: LREAL;					// Set acceleration
+	lrSetTorque				: LREAL;
+
+	lrPosDiff				: LREAL;					// Position difference (lag distance)
+	bAxisReady				: BOOL;						// Axis.Status.Operational
+	bHomed					: BOOL;
+	bCoupled				: BOOL;
+	bAcceptBlockedDrive		: BOOL;						// Force move back from limit switch
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

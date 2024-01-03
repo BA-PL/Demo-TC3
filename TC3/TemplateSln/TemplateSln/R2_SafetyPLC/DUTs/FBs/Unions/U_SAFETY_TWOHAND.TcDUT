@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="U_SAFETY_TWOHAND" Id="{25b0b9f6-2c8f-4100-b6d6-44f6ff2fb9dc}">
+    <Declaration><![CDATA[TYPE U_SAFETY_TWOHAND :
+UNION
+	stStatusWords					: ST_SAFETY_FBStatus;			(* BUnknown, BState, wDiagnosis, wInputs, wOutputs - takie same dla wszystkich FB *)
+	stStatus						: ST_SAFETY_TWOHAND;			(* Rozbite na Bity - inne dla kazdego bloku*)
+END_UNION
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

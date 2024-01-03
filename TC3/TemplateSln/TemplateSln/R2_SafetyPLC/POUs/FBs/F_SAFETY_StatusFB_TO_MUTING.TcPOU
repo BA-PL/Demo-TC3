@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_SAFETY_StatusFB_TO_MUTING" Id="{f4dc3dd4-688f-4575-ab03-8eae05e5fd86}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_SAFETY_StatusFB_TO_MUTING : ST_SAFETY_FBMUTING
+VAR_INPUT
+	stFBStatus						: ST_SAFETY_FBStatus; 	(* Struktura ogolna *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_SAFETY_StatusFB_TO_MUTING.uStatus.stStatusWords	:= stFBStatus;									(* Przepisanie *)
+F_SAFETY_StatusFB_TO_MUTING.eState 					:= stFBStatus.BState;							(* Ustawienie enum *)
+F_SAFETY_StatusFB_TO_MUTING.bGeneralError			:= stFBStatus.wDiagnosis <> 0;					(* General Error *)]]></ST>
+    </Implementation>
+    <LineIds Name="F_SAFETY_StatusFB_TO_MUTING">
+      <LineId Id="3" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

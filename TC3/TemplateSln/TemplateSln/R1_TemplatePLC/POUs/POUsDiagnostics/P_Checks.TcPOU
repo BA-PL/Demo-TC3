@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_Checks" Id="{bce355f9-21e8-41bf-a535-a57361862bad}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									19.10.2018
+//	Program wykrywajacy bledy dzielnia przez 0 i przekraczania zakresow zmiennych, tablic...
+// 
+//	v1.4	|| TC v 3.1.4022.25		|| - Ustawiono setowanie bledow, dodano wejscie bReset 
+//	v1.3	|| TC v 3.1.4022.16		|| - Przeniesiono logowanie do EventLoggera wraz z zabepieczeniem przed zbyt szybkim logowaniem zdarzeń do programu P_SystemDiag_EventLog. 
+//	v1.2	|| TC v 3.1.4020.28		|| - Dodano logowanie do EventLoggera wraz z zabepieczeniem przed zbyt szybki logowaniem zdarzeń
+//	v1.1 	|| TC v 3.1.4020.14 	|| - Dodane wyjscia bOk, bWarning, bError
+//	v1.0 	|| TC v 3.1.4020.0 		|| - Pierwsza wersja
+//==================================================================================================
+PROGRAM P_Checks
+VAR_INPUT
+	bReset							: BOOL;
+END_VAR
+VAR_OUTPUT
+	bOK								: BOOL;	// Brak bledow i ostrzezen
+	bWarning						: BOOL;	// Ostrzezenie - nie wystepuja w tym podprogramie - wystepuja dla zachowania spojnosci
+	bError							: BOOL;	// Zbiorcza flaga bledow
+END_VAR
+VAR
+	bCheckBounds					: BOOL;	// Flaga przekroczen zakresu indexow, np. tablic
+	bCheckDivDInt					: BOOL;	// Flaga prob dzielenia Dint przez 0
+	bCheckDivLInt					: BOOL; // Flaga prob dzielenia LInt przez 0
+	bCheckDivLReal					: BOOL; // Flaga prob dzielenia LREAL przez 0
+	bCheckDivReal					: BOOL; // Flaga prob dzielenia REAL przez 0
+	bCheckRangeSigned				: BOOL;	// Flaga przekroczen liczby znakowej
+	bCheckRangeUnsigned				: BOOL; // Flaga przekroczen liczby bezznakowej
+	
+	dCheckBoundsOld					: DINT;	// Licznik przekroczen zakresu indexow, np. tablic
+	dCheckDivDIntOld				: DINT;	// Licznik prob dzielenia Dint przez 0
+	dCheckDivLIntOld				: DINT; // Licznik prob dzielenia LInt przez 0
+	dCheckDivLRealOld				: DINT; // Licznik prob dzielenia LREAL przez 0
+	dCheckDivRealOld				: DINT; // Licznik prob dzielenia REAL przez 0
+	dCheckRangeSignedOld			: DINT;	// Licznik przekroczen  liczby znakowej
+	dCheckRangeUnsignedOld			: DINT; // Licznik przekroczen  liczby bezznakowej
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF bReset THEN
+	bCheckBounds 					:= FALSE;
+	bCheckDivDInt					:= FALSE;
+	bCheckDivLInt					:= FALSE;
+	bCheckDivLReal					:= FALSE;
+	bCheckDivReal					:= FALSE;
+	bCheckRangeSigned				:= FALSE;
+	bCheckRangeUnsigned				:= FALSE;
+ELSE
+	bCheckBounds 					S= dCheckBoundsOld <> GVL_Checks.dCheckBounds;
+	bCheckDivDInt					S= dCheckDivDIntOld <> GVL_Checks.dCheckDivDInt;
+	bCheckDivLInt					S= dCheckDivLIntOld <> GVL_Checks.dCheckDivLInt;
+	bCheckDivLReal					S= dCheckDivLRealOld <> GVL_Checks.dCheckDivLReal;
+	bCheckDivReal					S= dCheckDivRealOld <> GVL_Checks.dCheckDivReal;
+	bCheckRangeSigned				S= dCheckRangeSignedOld <> GVL_Checks.dCheckRangeSigned;
+	bCheckRangeUnsigned				S= dCheckRangeUnsignedOld <> GVL_Checks.dCheckRangeUnsigned;	
+END_IF
+
+dCheckBoundsOld 					:= GVL_Checks.dCheckBounds;
+dCheckDivDIntOld 					:= GVL_Checks.dCheckDivDInt;
+dCheckDivLIntOld 					:= GVL_Checks.dCheckDivLInt;
+dCheckDivLRealOld 					:= GVL_Checks.dCheckDivLReal;
+dCheckDivRealOld 					:= GVL_Checks.dCheckDivReal;
+dCheckRangeSignedOld 				:= GVL_Checks.dCheckRangeSigned;
+dCheckRangeUnsignedOld 				:= GVL_Checks.dCheckRangeUnsigned;
+
+bError 								:= bCheckBounds OR bCheckDivDInt OR bCheckDivLInt OR bCheckDivLReal OR bCheckDivReal OR bCheckRangeSigned OR bCheckRangeUnsigned;
+bOK 								:= NOT bError AND NOT bWarning;]]></ST>
+    </Implementation>
+    <LineIds Name="P_Checks">
+      <LineId Id="105" Count="0" />
+      <LineId Id="143" Count="5" />
+      <LineId Id="106" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="152" Count="5" />
+      <LineId Id="151" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="10" Count="9" />
+      <LineId Id="72" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

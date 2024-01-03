@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_FBStateTimer" Id="{81df7ae6-bb6e-4170-bd1f-f76ce22f55a3}">
+    <Declaration><![CDATA[TYPE E_SAFETY_FBStateTimer :
+(* Refers to the following function blocks: TON, TOF *)
+(
+	eSAFETY_FBStateTimer_UNDEFINED 	:= 0,
+	eSAFETY_FBStateTimer_RUN 		:= 1,
+	eSAFETY_FBStateTimer_STOP 		:= 2,
+	eSAFETY_FBStateTimer_SAFE 		:= 3,
+	eSAFETY_FBStateTimer_DELAYOUT 	:= 8,
+	eSAFETY_FBStateTimer_DELAYIN 	:= 9
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

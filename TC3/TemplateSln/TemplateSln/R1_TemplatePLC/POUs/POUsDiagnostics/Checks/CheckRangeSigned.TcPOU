@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+  <POU Name="CheckRangeSigned" Id="{3f665f5c-f2d8-4cce-8287-4400ac7ad20d}" SpecialFunc="CheckRangeSigned">
+    <Declaration><![CDATA[// Implicitly generated code : DO NOT EDIT
+FUNCTION CheckRangeSigned : DINT
+VAR_INPUT
+	value, lower, upper: DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Implicitly generated code : Only an Implementation suggestion
+IF (value < lower) THEN
+	CheckRangeSigned := lower;
+	GVL_Checks.dCheckRangeSigned := GVL_Checks.dCheckRangeSigned + 1;
+	ADSLOGSTR(4,'Checks critical error - DINT overflow.','');
+ELSIF(value > upper) THEN
+	CheckRangeSigned := upper;
+	GVL_Checks.dCheckRangeSigned := GVL_Checks.dCheckRangeSigned + 1;
+	ADSLOGSTR(4,'Checks critical error - DINT overflow.','');
+ELSE
+	CheckRangeSigned := value;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="CheckRangeSigned">
+      <LineId Id="3" Count="0" />
+      <LineId Id="16" Count="9" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

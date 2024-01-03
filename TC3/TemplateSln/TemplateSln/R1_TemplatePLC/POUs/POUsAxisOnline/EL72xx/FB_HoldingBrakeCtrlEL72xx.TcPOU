@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_HoldingBrakeCtrlEL72xx" Id="{3bf8eaba-252d-438a-ae1e-1f7fa7431d26}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									11.07.2018
+//	Blok funkcyjny kontroli luzownika w silniku podpietym do EL72xx. Mozliwy jest jedynie force unlock.
+//	Dzialania na obiekcie:	: 8012:01 (MDP742) lub 2004:01 (DS402)
+//
+//  v1.0	|| TC v 3.1.4022.22		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_HoldingBrakeCtrlEL72xx
+VAR_INPUT
+	bForceUnlock					: BOOL;								// Rising/falling edhe executes CMD: Manual override (release) of the motor holding brake 
+																		// and reset - if there is error - falling edge reinits FB
+	stDriveRef						: ST_DriveRef;
+END_VAR
+VAR_OUTPUT
+	bBusy							: BOOL;
+	bError							: BOOL; 							// General error: parameter or CoE read.
+	uiAdsErrId						: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	uiCANopenErrId					: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+END_VAR
+VAR
+	//======================= Internal var ===========================
+	iStep							: INT;								// Case instruction	
+	wInitErrorCount					: WORD;								// Initialization error counter, if bigger then 10 then error
+	wManualOverrideIndex			: WORD;								// Manual override (release) of the motor holding brake:
+																		// MDP742: 8012:01
+																		// DS402: 2004:01
+	bDriveRefOK						: BOOL;								// stDriveRef contains necessary data to read CoE
+	bExecute						: BOOL;
+	bDS402Profile					: BOOL;								// Flag DS402
+	bMDP742Profile					: BOOL;								// Flag MDP742	
+	bInitialized					: BOOL;
+	sDeviceName						: STRING;							// 
+	sNo								: STRING(1);						// xxxxxxx-000Y - char Y	
+	//=========================== FBs ================================																
+	rtForceUnlock					: R_TRIG;
+	ftForceUnlock					: F_TRIG;
+	tonWait							: TON;								// Wait timer
+	fbCoERead						: FB_CoERead_ByDriveRef;			// FB for read CoE parameters
+	fbForceUnlock					: FB_CoEWrite_ByDriveRef;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//=================== Call triggers and timers ==================
+tonWait(IN:= NOT tonWait.Q, PT:= T#1S);
+rtForceUnlock(CLK:= bForceUnlock);
+ftForceUnlock(CLK:= bForceUnlock);
+
+//======= Check for parameter error - each cycle ================
+bDriveRefOK 							:= (stDriveRef.nSlaveAddr <> 0) AND (stDriveRef.sNetId <> '');
+
+//============= Read params and calculations ====================
+CASE iStep OF
+	
+	0: // Read profile MDP 742 or DS 402:
+	
+			// We have to read device name Index 1008:0 - STRING
+			// EL72x1-0000 --> MDP 742:
+			// EL72x1-0001 --> DS 402:
+	
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK THEN
+			fbCoERead.nIndex			:= 16#1008;
+			fbCoERead.nSubIndex			:= 0;
+			fbCoERead.pDstBuf			:= ADR(sDeviceName);
+			fbCoERead.cbBufLen			:= SIZEOF(sDeviceName);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= iStep + 10; 
+		END_IF
+	
+	10:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbCoERead.iAdsErrId;
+					uiCANopenErrId		:= fbCoERead.iCANopenErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+
+	20: // Check last digit in device name 0 - MDP742, 1 - DS402
+	
+	sNo 								:=  MID(sDeviceName, 1, FIND(sDeviceName, '-') + 4);
+	bMDP742Profile 						:= 	sNo = '0';
+	bDS402Profile 						:= 	sNo = '1';
+	// If 0 or 1 then go to next step, if other No - not implemented yet
+	IF bMDP742Profile OR bDS402Profile THEN
+		wManualOverrideIndex			:= SEL(bMDP742Profile, 16#2004, 16#8012);
+		iStep 							:= 100;
+	ELSE
+		iStep							:= 1000;					// Error step
+	END_IF
+	
+	100: // Initialized - holding brake control possible
+		fbForceUnlock.bExecute			:= rtForceUnlock.Q OR ftForceUnlock.Q;
+		IF fbForceUnlock.bBusy THEN
+			iStep 						:= iStep + 10;
+		END_IF
+
+	110: // Wait till write finish
+	
+		IF NOT fbForceUnlock.bBusy THEN
+			fbForceUnlock.bExecute		:= FALSE;
+			IF fbForceUnlock.bError THEN
+				uiAdsErrId				:= fbForceUnlock.iAdsErrId;
+				uiCANopenErrId			:= fbForceUnlock.iCANopenErrId;
+			ELSE
+				iStep 					:= iStep - 10;
+			END_IF
+		END_IF
+	
+	900: // Warning - wait and repeat read - problem during read motor data, i.e. EtherCAT doesn't work yet
+		IF tonWait.Q THEN
+			iStep 						:= 0;	// Repeat initialization phase 
+		END_IF
+			  
+	1000: // Error - wait for reset 
+		IF ftForceUnlock.Q THEN
+			uiAdsErrId					:= 0;
+			uiCANopenErrId				:= 0;
+			wInitErrorCount				:= 0;
+			wManualOverrideIndex		:= 0;
+			sDeviceName					:= '';
+			sNo							:= '';
+			bDS402Profile				:= FALSE;
+			bMDP742Profile				:= FALSE;
+			iStep						:= 0;
+		END_IF
+END_CASE
+//===============================================================
+
+bError		 							:= iStep = 1000;
+bInitialized 							:= iStep >= 100 AND iStep < 900;
+
+//================== Call CoE read/write FB =====================
+fbCoERead(stDriveRef:= stDriveRef);
+
+fbForceUnlock	(	stDriveRef				:= stDriveRef, 
+					nIndex					:= wManualOverrideIndex, 
+					nSubIndex				:= 16#01, 
+					pSrcBuf					:= ADR(bForceUnlock), 
+					cbBufLen				:= SIZEOF(bForceUnlock));
+//===============================================================]]></ST>
+    </Implementation>
+    <LineIds Name="FB_HoldingBrakeCtrlEL72xx">
+      <LineId Id="267" Count="107" />
+      <LineId Id="187" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_ProjectState" Id="{8e0a2458-863d-4494-b5f8-bacded523710}">
+    <Declaration><![CDATA[TYPE E_SAFETY_ProjectState :
+(
+	eSAFETY_ProjectState_OFFLINE 	:= 0,
+	eSAFETY_ProjectState_RUN		:= 1,
+	eSAFETY_ProjectState_STOP 		:= 2,
+	eSAFETY_ProjectState_START 		:= 3,
+	eSAFETY_ProjectState_RESTORE	:= 4,
+	eSAFETY_ProjectState_FAULT 		:= 5
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

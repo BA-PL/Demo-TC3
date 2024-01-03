@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_FBState" Id="{89a01959-f2b6-4f8f-9b23-6479d1087d40}">
+    <Declaration><![CDATA[TYPE E_SAFETY_FBState :
+(* Refers to the following function blocks: AND, OR, OPMODE, ESTOP, MON, DECOUPLE, TWO-HAND, EDM *)
+(
+	eSAFETY_FBState_UNDEFINED		:= 0,
+	eSAFETY_FBState_RUN				:= 1,
+	eSAFETY_FBState_STOP 			:= 2,
+	eSAFETY_FBState_SAFE 			:= 3,
+	eSAFETY_FBState_ERROR 			:= 4,
+	eSAFETY_FBState_RESET 			:= 5,
+	eSAFETY_FBState_START 			:= 6,
+	eSAFETY_FBState_ERRORDELAY		:= 7,
+	eSAFETY_FBState_DELAYOUT		:= 8,
+	eSAFETY_FBState_FUNCTEST		:= 9,
+	eSAFETY_FBState_1BUTTON			:= 11,
+	eSAFETY_FBState_2BUTTON			:= 12,
+	eSAFETY_FBState_RELEASE			:= 13,
+	eSAFETY_FBState_MONOFF			:= 14,
+	eSAFETY_FBState_MONON			:= 15
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

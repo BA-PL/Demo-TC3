@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_MachineMode" Id="{a23e5493-84c3-4871-a5f6-ac2e3c5967dd}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									22.12.2016
+//	Typ glownej tablicy zdarzen historycznych
+// 	v1.1	|| TC v 3.1.4022.25		|| - zamiana nazwy trybu poczatkowego na eInitialization
+// 	v1.0	|| TC v 3.1.4020.28		|| - pierwsza wersja
+//==================================================================================================
+{attribute 'strict'}
+{attribute 'qualified_only'}
+TYPE E_MachineMode :
+(
+	eInitialization			:= 0,
+	eManual					:= 1,
+	eMaintenance			:= 2,
+	eAutomatic				:= 3,
+	eSemiAutomatic			:= 4,
+	eFirstFilling			:= 5,
+	eEmptying				:= 6
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

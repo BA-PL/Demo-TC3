@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_FBGetDriveRefIO" Id="{600b95f9-b96b-4917-b302-df5c3ffa1050}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.04.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_FBGetDriveRefIO:
+STRUCT
+	bExecute						: BOOL;								// Rising edge executes cmd
+	bBusy							: BOOL;								// Read/Write busy
+	bError							: BOOL;								// Read/Write error
+	udiErrorID						: UDINT;							// Read/Write error ID
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

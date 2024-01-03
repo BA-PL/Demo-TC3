@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_SAFETY_StatusFB_TO_CONNECTIONSHUTDOWN" Id="{ee0bdf1a-a4f5-43a1-b9a9-7ca9fbf686f2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_SAFETY_StatusFB_TO_CONNECTIONSHUTDOWN : ST_SAFETY_FBCONNECTIONSHUTDOWN
+VAR_INPUT
+	stFBStatus						: ST_SAFETY_FBStatus; 	(* Struktura ogolna *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_SAFETY_StatusFB_TO_CONNECTIONSHUTDOWN.uStatus.stStatusWords	:= stFBStatus;									(* Przepisanie *)
+F_SAFETY_StatusFB_TO_CONNECTIONSHUTDOWN.eState 					:= stFBStatus.BState;							(* Ustawienie enum *)
+F_SAFETY_StatusFB_TO_CONNECTIONSHUTDOWN.bGeneralError			:= stFBStatus.wDiagnosis <> 0;					(* General Error *)]]></ST>
+    </Implementation>
+    <LineIds Name="F_SAFETY_StatusFB_TO_CONNECTIONSHUTDOWN">
+      <LineId Id="3" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

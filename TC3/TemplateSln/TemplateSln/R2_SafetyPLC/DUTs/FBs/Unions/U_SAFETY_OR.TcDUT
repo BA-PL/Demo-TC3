@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="U_SAFETY_OR" Id="{ddda45ed-b8c8-4738-8974-da9ec808b97f}">
+    <Declaration><![CDATA[TYPE U_SAFETY_OR :
+UNION
+	stStatusWords					: ST_SAFETY_FBStatus;			(* BUnknown, BState, wDiagnosis, wInputs, wOutputs - takie same dla wszystkich FB *)
+	stStatus						: ST_SAFETY_OR; 				(* Rozbite na Bity - inne dla kazdego bloku*)
+END_UNION
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

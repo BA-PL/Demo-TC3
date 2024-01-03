@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+  <POU Name="CheckDivReal" Id="{ce0b590d-e089-49e2-b1c9-969f2cbdf1b3}" SpecialFunc="CheckDivReal32">
+    <Declaration><![CDATA[// Implicitly generated code : DO NOT EDIT
+FUNCTION CheckDivReal : REAL
+VAR_INPUT
+	divisor:REAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Implicitly generated code : Only an Implementation suggestion
+IF divisor = 0 THEN
+	CheckDivReal:=1;
+	GVL_Checks.dCheckDivReal := GVL_Checks.dCheckDivReal + 1;
+	ADSLOGSTR(4,'Checks critical error - DINT variable divided by 0.','');
+ELSE
+	CheckDivReal:=divisor;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="CheckDivReal">
+      <LineId Id="3" Count="0" />
+      <LineId Id="13" Count="5" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,333 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_Template" Id="{57dca314-d807-4370-bd55-5545866ff511}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_Template
+VAR_INPUT
+	eMachineMode							: E_MachineMode; 		// Machine mode
+	eMachineCommand							: E_MachineCommand; 	// Command from top level state program
+END_VAR
+VAR_OUTPUT
+	eMachineState							: E_MachineState;
+  	bError									: BOOL;
+END_VAR
+VAR_IN_OUT
+	Axis1									: AXIS_REF;
+END_VAR
+VAR
+	// INPUTS
+	bIn1									: BOOL;
+	// OUTPUTS
+	bOut1									: BOOL;	
+	// Local
+	iStepInit								: INT; 					// CASE inicjalizacji
+	iStepAuto					 			: INT;
+	// HMI Maintenance 
+	
+	// FBs Axis Online
+	fbAxis1									: FB_McAxisOnlineAX5000;
+	stAxis1									: ST_McAxisOnline;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Always clear command in active step
+
+// Read input signals
+Act_InUpdate();
+
+// ====================================================
+// FBs CALL
+
+// Monitoring
+Act_Monitoring();
+	
+// Error collection
+Act_Error();
+
+// SAFETY CALL 
+// Abort CMD is avaliable in each mode in each state except Aborted - because in it is already safe, we don't want to repat CMD in loop
+IF eMachineCommand = E_MachineCommand.eAbort AND eMachineState <> E_MachineState.eAborted THEN
+	eMachineState								:= E_MachineState.eAborting;
+END_IF
+
+// Machine mode change over
+CASE eMachineMode OF
+	
+	E_MachineMode.eInitialization:
+		; // Do nothing
+	
+	E_MachineMode.eAutomatic:
+		Act_ModeAutomatic();
+		
+	E_MachineMode.eManual:
+		Act_ModeManual();	
+		
+	E_MachineMode.eMaintenance:
+		Act_ModeMaintenance();	
+		
+END_CASE
+
+// Call Axis online FBs
+fbAxis1(stMcAxisOnline:= stAxis1, Axis:= Axis1);
+
+// Write outputs
+Act_OutUpdate(); ]]></ST>
+    </Implementation>
+    <Action Name="Act_Error" Id="{342fca7c-7166-4959-8954-f5810dc19af4}">
+      <Implementation>
+        <ST><![CDATA[// Program summary error
+bError := 	bError; // ie. Init Error
+			// OR axis error
+			// OR item error]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_InUpdate" Id="{33f832ad-73fd-46b8-b602-86ce2443928d}">
+      <Implementation>
+        <ST><![CDATA[bIn1 := TRUE; // Assign, filters, conditions, scaling etc
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_ModeAutomatic" Id="{10e156a1-4c74-4231-8795-e81081e3437e}">
+      <Implementation>
+        <ST><![CDATA[// State Machine
+CASE eMachineState OF
+
+	E_MachineState.eIdle:
+	
+		// Idle - there should be done background initialization. We do it just once.
+		// ====================================================
+		// There should be main code
+		// i.e. CASE iStepInit OF	
+		// ====================================================
+		// Allow for stop only if conditions are true - in this step we can wait without an error	
+		IF TRUE (* condition *) AND eMachineCommand = E_MachineCommand.eStop THEN
+			eMachineState 						:= E_MachineState.eStopped;
+		END_IF
+		
+		IF bError THEN
+			eMachineState 						:= E_MachineState.eError;
+		END_IF
+		
+	E_MachineState.eStopping:
+
+		// Stopping action in our sample - empty instruction and go to Stopped
+		// In real app we should execute CMD and wait for finish (all items) - done, abort or error
+		// In this phase we don't look into error
+		IF TRUE (* condition *) THEN
+			eMachineState 						:= E_MachineState.eStopped;
+		END_IF
+		
+		// Alternative - in some apps it's neccasary to go into an error as soon as first error occured - You have to decide
+		
+	E_MachineState.eStopped:
+
+		// In this step we just wait for CMD or for Error
+		IF eMachineCommand = E_MachineCommand.eRun THEN
+			eMachineState 						:= E_MachineState.eStarting;
+		END_IF
+
+		IF bError THEN
+			eMachineState 						:= E_MachineState.eError;
+		END_IF
+
+	E_MachineState.eStarting:
+
+		// Starting action in our sample - empty instruction and go to Running
+		// It can be init, monitoring etc, in some apps enable drives cmd is here
+		IF TRUE (* condition *) THEN
+			eMachineState 						:= E_MachineState.eRunning;
+		END_IF
+		
+	E_MachineState.eRunning:
+
+		// ====================================================
+		// There should be main code
+		// i.e. CASE iStepAuto OF
+		// ====================================================
+		IF eMachineCommand = E_MachineCommand.eStop OR bError THEN
+			eMachineState 						:= E_MachineState.eStopping;
+		END_IF
+
+	E_MachineState.eAborting:
+
+		// Stop and reset everything - usually SAFETY function
+		IF TRUE (* condition *) THEN
+			eMachineState 						:= E_MachineState.eAborted;
+		END_IF
+		
+	E_MachineState.eAborted:
+	
+		IF eMachineCommand = E_MachineCommand.eReset THEN
+			eMachineState 						:= E_MachineState.eReseting;
+		END_IF
+		
+		IF bError THEN
+			eMachineState 						:= E_MachineState.eError;
+		END_IF
+
+	E_MachineState.eError:
+
+		// ====================================================
+		// Two types of error:
+		// 1. 'Small/soft' Error - fix a problem and go to stop
+		// 2. 'Serious/hard' Error - there is a need of restart everything, if there is a sequence - reset it too - fix a problem and go to init
+		// ====================================================
+		IF eMachineCommand = E_MachineCommand.eReset THEN
+			eMachineState 						:= E_MachineState.eReseting;
+		END_IF
+		
+		IF eMachineCommand = E_MachineCommand.eRestart THEN
+			eMachineState 						:= E_MachineState.eRestarting;
+		END_IF
+
+	E_MachineState.eReseting:
+
+		// ====================================================
+		//'Small/soft' Error - fix a problem and go to stop
+		// Reset drives only when it is necessary
+		// ====================================================
+		// Check if axis errors cleared
+		IF TRUE (*NOT bAxisError AND NOT other errors *) THEN
+			eMachineState  						:= E_MachineState.eStopping;
+		END_IF
+		
+		// In this state we don't monitor general Error, just reset procedure error		
+		IF FALSE (* bResetError *) THEN
+			eMachineState  						:= E_MachineState.eError;
+		END_IF
+		
+	E_MachineState.eRestarting:
+
+		// ====================================================
+		// 'Serious/hard' Error - there is a need of restart everything, if there is a sequence - reset it too - fix a problem and go to init
+		// Reset drives only when it is necessary
+		// ====================================================
+		// Check if axis errors cleared
+		IF TRUE (*NOT bAxisError AND NOT other errors *) THEN
+			eMachineState  						:= E_MachineState.eIdle;
+		END_IF
+				
+		// In this state we don't monitor general Error, just reset procedure error		
+		IF FALSE (* bResetError *) THEN
+			eMachineState  						:= E_MachineState.eError;
+		END_IF
+		
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_ModeMaintenance" Id="{76f2d4e9-75eb-4a06-8c25-b2d563100a74}">
+      <Implementation>
+        <ST><![CDATA[// State Machine
+CASE eMachineState OF
+
+	E_MachineState.eIdle, E_MachineState.eStopping, E_MachineState.eStopped, E_MachineState.eStarting:
+	
+		// ====================================================
+		// There should be main code
+		// i.e. CASE iStepInit OF	
+		// ====================================================
+		// Allow for stop only if conditions are true - in this step we can wait without an error	
+		IF TRUE (* condition *) AND eMachineCommand = E_MachineCommand.eRun THEN
+			eMachineState 						:= E_MachineState.eRunning;
+		END_IF
+
+	E_MachineState.eRunning:
+
+		// ====================================================
+		// HMI control
+		// There should be main code,
+		// i.e. CASE iStepAuto OF
+		// ====================================================
+		IF eMachineCommand = E_MachineCommand.eStop THEN
+			eMachineState 						:= E_MachineState.eStopping;
+		END_IF
+
+	E_MachineState.eAborting:
+
+		// Stop and reset everything - usually SAFETY function
+		IF TRUE (* condition *) THEN
+			eMachineState 						:= E_MachineState.eAborted;
+		END_IF
+		
+	E_MachineState.eAborted:
+
+		IF eMachineCommand = E_MachineCommand.eReset THEN
+			eMachineState 						:= E_MachineState.eReseting;
+		END_IF
+
+	E_MachineState.eRestarting, E_MachineState.eReseting, E_MachineState.eError:
+
+			;// Unused
+
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_ModeManual" Id="{1ce6f9c0-ca91-48c0-9f3d-47154e586725}">
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_Monitoring" Id="{5758dc5d-f248-4a25-a1ef-81d132b70b99}">
+      <Implementation>
+        <ST><![CDATA[// Ustawianie flag, monitoring kolizjii, watchdogi, jazdy po krzywce itp
+;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_OutUpdate" Id="{acc4a931-cac6-4325-b1ae-109bee2e0b4d}">
+      <Implementation>
+        <ST><![CDATA[;]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="P_Template">
+      <LineId Id="359" Count="21" />
+      <LineId Id="422" Count="2" />
+      <LineId Id="381" Count="15" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template.Act_Error">
+      <LineId Id="5" Count="2" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template.Act_InUpdate">
+      <LineId Id="1" Count="1" />
+    </LineIds>
+    <LineIds Name="P_Template.Act_ModeAutomatic">
+      <LineId Id="656" Count="5" />
+      <LineId Id="776" Count="1" />
+      <LineId Id="663" Count="13" />
+      <LineId Id="773" Count="1" />
+      <LineId Id="677" Count="3" />
+      <LineId Id="783" Count="0" />
+      <LineId Id="782" Count="0" />
+      <LineId Id="681" Count="0" />
+      <LineId Id="784" Count="0" />
+      <LineId Id="682" Count="69" />
+      <LineId Id="778" Count="0" />
+      <LineId Id="753" Count="14" />
+      <LineId Id="779" Count="2" />
+      <LineId Id="771" Count="1" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template.Act_ModeMaintenance">
+      <LineId Id="215" Count="12" />
+      <LineId Id="249" Count="0" />
+      <LineId Id="258" Count="2" />
+      <LineId Id="336" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="337" Count="0" />
+      <LineId Id="263" Count="16" />
+      <LineId Id="284" Count="2" />
+      <LineId Id="298" Count="0" />
+      <LineId Id="338" Count="0" />
+      <LineId Id="211" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template.Act_ModeManual">
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template.Act_Monitoring">
+      <LineId Id="2" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template.Act_OutUpdate">
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

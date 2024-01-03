@@ -1,0 +1,606 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_AxisDiag" Id="{4997d494-5872-48b5-84fb-631aff146e21}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//								23.05.2018
+//					Blok do diagnostyki osi
+// 	v1.1	|| TC v 3.1.4022.16	|| - optymalizacja kodu
+// 	v1.0	|| TC v 3.1.4020.0	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_AxisDiag
+VAR_INPUT
+	IPCNetID							: T_AmsNetId; 	(* AmsNetId of the IPC *)
+	Timeout								: TIME := DEFAULT_ADS_TIMEOUT;
+	Reset								: BOOL;
+	GetDiag								: BOOL;
+END_VAR
+VAR_IN_OUT
+	Axis	 							: AXIS_REF;
+	stAX5000Diag						: ST_AX5000Diag;
+END_VAR
+VAR_OUTPUT
+	Error								: BOOL;
+	AdsErrId							: UINT;
+	SercosErrId							: UINT;
+	ResetAct							: BOOL;
+	DiagAct								: BOOL;
+	Busy								: BOOL;
+END_VAR
+VAR
+	iState								: INT;
+	iSubState							: INT;
+	GetDriveRef							: BOOL;
+	DriveRef								: ST_DriveRef; (* contains sNetID of EcMaster, nSlaveAddr of EcDrive, nDriveNo of EcDrive, either preset or read from NC *)
+	AxisID								: UDINT;
+
+	C1DErrorPrev							: BOOL;
+	WcStateErrorPrev						: BOOL;
+	AxisErrorPrev							: BOOL;
+	OperationalPrev						: BOOL;
+	ResetPrev							: BOOL;
+	GetDiagPrev							: BOOL;
+
+	fbSoERead							: FB_SoERead;
+	fbDiagMessage 						: FB_SoEReadDiagMessage;
+	fbClassXDiag							: FB_SoEReadClassXDiag;
+	fbDiagNumber						: FB_SoEReadDiagNumber;
+	fbDiagNumberList						: FB_SoEReadDiagNumberList;
+
+	fbReset								: FB_SoEReset;
+	fbDelay								: TON;
+	fbGetSlaveState 						: FB_EcGetSlaveState;
+	fbReqSlaveState 						: FB_EcReqSlaveState;
+	fbNcReset 							: MC_Reset;
+
+	fbAdsRead							: ADSREAD;
+	readBuffer							: ARRAY[0..9] OF BYTE;
+	Ids									: T_AmsNetIdArr;
+	strSoEString							: ST_SoE_String;
+END_VAR
+VAR CONSTANT
+	NCIDXG_AXPARMS					: UDINT := 16#00004000;	(* Axis with ID: Parameter 			*)
+	NCIDXO_AXP_HWAMSADDR			: UDINT := 16#00000031;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[stAX5000Diag.bOperational	:= Axis.NcToPlc.StateDWord.0;
+stAX5000Diag.bC1DError	 	:= Axis.NcToPlc.StateDWord.28;
+stAX5000Diag.bWcStateError 	:= Axis.NcToPlc.StateDWord.30;
+stAX5000Diag.bAxisError		:= Axis.NcToPlc.StateDWord.31;
+stAX5000Diag.iAxisErrorCode	:= Axis.NcToPlc.ErrorCode;
+
+CASE iState OF
+0:	(* idle *)
+	GetDriveRef 	:= (DriveRef.nSlaveAddr = 0);
+
+	IF GetDriveRef THEN
+		Busy			:= TRUE;
+		Error			:= FALSE;
+		AdsErrId		:= 0;
+		SercosErrId		:= 0;
+		iState 			:= 1;
+		iSubState		:= 0;
+		AxisID 			:= Axis.NcToPlc.AxisId;
+
+	ELSIF Reset AND NOT ResetPrev THEN
+		Busy			:= TRUE;
+		ResetAct		:= TRUE;
+		ResetPrev		:= Reset;
+		Error			:= FALSE;
+		AdsErrId		:= 0;
+		SercosErrId		:= 0;
+		iState 			:= 2;
+		iSubState		:= 0;
+		AxisID 			:= Axis.NcToPlc.AxisId;
+
+	ELSIF GetDiag AND NOT GetDiagPrev OR
+		(stAX5000Diag.bC1DError AND NOT C1DErrorPrev) OR (NOT stAX5000Diag.bC1DError AND C1DErrorPrev) (* rising/falling C1D *) OR
+		(stAX5000Diag.bWcStateError AND NOT WcStateErrorPrev) OR (NOT stAX5000Diag.bWcStateError AND WcStateErrorPrev) (* rising/falling WcState *) OR
+		(stAX5000Diag.bAxisError AND NOT AxisErrorPrev) OR (NOT stAX5000Diag.bAxisError AND AxisErrorPrev) (* rising/falling NcError *) OR
+		(stAX5000Diag.bOperational AND NOT OperationalPrev) OR (NOT stAX5000Diag.bOperational AND OperationalPrev) (* rising/falling Enable *) THEN
+
+		Busy			:= TRUE;
+		DiagAct			:= TRUE;
+		GetDiagPrev		:= GetDiag;
+		Error			:= FALSE;
+		AdsErrId		:= 0;
+		SercosErrId		:= 0;
+		iState 			:= 3;
+		iSubState		:= 0;
+		AxisID 			:= Axis.NcToPlc.AxisId;
+
+		(* set/clear flags *)
+		C1DErrorPrev		:= stAX5000Diag.bC1DError;
+		WcStateErrorPrev	:= stAX5000Diag.bWcStateError;
+		AxisErrorPrev		:= stAX5000Diag.bAxisError;
+		OperationalPrev		:= stAX5000Diag.bOperational;
+
+	ELSE
+		ResetAct	:= FALSE;
+		DiagAct		:= FALSE;
+	END_IF
+
+1:	(* get drive reference *)
+	M_GetDriveRef();
+
+2:	(* reset and state change *)
+	M_Reset();
+
+3:	(* get diag data *)
+	M_GetDiagnosis();
+
+END_CASE
+
+(* clear latch *)
+ResetPrev	:= ResetPrev AND Reset;
+GetDiagPrev	:= GetDiagPrev AND GetDiag;]]></ST>
+    </Implementation>
+    <Action Name="M_GetDiagnosis" Id="{a32888a2-67a7-4fc9-961e-a6040018e296}">
+      <Implementation>
+        <ST><![CDATA[CASE iSubState OF
+0:	fbClassXDiag(
+		NetId		:= IPCNetID,
+		Execute		:= TRUE,
+		DiagClass 	:= 1,
+		Timeout		:= DEFAULT_ADS_TIMEOUT,
+		Axis		:= Axis,
+	);
+
+	IF NOT fbClassXDiag.Busy THEN
+		fbClassXDiag(Execute:= FALSE,Axis := Axis);
+
+		IF NOT fbClassXDiag.Error THEN
+			stAX5000Diag.wClass1Diag	:= fbClassXDiag.ClassXDiag;
+			stAX5000Diag.stClass1Diag	:= F_ConvWordToSTAX5000C1D(stAX5000Diag.wClass1Diag);
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbClassXDiag.AdsErrId;
+			SercosErrId	:= fbClassXDiag.SercosErrId;
+		END_IF
+		iSubState	:= iSubState + 1;
+	END_IF
+
+1:	fbDiagMessage(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbDiagMessage.Busy THEN
+		fbDiagMessage(Execute:= FALSE,Axis := Axis);
+
+		IF NOT fbDiagMessage.Error THEN
+			stAX5000Diag.strDiagMessage := LEFT(fbDiagMessage.DiagMessage.strData, UINT_TO_INT(fbDiagMessage.DiagMessage.iActualSize));
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbDiagMessage.AdsErrId;
+			SercosErrId	:= fbDiagMessage.SercosErrId;
+		END_IF
+		iSubState	:= iSubState + 1;
+	END_IF
+
+2:	fbDiagNumber(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbDiagNumber.Busy THEN
+		fbDiagNumber(Execute:= FALSE,Axis := Axis);
+
+		IF NOT fbDiagNumber.Error THEN
+			stAX5000Diag.iDiagNumber := fbDiagNumber.DiagNumber;
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbDiagNumber.AdsErrId;
+			SercosErrId	:= fbDiagNumber.SercosErrId;
+		END_IF
+		iSubState	:= iSubState + 1;
+	END_IF
+
+3:	fbSoERead(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Idn		:= 135,
+		Element	:=16#44,
+		pDstBuf	:=ADR(stAX5000Diag.wDriveStatus),
+		BufLen	:=SIZEOF(stAX5000Diag.wDriveStatus),
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbSoERead.Busy THEN
+		fbSoERead(Execute:= FALSE,Axis := Axis);
+		IF NOT fbSoERead.Error THEN
+			stAX5000Diag.stDriveStatus := F_ConvWordToSTAX5000DriveStatus(stAX5000Diag.wDriveStatus);
+			iSubState		:= iSubState + 1;
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbSoERead.AdsErrId;
+			SercosErrId	:= fbSoERead.SercosErrId;
+			iSubState		:= iSubState + 2;
+		END_IF
+	END_IF
+
+4:	fbSoERead(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Idn		:= stAX5000Diag.stDriveStatus.iActOpModeParNum,
+		Element	:=16#44,
+		pDstBuf	:=ADR(stAX5000Diag.stDriveStatus.eActOpMode),
+		BufLen	:=SIZEOF(stAX5000Diag.stDriveStatus.eActOpMode),
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbSoERead.Busy THEN
+		fbSoERead(Execute:= FALSE,Axis := Axis);
+		IF NOT fbSoERead.Error THEN
+			;
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbSoERead.AdsErrId;
+			SercosErrId	:= fbSoERead.SercosErrId;
+		END_IF
+		iSubState	:= iSubState + 1;
+	END_IF
+
+5:	fbGetSlaveState(
+		sNetId		:= DriveRef.sNetId,
+		nSlaveAddr	:= DriveRef.nSlaveAddr,
+		bExecute	:= TRUE,
+		tTimeout	:= DEFAULT_ADS_TIMEOUT,
+	);
+
+	IF NOT fbGetSlaveState.bBusy THEN
+		fbGetSlaveState(bExecute:= FALSE);
+		IF NOT fbGetSlaveState.bError THEN
+			stAX5000Diag.stEcSlaveState := fbGetSlaveState.state;
+			stAX5000Diag.stEcSlaveStateBits := F_ConvSlaveStateToBits(fbGetSlaveState.state);
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= UDINT_TO_UINT(fbGetSlaveState.nErrId);
+		END_IF
+
+		IF stAX5000Diag.stEcSlaveStateBits.bError THEN
+			IF stAX5000Diag.stEcSlaveStateBits.bPreop THEN
+				(* read S21 - IDN List of Invalid operation data for CP2 (Preop->SaveOp) *)
+				MEMSET(ADR(stAX5000Diag.stCPxInvParamList), 0, SIZEOF(stAX5000Diag.stCPxInvParamList));
+				stAX5000Diag.bPreopToSafeOpError := TRUE;
+				stAX5000Diag.bSafeOpToOpError := FALSE;
+				iSubState	:= iSubState + 1;
+			ELSIF stAX5000Diag.stEcSlaveStateBits.bSafeOp THEN
+				(* read S22 - IDN List of Invalid operation data for CP3 (SaveOp->Op) *)
+				MEMSET(ADR(stAX5000Diag.stCPxInvParamList), 0, SIZEOF(stAX5000Diag.stCPxInvParamList));
+				stAX5000Diag.bPreopToSafeOpError := FALSE;
+				stAX5000Diag.bSafeOpToOpError := TRUE;
+				iSubState	:= iSubState + 2;
+			ELSE
+				(* Skip S21 + S22 *)
+				MEMSET(ADR(stAX5000Diag.stCPxInvParamList), 0, SIZEOF(stAX5000Diag.stCPxInvParamList));
+				stAX5000Diag.bPreopToSafeOpError := FALSE;
+				stAX5000Diag.bSafeOpToOpError := FALSE;
+				iSubState	:= iSubState + 3;
+			END_IF
+		ELSE
+			(* Skip S21 + S22 *)
+			MEMSET(ADR(stAX5000Diag.stCPxInvParamList), 0, SIZEOF(stAX5000Diag.stCPxInvParamList));
+			stAX5000Diag.bPreopToSafeOpError := FALSE;
+			stAX5000Diag.bSafeOpToOpError := FALSE;
+			iSubState	:= iSubState + 3;
+		END_IF
+	END_IF
+
+6:	(* read S21 - IDN List of Invalid operation data for CP2 (Preop->SaveOp) *)
+	fbSoERead(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Idn		:= 21,
+		Element	:=16#40,
+		pDstBuf	:=ADR(stAX5000Diag.stCPxInvParamList),
+		BufLen	:=SIZEOF(stAX5000Diag.stCPxInvParamList),
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbSoERead.Busy THEN
+		fbSoERead(Execute:= FALSE,Axis := Axis);
+		IF NOT fbSoERead.Error THEN
+			;
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbSoERead.AdsErrId;
+			SercosErrId	:= fbSoERead.SercosErrId;
+		END_IF
+		iSubState	:= iSubState + 2;
+	END_IF
+
+7:	(* read S22 - IDN List of Invalid operation data for CP3 (SaveOp->Op) *)
+	fbSoERead(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Idn		:= 22,
+		Element	:=16#40,
+		pDstBuf	:=ADR(stAX5000Diag.stCPxInvParamList),
+		BufLen	:=SIZEOF(stAX5000Diag.stCPxInvParamList),
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbSoERead.Busy THEN
+		fbSoERead(Execute:= FALSE,Axis := Axis);
+		IF NOT fbSoERead.Error THEN
+			;
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbSoERead.AdsErrId;
+			SercosErrId	:= fbSoERead.SercosErrId;
+		END_IF
+		iSubState	:= iSubState + 1;
+	END_IF
+
+8:	fbDiagNumberList(
+		NetId			:= IPCNetID,
+		Execute			:= TRUE,
+		Timeout			:= DEFAULT_ADS_TIMEOUT,
+		pDiagNumber		:= ADR(stAX5000Diag.stDiagNumberList),
+		Size			:= SIZEOF(stAX5000Diag.stDiagNumberList),
+		Axis			:= Axis,
+	);
+
+	IF NOT fbDiagNumberList.Busy THEN
+		fbDiagNumberList(Execute:= FALSE,Axis := Axis);
+
+		IF fbDiagNumberList.Error THEN
+			Error			:= TRUE;
+			AdsErrId		:= fbDiagNumberList.AdsErrId;
+			SercosErrId	:= fbDiagNumberList.SercosErrId;
+		END_IF
+
+		IF (stAX5000Diag.strMotorType = '') OR (stAX5000Diag.strDriveType = '') THEN
+			iSubState	:= iSubState + 1;
+		ELSE
+			DiagAct	:= FALSE;
+			iSubState	:= 0;
+			iState		:= 0;
+			Busy		:= FALSE;
+		END_IF
+	END_IF
+
+9:	fbSoERead(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Idn		:= P_0_IDN + 53,
+		Element	:=16#44,
+		pDstBuf	:=ADR(strSoEString),
+		BufLen	:=SIZEOF(strSoEString),
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbSoERead.Busy THEN
+		fbSoERead(Execute:= FALSE,Axis := Axis);
+		IF NOT fbSoERead.Error THEN
+			MEMSET(ADR(stAX5000Diag.strMotorType),0,SIZEOF(stAX5000Diag.strMotorType));
+			MEMCPY(ADR(stAX5000Diag.strMotorType),ADR(strSoEString.strData),MIN(SIZEOF(stAX5000Diag.strMotorType),strSoEString.iActualSize));
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbSoERead.AdsErrId;
+			SercosErrId	:= fbSoERead.SercosErrId;
+		END_IF
+		iSubState	:= iSubState + 1;
+	END_IF
+
+10:	fbSoERead(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Idn		:= P_0_IDN + 324,
+		Element	:=16#44,
+		pDstBuf	:=ADR(strSoEString),
+		BufLen	:=SIZEOF(strSoEString),
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+
+	IF NOT fbSoERead.Busy THEN
+		fbSoERead(Execute:= FALSE,Axis := Axis);
+		IF NOT fbSoERead.Error THEN
+			MEMSET(ADR(stAX5000Diag.strDriveType),0,SIZEOF(stAX5000Diag.strDriveType));
+			MEMCPY(ADR(stAX5000Diag.strDriveType),ADR(strSoEString.strData),MIN(SIZEOF(stAX5000Diag.strDriveType),strSoEString.iActualSize));
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbSoERead.AdsErrId;
+			SercosErrId	:= fbSoERead.SercosErrId;
+		END_IF
+		DiagAct	:= FALSE;
+		iSubState	:= 0;
+		iState		:= 0;
+		Busy		:= FALSE;
+	END_IF
+
+
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="M_GetDriveRef" Id="{fc1ebe45-782c-4c91-8c2b-f6b39d192b9b}">
+      <Implementation>
+        <ST><![CDATA[(* get reference from NC *)
+fbAdsRead(
+	NETID	:= IPCNetID,
+	PORT	:= AMSPORT_R0_NC,
+	IDXGRP	:= NCIDXG_AXPARMS + Axis.NcToPlc.AxisId,
+	IDXOFFS	:= NCIDXO_AXP_HWAMSADDR,
+	LEN		:= SIZEOF(readBuffer) ,
+	DESTADDR:= ADR(readBuffer),
+	READ	:= TRUE,
+	TMOUT	:= Timeout
+);
+
+IF NOT fbAdsRead.BUSY THEN
+	fbAdsRead(READ := FALSE);
+	stAX5000Diag.nNCAxisID := Axis.NcToPlc.AxisId;
+
+	IF NOT fbAdsRead.ERR THEN
+		MEMCPY(ADR(Ids), ADR(readBuffer), SIZEOF(Ids)); 										(* readBuffer[0..5] *)
+		MEMCPY(ADR(DriveRef.nSlaveAddr), ADR(readBuffer[6]), SIZEOF(DriveRef.nSlaveAddr));  	(* readBuffer[6..7] *)
+		MEMCPY(ADR(DriveRef.nDriveNo), ADR(readBuffer[8]), SIZEOF(DriveRef.nDriveNo));  		(* readBuffer[8..9] *)
+
+		(* create string out of byte array *)
+		DriveRef.sNetId := F_CreateAmsNetId(Ids);
+		GetDriveRef := FALSE;
+	END_IF
+
+	Busy	:= FALSE;
+	iState	:= 0;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="M_Reset" Id="{06eff0cd-3ec4-46d8-b55d-af7cf1047f15}">
+      <Implementation>
+        <ST><![CDATA[CASE iSubState OF
+0:
+	IF stAX5000Diag.bWcStateError OR stAX5000Diag.bC1DError THEN
+		(* ResetAmplifier *)
+		iSubState := iSubState + 1;
+	ELSIF (NOT stAX5000Diag.bOperational) OR stAX5000Diag.bAxisError OR (stAX5000Diag.iAxisErrorCode <> 0) THEN
+		(* NC Reset only *)
+		iSubState := 6;
+	ELSE
+		(* reset not required *)
+		iSubState	:= 0;
+		iState		:= 0;
+		Busy		:= FALSE;
+		ResetAct	:= FALSE;
+	END_IF
+
+1:	(* ResetAmplifier *)
+	fbReset(
+		NetId	:= IPCNetID,
+		Execute	:= TRUE,
+		Timeout	:= DEFAULT_ADS_TIMEOUT,
+		Axis	:= Axis,
+	);
+	IF NOT fbReset.Busy THEN
+		fbReset(Execute:= FALSE, Axis:= Axis);
+
+		IF NOT fbReset.Error THEN
+			iSubState	:= iSubState + 1;
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= fbReset.AdsErrId;
+			SercosErrId		:= fbReset.SercosErrId;
+			Busy			:= FALSE;
+			ResetAct		:= FALSE;
+			iSubState		:= 0;
+			iState			:= 0;
+		END_IF
+	END_IF
+
+2:	fbDelay(IN:=TRUE, PT:=t#3s);
+	IF fbDelay.Q THEN
+		fbDelay(IN:=FALSE);
+		iSubState	:= iSubState + 1;
+	END_IF
+
+3:	fbGetSlaveState(
+		sNetId		:= DriveRef.sNetId,
+		nSlaveAddr	:= DriveRef.nSlaveAddr,
+		bExecute	:= TRUE,
+		tTimeout	:= DEFAULT_ADS_TIMEOUT,
+	);
+
+	IF NOT fbGetSlaveState.bBusy THEN
+		fbGetSlaveState(bExecute:= FALSE);
+
+		IF NOT fbGetSlaveState.bError THEN
+			IF Axis.NcToPlc.StateDWord.31 OR (Axis.NcToPlc.ErrorCode <> 0) THEN
+				iSubState	:= 6;
+			ELSE
+				Busy		:= FALSE;
+				ResetAct	:= FALSE;
+				iSubState	:= 0;
+				iState		:= 0;
+			END_IF
+		ELSE
+			Error			:= TRUE;
+			AdsErrId		:= UDINT_TO_UINT(fbGetSlaveState.nErrId);
+			Busy			:= FALSE;
+			ResetAct		:= FALSE;
+			iSubState		:= 0;
+			iState			:= 0;
+		END_IF
+	END_IF
+
+5:	(* set op *)
+	fbReqSlaveState(
+		sNetId		:= DriveRef.sNetId,
+		nSlaveAddr	:= DriveRef.nSlaveAddr,
+		bExecute	:= TRUE,
+		tTimeout	:= DEFAULT_ADS_TIMEOUT,
+		state		:= EC_DEVICE_STATE_OP);
+
+	IF NOT fbReqSlaveState.bBusy THEN
+		fbReqSlaveState(bExecute:= FALSE);
+
+		IF NOT fbReqSlaveState.bError THEN
+			iSubState	:= iSubState + 1;
+		ELSE
+			Error		:= TRUE;
+			AdsErrId	:= UDINT_TO_UINT(fbReqSlaveState.nErrId);
+			Busy		:= FALSE;
+			ResetAct	:= FALSE;
+			iSubState	:= 0;
+			iState		:= 0;
+		END_IF
+	END_IF
+
+6:	fbNcReset(
+		Execute:= TRUE,
+		Axis:= Axis,
+	);
+	IF fbNcReset.Done OR fbNcReset.Error THEN
+		IF fbNcReset.Error THEN
+			Error 		:= TRUE;
+			AdsErrId 	:= UDINT_TO_UINT(fbNcReset.ErrorID);
+		END_IF
+
+		iSubState	:= 0;
+		iState		:= 0;
+		Busy		:= FALSE;
+		ResetAct	:= FALSE;
+		fbNcReset(Execute:= FALSE, Axis:= Axis);
+	END_IF
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="FB_AxisDiag">
+      <LineId Id="3" Count="4" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="9" Count="57" />
+      <LineId Id="154" Count="0" />
+      <LineId Id="68" Count="4" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AxisDiag.M_GetDiagnosis">
+      <LineId Id="2" Count="216" />
+      <LineId Id="249" Count="0" />
+      <LineId Id="251" Count="65" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AxisDiag.M_GetDriveRef">
+      <LineId Id="2" Count="27" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AxisDiag.M_Reset">
+      <LineId Id="2" Count="3" />
+      <LineId Id="9" Count="22" />
+      <LineId Id="42" Count="28" />
+      <LineId Id="75" Count="16" />
+      <LineId Id="115" Count="39" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

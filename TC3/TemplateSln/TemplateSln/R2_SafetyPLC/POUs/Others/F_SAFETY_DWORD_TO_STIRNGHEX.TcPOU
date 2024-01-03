@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_SAFETY_DWORD_TO_STIRNGHEX" Id="{9e4cb12e-c732-43ff-9096-78cf4f7cf6bf}" SpecialFunc="None">
+    <Declaration><![CDATA[///*************************************************************************************************************************
+///							Beckhoff Automation Poland									
+///				`        	F_SAFETY_DWORD_TO_STIRNGHEX v1.0							
+///									13.03.2015											
+///				Funkcja zwraca napis zawierający zapis liczby w formacie szesnastkowym.			
+///_______________________________________________________________________________________
+FUNCTION F_SAFETY_DWORD_TO_STIRNGHEX : STRING(8)
+VAR_INPUT
+	dwIn: DWORD;
+END_VAR
+VAR
+	dwTemp: DWORD;
+	i: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i := 0 TO 7 DO
+	dwTemp := ROR(dwIn,4*i) AND 16#F;
+
+	CASE dwTemp OF
+	0..9:
+		F_SAFETY_DWORD_TO_STIRNGHEX := CONCAT(DWORD_TO_STRING(dwTemp), F_SAFETY_DWORD_TO_STIRNGHEX);
+	10:
+		F_SAFETY_DWORD_TO_STIRNGHEX := CONCAT('A', F_SAFETY_DWORD_TO_STIRNGHEX);
+	11:
+		F_SAFETY_DWORD_TO_STIRNGHEX := CONCAT('B', F_SAFETY_DWORD_TO_STIRNGHEX);
+	12:
+		F_SAFETY_DWORD_TO_STIRNGHEX := CONCAT('C', F_SAFETY_DWORD_TO_STIRNGHEX);
+	13:
+		F_SAFETY_DWORD_TO_STIRNGHEX := CONCAT('D', F_SAFETY_DWORD_TO_STIRNGHEX);
+	14:
+		F_SAFETY_DWORD_TO_STIRNGHEX := CONCAT('E', F_SAFETY_DWORD_TO_STIRNGHEX);
+	15:
+		F_SAFETY_DWORD_TO_STIRNGHEX := CONCAT('F', F_SAFETY_DWORD_TO_STIRNGHEX);
+	END_CASE;
+END_FOR
+F_SAFETY_DWORD_TO_STIRNGHEX := DELETE(F_SAFETY_DWORD_TO_STIRNGHEX,4,1);]]></ST>
+    </Implementation>
+    <LineIds Name="F_SAFETY_DWORD_TO_STIRNGHEX">
+      <LineId Id="3" Count="19" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

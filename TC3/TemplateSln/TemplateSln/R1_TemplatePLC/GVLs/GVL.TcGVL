@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <GVL Name="GVL" Id="{dbd024e1-e0e4-40c9-9dbd-c378d38eb65e}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+	byNoOfAxes 							: BYTE:= 10; 			// Liczba osi
+END_VAR
+VAR_GLOBAL
+	Axis								: ARRAY [1..byNoOfAxes] OF AXIS_REF;
+	stMcAxisOnline						: ARRAY [1..byNoOfAxes] OF ST_McAxisOnline;
+	//
+	bAllUnitsReady						: BOOL;					// All machine units are OK, and ready to operate
+	bGeneralOK							: BOOL;					// There is no Warning, Error or Fatal Error - just when it's true - You can operate
+	bGeneralWarning						: BOOL;					// Warning - just message/event - no reaction
+	bGeneralError						: BOOL;					// Error - machine has to stop, start is possible from this position
+	bGeneralFatalError					: BOOL;					// Fatal error causes machine stop. You have to go back for cycle begin.
+
+	// 
+	bRestartRequired					: BOOL;					// In case of fatal error, when whole process restart required
+	bMuteGeneralError					: BOOL;					// Just for service/maitenance - if You are aware of consequences You can force muting mode
+	bMuteGeneralFatalError				: BOOL;					// Just for service/maitenance - if You are aware of consequences You can force muting mode
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

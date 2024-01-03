@@ -1,0 +1,349 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_EL6900_StatusData" Id="{cedb7954-e78b-44c5-af78-ef8f2c333ea8}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*									03.03.2017											*)
+(*				Blok funkcyjny pobierający informacje diagnostyczne						*)
+(*			 o blokach funkcyjnych, grupach, polaczeniach z modułu EL6900				*)
+(*			V2.6:																		*)
+(*				- Poprawiono bugi pętli FOR odczytu w akcjach ACT_StatusConnections		*)
+(*					ACT_StatusFunctionBlocks i ACT_StatusGroups							*)
+(*			v2.5:																		*)
+(*				- bReset, wErrorCount, ACT_Reset zmiana nazw pozostalych akcji			*)
+(*				- usunieta zmienna sPath												*)
+(*			v2.4:																		*)
+(*				- obsluga bledu															*)
+(*			v2.3:																		*)
+(*				- dostosowano do rozbudowanej struktury									*)
+(*			v1.2:																		*)
+(*				- uruchamianie zboczem narastającym bExecute							*)	
+(*______________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_EL6900_StatusData IMPLEMENTS I_ErrorHandling
+VAR_INPUT
+	sNetId						: T_AmsNetId;					(* Adres mastera EtherCAT *)
+	uiSlaveAddr					: UINT;							(* Adres slave EtherCAT modułu EL6900 *)
+	bExecute					: BOOL;							(* Zbocze narastające aktywuje komende *)
+	bReset						: BOOL;							(* 	*)
+END_VAR
+VAR_OUTPUT
+	stEL6900_StatusData			: ST_EL6900_StatusData;			(* Wyjściowa struktura danych *)
+	bBusy						: BOOL;							(* Wyjście jest ustawione gdy aktualnie wykonywana jest komenda *)
+	bError						: BOOL;							(* Wyjście jest ustawione gdy wystąpił błąd *) 
+	udiErrorId					: UDINT;						(* Kod błedu *)
+	bNewData					: BOOL;							(* Po otrzymaniu nowych danych przyjmuje wartość TRUE na jeden cykl *)
+END_VAR
+VAR
+	fbEcCoESdoRead				: FB_EcCoESdoRead;
+	BSubIndex					: BYTE;
+	wIndex						: WORD;
+	iInit						: INT:=10;
+	pDstBuf						: PVOID;
+	cbBufLen					: UDINT;
+	ftRead						: F_TRIG;
+	udiLastErrorID				: UDINT;
+	tonRead						: TON;
+	iStep						: INT:=0;
+	BStatusConnections			: BYTE:=0;
+	dwTempStatusConnection		: DWORD;						(* Wartosc tymczasowa *)
+	BStatusGroups				: BYTE:=0;
+	dwTempStatusGroups			: DWORD;						(* Wartosc tymczasowa *)
+	BStatusFunctionBlocks		: BYTE:= 0;
+	stEL6900_StatusData_Temp	: ST_EL6900_StatusData;			(* Wartosc tymczasowa *)
+	index						: INT;
+	bRead						: BOOL;
+	rtExecute					: R_TRIG;
+	rtError						: R_TRIG;
+	rtReset						: R_TRIG;
+	wErrorCount					: WORD;							// Licznik bledow
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ACT_Reset(); 									// Wywolanie akcji resetu
+
+rtExecute(CLK:=bExecute);
+CASE iStep OF
+	0:
+		ACT_Init();
+	10:
+		bNewData:=FALSE;
+		IF rtExecute.Q THEN
+			iStep:=20;
+			bBusy:=TRUE;
+			bError:=FALSE;
+			udiErrorId:=0;
+		END_IF
+	20:
+		ACT_StatusConnections();
+
+	30:
+		ACT_StatusGroups();
+
+	40:
+		ACT_StatusFunctionBlocks();
+	50:
+		stEL6900_StatusData := stEL6900_StatusData_Temp;
+		iStep:=10;
+		bBusy:=FALSE;
+		bNewData:=TRUE;
+		bRead:=FALSE;
+	1000:
+		wErrorCount 					:= wErrorCount + 1;			// Inkrementacja licznika bledow
+		iStep 							:= 0;
+END_CASE
+
+fbEcCoESdoRead(
+	sNetId		:= sNetId,
+	nSlaveAddr	:= uiSlaveAddr,
+	nSubIndex	:= BSubIndex,
+	nIndex		:= wIndex,
+	pDstBuf		:= pDstBuf,
+	cbBufLen	:= cbBufLen,
+	bExecute 	:= bRead);
+	
+ACT_Error();]]></ST>
+    </Implementation>
+    <Action Name="ACT_Error" Id="{086150c3-7b48-41ea-abd9-a4d868775fa7}">
+      <Implementation>
+        <ST><![CDATA[rtError(CLK:= fbEcCoESdoRead.bError, Q=> );
+IF rtError.Q THEN
+	bBusy 			:= FALSE;
+	bError 			:= TRUE;
+	bRead			:= FALSE;
+	udiErrorId 		:= fbEcCoESdoRead.nErrId;
+	iStep 			:= 1000;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Init" Id="{7b3ffa5f-9e5e-40be-af42-82eea703b4b1}">
+      <Implementation>
+        <ST><![CDATA[CASE iInit OF
+10:
+	bRead:=FALSE;
+	IF rtExecute.Q THEN
+		bBusy:=TRUE;
+		bError:=FALSE;
+		udiErrorId:=0;
+		bNewData:=FALSE;
+		wIndex 			:= 16#2110;
+		BSubIndex 		:= 0;
+		pDstBuf 		:= ADR(stEL6900_StatusData_Temp.dwStatusConnections);
+		cbBufLen 		:= SIZEOF(stEL6900_StatusData_Temp.dwStatusConnections);
+		iInit:=iInit+10;
+		bRead:=TRUE;
+	END_IF
+20:
+	bRead:=FALSE;
+	IF NOT fbEcCoESdoRead.bError AND NOT fbEcCoESdoRead.bBusy THEN
+		wIndex 			:= 16#2120;
+		BSubIndex 		:= 0;
+		pDstBuf 		:= ADR(stEL6900_StatusData_Temp.dwStatusGroups);
+		cbBufLen 		:= SIZEOF(stEL6900_StatusData_Temp.dwStatusGroups);
+		iInit:=iInit+10;
+		bRead:=TRUE;
+	END_IF
+30:
+	bRead:=FALSE;
+	IF NOT fbEcCoESdoRead.bError AND NOT fbEcCoESdoRead.bBusy THEN
+		wIndex 			:= 16#2130;
+		BSubIndex 		:= 0;
+		pDstBuf 		:= ADR(stEL6900_StatusData_Temp.dwStatusFunctionBlocks);
+		cbBufLen 		:= SIZEOF(stEL6900_StatusData_Temp.dwStatusFunctionBlocks);
+		iInit:=iInit+10;
+		bRead:=TRUE;
+	END_IF
+ELSE
+	bRead:=FALSE;
+	iInit:=10;
+	iStep:=20;
+END_CASE
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Reset" Id="{1b8776bc-91ec-4d50-a341-104edbc3b7b3}">
+      <Implementation>
+        <ST><![CDATA[rtReset(CLK:= bReset, Q=> );			// Wywolanie triggera, wykrycie zbocza narastajacego zmiennej wejsciowej bReset
+IF rtReset.Q THEN
+	bBusy						:= FALSE;
+	bError						:= FALSE;
+	bNewData					:= FALSE;
+	bRead						:= FALSE;
+	iStep						:= 0;
+	udiErrorId					:= 0;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_StatusConnections" Id="{87099bdb-0381-47cf-9e04-f3300939be70}">
+      <Implementation>
+        <ST><![CDATA[bRead:=FALSE;
+IF NOT fbEcCoESdoRead.bError AND NOT fbEcCoESdoRead.bBusy THEN
+	BStatusConnections := BStatusConnections + 1;
+	IF bStatusConnections>1 THEN
+		stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].dwStatusConnection := (dwTempStatusConnection);
+		stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].BState:= DWORD_TO_BYTE(dwTempStatusConnection AND 16#000000FF);(*1B*)
+		stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].BDiagnosis := DWORD_TO_BYTE(ROR(dwTempStatusConnection AND 16#0000FF00,8));(*2B*)
+		stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].eSAFETY_ConnectionState:= stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].BState;
+		stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].eSAFETY_ConnectionDiag0F := stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].BDiagnosis AND 16#0F;
+		stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].BSAFETY_ConnectionDiagF0 := stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].BDiagnosis AND 16#F0;
+		stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].sSAFETY_ConnectionDiagF0 := BYTE_TO_BINSTR(SHR(stEL6900_StatusData_Temp.arrstStatusConnections[BStatusConnections-1].BDiagnosis,4),4);
+	END_IF
+	IF BStatusConnections > stEL6900_StatusData_Temp.dwStatusConnections THEN
+		BStatusConnections := 0;
+		iStep := iStep + 10;
+		bRead:=FALSE;
+	ELSE
+		wIndex 			:= 16#2110;
+		BSubIndex 		:= 0+BStatusConnections;
+		pDstBuf 		:= ADR(dwTempStatusConnection);
+		cbBufLen 		:= SIZEOF(dwTempStatusConnection);
+		bRead:=TRUE;
+	END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_StatusFunctionBlocks" Id="{6e91b594-b535-4b65-a826-ac3c4ddf2a69}">
+      <Implementation>
+        <ST><![CDATA[bRead:=FALSE;
+IF NOT fbEcCoESdoRead.bError AND NOT fbEcCoESdoRead.bBusy THEN
+	BStatusFunctionBlocks := BStatusFunctionBlocks + 1;
+	IF BStatusFunctionBlocks > stEL6900_StatusData_Temp.dwStatusFunctionBlocks THEN
+		bRead:=FALSE;
+		BStatusFunctionBlocks := 0;
+		iStep := 50;
+	ELSE
+		wIndex 			:= 16#2130;
+		BSubIndex 		:= BStatusFunctionBlocks;
+		pDstBuf 		:= ADR(stEL6900_StatusData_Temp.arrstStatusFunctionBlocks[BStatusFunctionBlocks]);
+		cbBufLen 		:= SIZEOF(stEL6900_StatusData_Temp.arrstStatusFunctionBlocks[BStatusFunctionBlocks]);
+		bRead:=TRUE;
+	END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_StatusGroups" Id="{0a248b04-69d6-4e46-80c4-4c21e16cdcf7}">
+      <Implementation>
+        <ST><![CDATA[bRead:=FALSE;
+IF NOT fbEcCoESdoRead.bError AND NOT fbEcCoESdoRead.bBusy THEN
+	BStatusGroups := BStatusGroups + 1;	
+	IF BStatusGroups>1 THEN
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].dwStatusGroup := dwTempStatusGroups;
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BState := DWORD_TO_BYTE(dwTempStatusGroups AND 16#000000FF);
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].eSAFETY_GroupState := stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BState;
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BDiagnosis := DWORD_TO_BYTE(ROR(dwTempStatusGroups AND 16#0000FF00,8));(*2B*)
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BInputs := DWORD_TO_BYTE(ROR(dwTempStatusGroups AND 16#00FF0000,16));(*3B*)
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BOutputs := DWORD_TO_BYTE(ROR(dwTempStatusGroups AND 16#FF000000,24));(*4B*)
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].bRUN_STOP := stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BInputs.0;
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].bERR_Ack := stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BInputs.1;
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].bFB_ERR := stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BOutputs.0;
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].bCOM_ERR := stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BOutputs.1;
+		stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].bOUT_ERR := stEL6900_StatusData_Temp.arrstStatusGroups[BStatusGroups-1].BOutputs.2;
+	END_IF
+	IF BStatusGroups > stEL6900_StatusData_Temp.dwStatusGroups THEN
+		BStatusGroups := 0;
+		iStep := iStep + 10;
+		bRead:=FALSE;
+	ELSE
+		wIndex 			:= 16#2120;
+		BSubIndex 		:= BStatusGroups;
+		pDstBuf 		:= ADR(dwTempStatusGroups);
+		cbBufLen 		:= SIZEOF(dwTempStatusGroups);
+		bRead:=TRUE;
+	END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Property Name="P_Error" Id="{c5a811f5-f181-4dc9-bea7-03762f22984d}">
+      <Declaration><![CDATA[PROPERTY P_Error : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{aed5c9fb-3937-4daa-8ce6-220c6e5bbab4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="P_ErrorID" Id="{2edcc20b-74d4-4435-870c-33c48699ef6d}">
+      <Declaration><![CDATA[PROPERTY P_ErrorID : UDINT
+]]></Declaration>
+      <Get Name="Get" Id="{edb3a8b6-789f-4cda-8d72-f234a3b2b89b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ToString" Id="{ffb56a66-26f9-446f-a775-fbf6b993354c}">
+      <Declaration><![CDATA[{attribute 'object_name' := 'ToString'}
+METHOD ToString : STRING(255)
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_EL6900_StatusData">
+      <LineId Id="3" Count="41" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.ACT_Error">
+      <LineId Id="2" Count="6" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.ACT_Init">
+      <LineId Id="2" Count="39" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.ACT_Reset">
+      <LineId Id="2" Count="7" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.ACT_StatusConnections">
+      <LineId Id="2" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="29" Count="1" />
+      <LineId Id="32" Count="5" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="21" Count="2" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="3" Count="3" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="19" Count="1" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.ACT_StatusFunctionBlocks">
+      <LineId Id="2" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="10" Count="1" />
+      <LineId Id="17" Count="5" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.ACT_StatusGroups">
+      <LineId Id="2" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="45" Count="12" />
+      <LineId Id="25" Count="4" />
+      <LineId Id="3" Count="3" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="23" Count="1" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.P_Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.P_ErrorID.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL6900_StatusData.ToString">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

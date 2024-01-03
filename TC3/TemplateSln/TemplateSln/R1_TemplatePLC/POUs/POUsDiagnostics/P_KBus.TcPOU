@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_KBus" Id="{44185d0a-4029-4f91-908c-fc135ac18718}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									P_KBus
+//								15.06.2018
+//					Program wysyłający błędy magistrali KBus do EvenLogger'a
+// 
+//	v1.3	|| TC v 3.1.4022.20		|| - Przeniesiono logowanie do EventLoggera wraz z zabepieczeniem przed zbyt szybkim logowaniem zdarzeń do programu P_SystemDiag_EventLog. 
+//	v1.2	|| TC v 3.1.4020.28		|| - Dodano zabezpieczenie przed zbyt częstym logowaniem eventów
+//	v1.1 	|| TC v 3.1.4020.14 	|| - Dodane wyjscia bOk, bWarning, bError
+//	v1.0 	|| TC v 3.1.4020.0 		|| - Pierwsza wersja
+//==================================================================================================
+PROGRAM P_KBus
+VAR_OUTPUT
+	// Brak obslugi
+	bOK								: BOOL := TRUE;			// Brak bledow i ostrzezen
+	bWarning						: BOOL;					// Ostrzezenie
+	bError							: BOOL;					// Zbiorcza flaga bledow
+END_VAR
+VAR
+	uiKbusState	AT %I*				: UINT;		// K-Bus Box State << PLEASE LINK THIS VARIABLE WITH YOUR BOX (Devices > Device > Box > Inputs > State)
+	stKBusState						: ST_KBusState;	// K_Bus_diagnostic errors structure
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Read Error flags form K-Bus Device
+stKBusState.bK_BusErr				:=	uiKbusState.0;		// Bit 0 = K-Bus Err
+stKBusState.bTerminalStateErr		:=	uiKbusState.1;		// Bit 1 = Terminal State Err
+stKBusState.bProcessDataLengthErr	:=	uiKbusState.2;		// Bit 2 = Process Data Length Err
+stKBusState.bK_BusInvalid			:=	uiKbusState.7;		// Bit 7 = K-Bus invalid
+stKBusState.bNoValidInputs			:=	uiKbusState.8;		// Bit 8 = No valid Inputs
+stKBusState.bK_BusInputUpdateBusy	:=	uiKbusState.9;		// Bit 9 = K-Bus Input Update busy	
+stKBusState.bK_BusOutputUpdateBusy	:=	uiKbusState.10;		// Bit 10 = K-Bus Output Update busy
+stKBusState.bWatchDogErr			:=	uiKbusState.11;		// Bit 11 = Watchdog Err
+stKBusState.bAcycFunctionActive		:=	uiKbusState.15;		// Bit 15 = Acyc. Function atcive (e.g. K-Bus Reset)]]></ST>
+    </Implementation>
+    <LineIds Name="P_KBus">
+      <LineId Id="109" Count="8" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

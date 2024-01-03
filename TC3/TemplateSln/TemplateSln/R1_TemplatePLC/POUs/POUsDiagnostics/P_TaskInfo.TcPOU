@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_TaskInfo" Id="{963be1aa-f497-42e7-bc03-3e87922b27c9}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//						Beckhoff Automation Poland
+//							21.05.2018
+//				Program  odczytujący informacje o tasku pierwszym.
+//
+// 	v1.1 || TC v 3.1.4022.16 || - zgodnosc ze standardem
+// 	v1.0 || TC v 3.1.4020.14 || - pierwsza wersja
+//==================================================================================================
+PROGRAM P_TaskInfo
+VAR_OUTPUT
+	bOK							: BOOL;						// Brak bledow i ostrzezen
+	bWarning					: BOOL;						// Ostrzezenie - nie wystepuja w tym podprogramie - wystepuja dla zachowania spojnosci
+	bError						: BOOL;						// Zbiorcza flaga bledow
+END_VAR
+VAR
+	fbTaskInfo					: FB_TaskInfo;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbTaskInfo(bReset:= , bError=> );
+bError 							:= fbTaskInfo.bError; 		// Dla jednego tasku. W przypadku wiekszej ilosci taskow trzeba dopisac reszte.
+bOk 							:= NOT bError;]]></ST>
+    </Implementation>
+    <LineIds Name="P_TaskInfo">
+      <LineId Id="3" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

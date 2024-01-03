@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_OPMODE" Id="{822adef1-2c47-4cc7-be25-7acaa8d4b820}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_OPMODE :
+STRUCT
+	{attribute 'hide'}
+	BUnknown						: BYTE;
+	BState							: BYTE;
+(* wDiagnosis *)
+	bDiag_DiscError					: BIT; 		(* Discrepancy monitoring error *)
+	{attribute 'hide'}
+	bDiagBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT10						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT11						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT15						: BIT; 		(* Empty *)
+(* wInputs *)
+	bIn_Restart						: BIT; 		(* .0 *)
+	{attribute 'hide'}
+	bInputBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT7						: BIT; 		(* Empty *)
+	bIn_OPMODEIn1					: BIT; 		(* .8 *)
+	bIn_OPMODEIn2					: BIT; 		(* .9 *)
+	bIn_OPMODEIn3					: BIT; 		(* .10 *)
+	bIn_OPMODEIn4					: BIT; 		(* .11 *)
+	bIn_OPMODEIn5					: BIT; 		(* .12 *)
+	bIn_OPMODEIn6					: BIT; 		(* .13 *)
+	bIn_OPMODEIn7					: BIT; 		(* .14 *)
+	bIn_OPMODEIn8					: BIT; 		(* .15 *)
+(* wOutputs *)
+	bOut_Error						: BIT; 		(* .0 *)
+	{attribute 'hide'}
+	bOutputBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT7						: BIT; 		(* Empty *)
+	bOut_OPMODEOut1					: BIT; 		(* .8 *)
+	bOut_OPMODEOut2					: BIT; 		(* .9 *)
+	bOut_OPMODEOut3					: BIT; 		(* .10 *)
+	bOut_OPMODEOut4					: BIT; 		(* .11 *)
+	bOut_OPMODEOut5					: BIT; 		(* .12 *)
+	bOut_OPMODEOut6					: BIT; 		(* .13 *)
+	bOut_OPMODEOut7					: BIT; 		(* .14 *)
+	bOut_OPMODEOut8					: BIT; 		(* .15 *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

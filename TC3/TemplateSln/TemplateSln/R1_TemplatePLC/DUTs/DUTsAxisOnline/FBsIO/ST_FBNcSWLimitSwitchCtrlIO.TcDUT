@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_FBNcSWLimitSwitchCtrlIO" Id="{ea3275d8-3531-477e-9a41-0a076a9a44f3}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.04.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_FBNcSWLimitSwitchCtrlIO:
+STRUCT
+	bRead							: BOOL;								// Read SW limit switches values and states
+	bWrite							: BOOL;								// Write SW limit switches values and states
+	bReset							: BOOL; 							// Not yet
+// Set values
+	lrSetMinPos						: LREAL;							// SW limit switch minimum
+	lrSetMaxPos						: LREAL;							// SW limit switch maximum
+	bSetMinMon						: BOOL;								// Enable SW limit switch minimum monitoring
+	bSetMaxMon						: BOOL;								// Enable SW limit switch maximum monitoring
+// Actual values	
+	lrActMinPos						: LREAL;							// Actual SW limit switch minimum
+	lrActMaxPos						: LREAL;							// Actual SW limit switch maximum
+	bActMinMon						: BOOL;								// SW limit switch minimum monitoring state
+	bActMaxMon						: BOOL;								// SW limit switch maximum monitoring stateEND_STRUCT
+//	
+	bBusy							: BOOL;								// Read/Write busy
+	bError							: BOOL;								// Read/Write error
+	udiErrorID						: UDINT;							// Read/Write error ID
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

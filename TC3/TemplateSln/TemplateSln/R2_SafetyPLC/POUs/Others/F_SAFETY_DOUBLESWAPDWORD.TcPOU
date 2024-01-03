@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_SAFETY_DOUBLESWAPDWORD" Id="{817f8043-129c-474a-be15-3f4d9272302f}" SpecialFunc="None">
+    <Declaration><![CDATA[///*********************************************************************************************
+///							Beckhoff Automation Poland											
+///				`        	F_SAFETY_DOUBLESWAPDWORD v1.0									
+///									13.03.2015													
+///				Funkcja przepisuje liczbę zamieniając kolejność bajtów - pierwszy staje się		
+///									ostanim, drugi przedostatnim itd.								
+///__________________________________________________________________________________
+FUNCTION F_SAFETY_DOUBLESWAPDWORD : DWORD
+VAR_INPUT
+	dwIn: DWORD;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_SAFETY_DOUBLESWAPDWORD := ROL(dwIn AND 16#0000_00FF,24)+ROL(dwIn AND 16#0000_FF00,8)+ROL(dwIn AND 16#00FF_0000,24)+ROL(dwIn AND 16#FF00_0000,8);]]></ST>
+    </Implementation>
+    <LineIds Name="F_SAFETY_DOUBLESWAPDWORD">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

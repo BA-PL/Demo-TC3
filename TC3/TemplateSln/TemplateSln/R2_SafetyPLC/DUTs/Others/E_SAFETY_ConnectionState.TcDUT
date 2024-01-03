@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_ConnectionState" Id="{91861cd4-c61e-45ff-bcbf-57ff22694718}">
+    <Declaration><![CDATA[TYPE E_SAFETY_ConnectionState :
+(
+	eSAFETY_ConnectionState_Unknown		:= 0,
+	eSAFETY_ConnectionState_Reset 		:= 100,
+	eSAFETY_ConnectionState_Session 	:= 101,
+	eSAFETY_ConnectionState_Connection	:= 102,
+	eSAFETY_ConnectionState_Parameter	:= 103,
+	eSAFETY_ConnectionState_Data		:= 104,
+	eSAFETY_ConnectionState_Shutdown	:= 105
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

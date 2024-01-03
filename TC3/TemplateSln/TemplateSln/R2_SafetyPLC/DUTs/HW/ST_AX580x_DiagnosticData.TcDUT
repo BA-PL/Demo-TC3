@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_AX580x_DiagnosticData" Id="{6122bf15-146d-4237-9236-e90441694cd3}">
+    <Declaration><![CDATA[TYPE ST_AX580x_DiagnosticData EXTENDS ST_ELxxxx_Data:
+STRUCT
+	// Reason for switching off	
+	CoE_0xFA82_01				: DWORD;
+	CoE_0xFA82_02				: DWORD;
+	CoE_0xFA82_03				: DWORD;
+	CoE_0xFA82_04				: DWORD;
+	// General diagnostic words
+	// index 2->8 depend on contents of index 01 
+	CoE_0xFA10_01				: DWORD;
+	CoE_0xFA10_02				: DWORD;
+	CoE_0xFA10_03				: DWORD;
+	CoE_0xFA10_04				: DWORD;
+	CoE_0xFA10_05				: DWORD;
+	CoE_0xFA10_06				: DWORD;	
+	// Reason for shut-down if index 01 == 0
+	// Axis 1
+	bAxis1_NoErrorReaction		: BOOL;
+	bAxis1_STOErrorReaction		: BOOL;
+	bAxis1_SS1ErrorReaction		: BOOL;
+	CoE_0xFA10_07				: DWORD;
+	// Axis 2
+	bAxis2_NoErrorReaction		: BOOL;
+	bAxis2_STOErrorReaction		: BOOL;
+	bAxis2_SS1ErrorReaction		: BOOL;
+	CoE_0xFA10_08				: DWORD;	
+	// Other error on FA10_xx
+	bError_FA10_xx				: BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

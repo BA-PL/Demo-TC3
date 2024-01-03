@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_SAFETY_AutoGroupErrACK" Id="{3214460b-c5ea-4780-bf9a-c123c9c2f3e6}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_SAFETY_AutoGroupErrACK
+VAR_IN_OUT
+	stSAFETYGroupIO: ST_SAFETYGroupIO;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[stSAFETYGroupIO.ERR_Ack := stSAFETYGroupIO.FB_ERR OR stSAFETYGroupIO.COM_ERR OR stSAFETYGroupIO.OUT_ERR;]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SAFETY_AutoGroupErrACK">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

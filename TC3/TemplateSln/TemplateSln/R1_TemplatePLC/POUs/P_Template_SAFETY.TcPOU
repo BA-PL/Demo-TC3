@@ -1,0 +1,123 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_Template_SAFETY" Id="{1cf2eb24-e212-4be6-85ed-5951ec0bf36a}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_Template_SAFETY
+VAR_INPUT
+	eMachineMode							: E_MachineMode; 		// Machine mode
+	eMachineCommand							: E_MachineCommand; 	// Command from top level state program
+END_VAR
+VAR_OUTPUT
+	eMachineState							: E_MachineState;
+  	bError									: BOOL;
+END_VAR
+VAR
+	// INPUTS
+	bResetBusy								: BOOL;
+	// OUTPUTS
+	bResetCMD								: BOOL;
+	// FBs
+	rtRestart								: R_TRIG;
+	rtReset									: R_TRIG;
+	ftFinish								: F_TRIG;
+	bSTOStatus								: BOOL;
+	bSOSStatus								: BOOL;
+	bAllAxisInSafeState						: BOOL;
+	bAllAxisReady							: BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// =================== Inputs ===================
+// Read input signals
+Act_InUpdate();
+
+// Error collection
+Act_Error();
+// ==============================================
+rtReset(CLK:= eMachineCommand = E_MachineCommand.eReset, Q=> );
+rtRestart(CLK:= eMachineCommand = E_MachineCommand.eRestart, Q=> );
+ftFinish(CLK:= bResetBusy, Q=> );
+
+IF bError THEN
+	eMachineState								:= E_MachineState.eError;
+END_IF
+
+IF rtRestart.Q THEN
+	eMachineState								:= E_MachineState.eRestarting;
+	bResetCMD									:= TRUE;
+END_IF
+
+IF rtReset.Q THEN
+	eMachineState								:= E_MachineState.eReseting;
+	bResetCMD									:= TRUE;
+END_IF
+
+IF ftFinish.Q THEN
+	eMachineState								:= E_MachineState.eRunning;
+	bResetCMD									:= FALSE;
+END_IF
+
+// =================== Outputs ==================
+Act_OutUpdate();
+// ==============================================]]></ST>
+    </Implementation>
+    <Action Name="Act_Error" Id="{e5ac91da-f19a-412d-8637-7ec6e55e64b6}">
+      <Implementation>
+        <ST><![CDATA[// Program summary error
+bError 							:= 	(GVL_IO.dwAXErrors OR GVL_IO.dwGroupErrors) <> 0;
+// OR bError 							:= GVL_IO.bSAFETY_Error;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_InUpdate" Id="{0b86017d-eb0b-4d2e-98d9-a259f7a022eb}">
+      <Implementation>
+        <ST><![CDATA[bResetBusy 						:= GVL_IO.bSAFETY_ResetBusy;
+bSTOStatus  					:= GVL_IO.dwAXStatesSTO = 2#11_1111;
+bSOSStatus  					:= GVL_IO.dwAXStatesSOS = 2#1111;
+bAllAxisInSafeState  			:= (GVL_IO.dwAXStatesSTO OR GVL_IO.dwAXStatesSOS) = 2#11_1111;
+bAllAxisReady 					:= (GVL_IO.dwAXStatesSTO OR GVL_IO.dwAXStatesSOS) = 0;]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_OutUpdate" Id="{d32cba82-d123-4275-bbd9-98ad77c0c152}">
+      <Implementation>
+        <ST><![CDATA[GVL_IO.bSAFETY_ResetCMD 		:= bResetCMD;]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="P_Template_SAFETY">
+      <LineId Id="323" Count="0" />
+      <LineId Id="371" Count="2" />
+      <LineId Id="380" Count="0" />
+      <LineId Id="321" Count="0" />
+      <LineId Id="326" Count="0" />
+      <LineId Id="336" Count="0" />
+      <LineId Id="342" Count="0" />
+      <LineId Id="337" Count="0" />
+      <LineId Id="299" Count="0" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="297" Count="1" />
+      <LineId Id="348" Count="0" />
+      <LineId Id="276" Count="1" />
+      <LineId Id="328" Count="0" />
+      <LineId Id="274" Count="0" />
+      <LineId Id="331" Count="3" />
+      <LineId Id="330" Count="0" />
+      <LineId Id="344" Count="3" />
+      <LineId Id="343" Count="0" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="325" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template_SAFETY.Act_Error">
+      <LineId Id="2" Count="0" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template_SAFETY.Act_InUpdate">
+      <LineId Id="1" Count="1" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="6" Count="0" />
+    </LineIds>
+    <LineIds Name="P_Template_SAFETY.Act_OutUpdate">
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,236 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_NcSWLimitSwitchCtrl" Id="{f7de1b85-7219-4fea-9297-e8d133a02e40}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//					Beckhoff Automation Poland
+//							23.05.2018
+//		Blok funkcyjny zmieniajacy krancowki SW gorna i dolna
+// 	v1.2	|| TC v 3.1.4022.16		|| - optymalizacja kodu
+// 	v1.1 	|| TC v 3.1.4022.2	 	|| - dodane komentarze do zmiennych
+// 	v1.0 	|| TC v 3.1.4020.32 	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_NcSWLimitSwitchCtrl
+VAR_INPUT
+	udiAxisID				: UDINT;					// ID osi
+	bRead					: BOOL;						// Read SW limit switches values and states
+	bWrite					: BOOL;						// Write SW limit switches values and states
+	bReset					: BOOL; 					// Not yet
+// Set values
+	lrSetMinPos				: LREAL;					// SW limit switch minimum
+	lrSetMaxPos				: LREAL;					// SW limit switch maximum
+	bSetMinMon				: BOOL;						// Enable SW limit switch minimum monitoring
+	bSetMaxMon				: BOOL;						// Enable SW limit switch maximum monitoring
+END_VAR
+VAR_OUTPUT
+	//	
+	bBusy					: BOOL;						// Read/Write busy
+	bError					: BOOL;						// Read/Write error
+	udiErrorID				: UDINT;					// Read/Write error ID
+// Actual values	
+	lrActMinPos				: LREAL;					// Actual SW limit switch minimum
+	lrActMaxPos				: LREAL;					// Actual SW limit switch maximum
+	bActMinMon				: BOOL;						// SW limit switch minimum monitoring state
+	bActMaxMon				: BOOL;						// SW limit switch maximum monitoring state
+END_VAR
+VAR
+	iStepWrite				: INT;
+	iStepRead				: INT;
+	wSetMinMon				: WORD;
+	wSetMaxMon				: WORD;
+	wActMinMon				: WORD;
+	wActMaxMon				: WORD;
+// FBs
+	rtRead					: R_TRIG;
+	rtWrite					: R_TRIG;
+	fbADSREAD				: ADSREAD;
+	fbADSWRITE				: ADSWRITE;
+END_VAR
+VAR CONSTANT
+	udiIDXGRP_OFFS			: UDINT := 16#0000_5000;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Triggery
+rtRead(CLK:= bRead, Q=> );
+rtWrite(CLK:= bWrite, Q=> );
+
+ACT_ReadParams();
+ACT_WriteParams();	
+
+	
+// Read parameters
+	fbADSREAD(	NETID:= '', 
+				PORT:= 500,
+				IDXGRP:= udiIDXGRP_OFFS + udiAxisID);
+	
+// Write parameters
+	fbADSWRITE(	NETID:= '', 
+				PORT:= 500,
+				IDXGRP:= udiIDXGRP_OFFS + udiAxisID);
+]]></ST>
+    </Implementation>
+    <Action Name="ACT_ReadParams" Id="{f653ead5-e00f-4110-8d2a-6687a8874312}">
+      <Implementation>
+        <ST><![CDATA[CASE iStepRead OF
+
+0: // Idle
+	IF rtRead.Q AND NOT bBusy THEN
+		bBusy 					:= TRUE;
+		bError 					:= FALSE;
+		udiErrorID				:= 0;
+		// MinMon 16#0000_000B;	// 2B
+		fbADSREAD.READ			:= TRUE;
+		fbADSREAD.IDXOFFS		:= 16#0000_000B;
+		fbADSREAD.LEN			:= 2;
+		fbADSREAD.DESTADDR		:= ADR(wActMinMon);
+		iStepRead				:= iStepRead + 5;
+	END_IF
+	
+5, 15, 25: // Wait CMD for end
+	fbADSREAD.READ				:= FALSE;
+	IF NOT fbADSREAD.BUSY AND NOT fbADSREAD.ERR THEN
+		iStepRead				:= iStepRead + 5;
+	ELSIF fbADSREAD.ERR THEN
+		iStepRead				:= 1000;
+	END_IF
+	
+10: // udiIDXOFFS_MinPos		: UDINT := 16#0000_000D;	// 8B
+	fbADSREAD.READ				:= TRUE;
+	fbADSREAD.IDXOFFS			:= 16#0000_000D;
+	fbADSREAD.LEN				:= 8;
+	fbADSREAD.DESTADDR			:= ADR(lrActMinPos);
+	iStepRead					:= iStepRead + 5;
+
+20: // 	udiIDXOFFS_MaxMon		: UDINT := 16#0000_000C;	// 2B
+	fbADSREAD.READ				:= TRUE;
+	fbADSREAD.IDXOFFS			:= 16#0000_000C;
+	fbADSREAD.LEN				:= 2;
+	fbADSREAD.DESTADDR			:= ADR(wActMaxMon);
+	iStepRead					:= iStepRead + 5;
+
+30: // 		udiIDXOFFS_MaxPos		: UDINT := 16#0000_000E;	// 8B
+	fbADSREAD.READ				:= TRUE;
+	fbADSREAD.IDXOFFS			:= 16#0000_000E;
+	fbADSREAD.LEN				:= 8;
+	fbADSREAD.DESTADDR			:= ADR(lrActMaxPos);
+	iStepRead					:= iStepRead + 5;
+		
+35: // 	End
+	fbADSREAD.READ				:= FALSE;
+	IF NOT fbADSREAD.BUSY AND NOT fbADSREAD.ERR THEN
+		bActMinMon				:= wActMinMon.0;
+		bActMaxMon				:= wActMaxMon.0;
+		bBusy 					:= FALSE;
+		iStepRead				:= 0;
+	ELSIF fbADSREAD.ERR THEN
+		iStepRead				:= 1000;
+	END_IF
+	
+1000:
+	bBusy 						:= FALSE;
+	bError 						:= TRUE;
+	udiErrorID					:= fbADSREAD.ERRID;
+	iStepRead					:= 0;
+
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_WriteParams" Id="{fa9f81db-3ad3-488e-b105-39879cf36eb7}">
+      <Implementation>
+        <ST><![CDATA[CASE iStepWrite OF
+
+0: // Idle
+	IF rtWrite.Q AND NOT bBusy THEN
+		bBusy 					:= TRUE;
+		bError 					:= FALSE;
+		udiErrorID				:= 0;
+		// MinMon 16#0000_000B;	// 2B
+		wSetMinMon.0 			:= bSetMinMon;
+		fbADSWRITE.WRITE		:= TRUE;
+		fbADSWRITE.IDXOFFS		:= 16#0000_000B;
+		fbADSWRITE.LEN			:= 2;
+		fbADSWRITE.SRCADDR		:= ADR(wSetMinMon);
+		iStepWrite				:= iStepWrite + 5;
+	END_IF
+	
+5, 15, 25: // Wait CMD for end
+	fbADSWRITE.WRITE			:= FALSE;
+	IF NOT fbADSWRITE.BUSY AND NOT fbADSWRITE.ERR THEN
+		iStepWrite				:= iStepWrite + 5;
+	ELSIF fbADSWRITE.ERR THEN
+		iStepWrite				:= 1000;
+	END_IF
+	
+10: // udiIDXOFFS_MinPos		: UDINT := 16#0000_000D;	// 8B
+	fbADSWRITE.WRITE			:= TRUE;
+	fbADSWRITE.IDXOFFS			:= 16#0000_000D;
+	fbADSWRITE.LEN				:= 8;
+	fbADSWRITE.SRCADDR			:= ADR(lrSetMinPos);
+	iStepWrite					:= iStepWrite + 5;
+
+20: // 	udiIDXOFFS_MaxMon		: UDINT := 16#0000_000C;	// 2B
+	wSetMaxMon.0 				:= bSetMaxMon;
+	fbADSWRITE.WRITE			:= TRUE;
+	fbADSWRITE.IDXOFFS			:= 16#0000_000C;
+	fbADSWRITE.LEN				:= 2;
+	fbADSWRITE.SRCADDR			:= ADR(wSetMaxMon);
+	iStepWrite					:= iStepWrite + 5;
+
+30: // 		udiIDXOFFS_MaxPos		: UDINT := 16#0000_000E;	// 8B
+	fbADSWRITE.WRITE			:= TRUE;
+	fbADSWRITE.IDXOFFS			:= 16#0000_000E;
+	fbADSWRITE.LEN				:= 8;
+	fbADSWRITE.SRCADDR			:= ADR(lrSetMaxPos);
+	iStepWrite					:= iStepWrite + 5;
+		
+35: // 	End
+	fbADSWRITE.WRITE			:= FALSE;
+	IF NOT fbADSWRITE.BUSY AND NOT fbADSWRITE.ERR THEN
+		bBusy 					:= FALSE;
+		iStepWrite				:= 0;
+	ELSIF fbADSWRITE.ERR THEN
+		iStepWrite				:= 1000;
+	END_IF
+	
+1000:
+	bBusy 						:= FALSE;
+	bError 						:= TRUE;
+	udiErrorID					:= fbADSWRITE.ERRID;
+	iStepWrite					:= 0;
+
+END_CASE]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="FB_NcSWLimitSwitchCtrl">
+      <LineId Id="117" Count="0" />
+      <LineId Id="119" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="478" Count="0" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="328" Count="10" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_NcSWLimitSwitchCtrl.ACT_ReadParams">
+      <LineId Id="60" Count="4" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="65" Count="38" />
+      <LineId Id="120" Count="0" />
+      <LineId Id="123" Count="1" />
+      <LineId Id="105" Count="12" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_NcSWLimitSwitchCtrl.ACT_WriteParams">
+      <LineId Id="2" Count="4" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="8" Count="8" />
+      <LineId Id="64" Count="4" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="23" Count="7" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="31" Count="28" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_MCJogIO" Id="{02024c7d-7da2-4d7b-bcaf-636eef8b658e}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.04.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_MCJogIO:
+STRUCT
+	bSlowForward					: BOOL;
+	bSlowBackward					: BOOL;
+	bFastForward					: BOOL;
+	bFastBackward					: BOOL;
+	bJogForward						: BOOL;
+	bJogBackwards					: BOOL;
+	eMode							: Tc2_MC2.E_JogMode;
+	lrPosition						: LREAL;
+	lrVelocity						: LREAL;
+	lrAcceleration					: LREAL;
+	lrDeceleration					: LREAL;
+	lrJerk							: LREAL;
+	bDone							: BOOL;
+	bBusy							: BOOL;
+	bActive							: BOOL;
+	bCommandAborted					: BOOL;
+	bError							: BOOL;
+	udiErrorID						: UDINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

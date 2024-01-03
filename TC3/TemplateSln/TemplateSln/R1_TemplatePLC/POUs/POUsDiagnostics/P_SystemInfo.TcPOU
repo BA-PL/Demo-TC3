@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_SystemInfo" Id="{cbbf27f7-e658-48be-b185-7480902d6713}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									P_SystemInfo
+//									31.10.2018
+//					Program odczytujący informacje o TC Runtime
+// 
+//	v1.2 	|| TC v 3.1.4022.25 	|| - bOK dodane BSOD i sprawdzenie licencji
+//	v1.1 	|| TC v 3.1.4020.14 	|| - Dodane wyjscia bOk, bWarning, bError
+//	v1.0 	|| TC v 3.1.4020.0 		|| - Pierwsza wersja
+//==================================================================================================
+PROGRAM P_SystemInfo
+VAR_INPUT
+	bConfirm					: BOOL;					// Potwierdzenie bledu/ostrzezenia persistentow - blad/ostrzezenie nie znika, my usuwamy flage error lub warning
+END_VAR
+VAR_OUTPUT
+	bOK							: BOOL;					// Zmienne wczytane prawidlowo
+	bWarning					: BOOL;					// Zmienne wczytane z pliku zapasowego
+	bError						: BOOL;					// Nie wczytano zmiennych
+END_VAR
+VAR
+	sStartTime					: STRING;				// Przekonwertowany czas
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//_AppInfo.ObjId; 			(* Object ID of the PLC project instance *)
+//_AppInfo.TaskCnt;			(* The number of tasks in the actual runtime system *)
+//_AppInfo.OnlineChangeCnt;	(* The number of online changes made since the last complete download. *)
+//_AppInfo.Flags;				(* Reserved for future use *)
+//_AppInfo.AdsPort; 			(* ADS port of PLC application *)
+bOK							:= (_AppInfo.BootDataLoaded OR bConfirm) AND NOT _AppInfo.LicensesPending AND NOT _AppInfo.BSODOccured;	(* PERSISTENT variables: LOADED (without error) *)
+bWarning					:= _AppInfo.OldBootData AND NOT bConfirm;	(* PERSISTENT variables: INVALID (the back-up copy was loaded, since no valid data was present) *)
+bError						:= NOT bOK AND NOT bWarning;
+//_AppInfo.KeepOutputsOnBP;	(* The flag can be set to avoid that the outputs are zero-filled if a breakpoint is reached. The task keeps running. Only the execution of PLC code is interrupted. *)
+//_AppInfo.TComSrvPtr;		(* Pointer to TcCOM Object Server *)
+//_AppInfo.AppName;			(* TwinCAT generated name containing the port number. *)
+//_AppInfo.ProjectName;		(* The name of the PLC project. *)
+sStartTime					:= DELETE(DT_TO_STRING(_AppInfo.AppTimestamp),3,1);(* Date and time of application start *)
+(*_AppInfo.BSODOccured;
+_AppInfo.LicensesPending;
+_AppInfo.ShutdownInProgress;*)]]></ST>
+    </Implementation>
+    <LineIds Name="P_SystemInfo">
+      <LineId Id="3" Count="14" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_ConnectionDiag" Id="{9072d9dd-e241-4037-811f-322c9f4f4c2c}">
+    <Declaration><![CDATA[TYPE E_SAFETY_ConnectionDiag :
+(* Only 4 least significant bits of diagnostic information for a connection. *)
+(	eSAFETY_ConnectDiag_WithoutErrors			:=	2#0000,
+	eSAFETY_ConnectDiag_InvalidCommmand			:=	2#0001,
+	eSAFETY_ConnectDiag_UnknownCommand			:=	2#0010,
+	eSAFETY_ConnectDiag_InvalidConnectionID		:=	2#0011,
+	eSAFETY_ConnectDiag_InvalidCRC				:=	2#0100,
+	eSAFETY_ConnectDiag_WatchdogTimeElapsed		:=	2#0101,
+	eSAFETY_ConnectDiag_InvalidFSoEAddress		:=	2#0110,
+	eSAFETY_ConnectDiag_InvalidData				:=	2#0111,
+	eSAFETY_ConnectDiag_InvalidCommParamLength	:=	2#1000,
+	eSAFETY_ConnectDiag_InvalidCommParams		:=	2#1001,
+	eSAFETY_ConnectDiag_InvalidUserParamLength	:=	2#1010,
+	eSAFETY_ConnectDiag_InvalidUserParams		:=	2#1011,
+	eSAFETY_ConnectDiag_FSoEMasterReset			:=	2#1100,
+	eSAFETY_ConnectDiag_ModuleError				:=	2#1101,
+	eSAFETY_ConnectDiag_EL290xError				:=	2#1110,
+	eSAFETY_ConnectDiag_SlaveNotYetStarted		:=	2#1111
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_GroupState" Id="{b244b367-36df-428a-ab01-62748ebbee47}">
+    <Declaration><![CDATA[TYPE E_SAFETY_GroupState :
+(
+	eSAFETY_GroupState_UNKNOWN		:= 0,
+	eSAFETY_GroupState_RUN 			:= 1,
+	eSAFETY_GroupState_STOP 		:= 2,
+	eSAFETY_GroupState_SAFE			:= 3,
+	eSAFETY_GroupState_ERROR		:= 4,
+	eSAFETY_GroupState_RESET		:= 5
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

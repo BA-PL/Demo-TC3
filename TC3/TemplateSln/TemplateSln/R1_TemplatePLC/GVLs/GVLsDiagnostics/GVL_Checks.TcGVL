@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <GVL Name="GVL_Checks" Id="{e618f4ca-a449-452b-af80-34b4b896d389}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL PERSISTENT
+	dCheckBounds					: DINT;			// Licznik przekroczen zakresu indexow, np. tablic
+	dCheckDivDInt					: DINT;			// Licznik prob dzielenia Dint przez 0
+	dCheckDivLInt					: DINT; 		// Licznik prob dzielenia LInt przez 0
+	dCheckDivLReal					: DINT; 		// Licznik prob dzielenia LREAL przez 0
+	dCheckDivReal					: DINT; 		// Licznik prob dzielenia REAL przez 0
+	dCheckRangeSigned				: DINT;			// Licznik przekroczen liczby znakowej
+	dCheckRangeUnsigned				: DINT; 		// Licznik przekroczen liczby bezznakowej
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_FBESTOP" Id="{a3f61402-2c9a-449a-a330-3f171a1adba3}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_FBESTOP:
+STRUCT
+	uStatus							: U_SAFETY_ESTOP; 		(* Typ zalezny od bloku *)
+	eState							: E_SAFETY_FBState;		(* Enum ze statusem bloku *)
+	bGeneralError					: BOOL; 				(* Gdy wystapi chociaz jeden Error *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,305 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_SetPositionOffset" Id="{fd8425b6-278a-47be-9e77-23a721d1f647}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									07.06.2018
+//	Blok do uzupełniania offsetu w enkoderze/AX5000
+//	Obsluguje bledy zwiazane z wymiana silnika na nowy - bez wpisanego offsetu.
+//	Naprawia błąd: 	0x0000F340- Position offset invalid.
+//					0x0000F341- Position offset: No position offset excisting.
+//	Aby wpisać wartość, silnik musi być wyłączony.
+//	Niezbędne biblioteki:
+//	Tc2_MC2;	Tc2_Utilities;	Tc2_MC2_Drive;	Tc2_EtherCAT, Tc2_Drive;
+//
+//	v2.4 || TC v 3.1.4022.20 || - Usuniecie nieużywanych zmiennych, zabezpieczenie przed zerowa pozycja, optymalizacje
+//	v2.2 || TC v 3.1.4022.2	 || - Poprawka w komentarzu, uiSoEErrorID zamiast udiSoEErrorID
+//	v2.1 || TC v 3.1.4022.0	 || - Uproszczono kod
+//	v2.0 || TC v 3.1.4022.0	 || - Dodano obsługę AX52xx, przebudowano bloczek z wykorzystaniem FB_ChangeSlaveState
+//	v1.0 || TC v 3.1.4020.32 || - Pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_SetPositionOffset
+VAR_INPUT
+	bExecute								: BOOL;							// rising edge starts sequence
+	lrPosition								: LREAL		:=	0.001;			// Write new encoder position
+	bRelative								: BOOL;							// When this flag is set, the position is relatively interpreted
+	eFeedback								: E_PositionOffsetFeedback;		// ePositionOffsetFeedback1:= 0			ePositionOffsetFeedback2 := 1
+	eMemory									: E_PositionOffsetMemory;		// ePositionOffsetMemory_Encoder:= 0	ePositionOffsetMemory_Drive := 1
+END_VAR
+VAR_OUTPUT
+	bBusy									: BOOL;
+	bError									: BOOL;	
+	udiErrorID								: UDINT;						// bError=TRUE AND udiErrorID=0 means state request timeout
+	uiSoEErrorID							: UINT;
+	udiADSerrorID							: UDINT;
+END_VAR
+VAR_IN_OUT
+	Axis									: AXIS_REF;
+END_VAR
+VAR CONSTANT
+	NCIDXG_AXPARMS							: UDINT			:= 16#4000;		// ADS group number to axis parameters 
+	NCIDXO_AXP_HWAMSADDR					: UDINT			:= 16#31;		// ADS offset to drive channel
+END_VAR
+VAR
+	rtExecute								: R_TRIG;						// bExecute triggers start
+	fbSoEReset								: FB_SoEReset;
+	fbSoEWritePassword						: FB_SoEWritePassword;			// unlock P-0-0278
+	fbSoEAX5000SetPositionOffset			: FB_SoEAX5000SetPositionOffset;
+	fbSoEReadDiagNumber						: FB_SoEReadDiagNumber;	
+	fbSoEWrite_ByDriveRef					: FB_SoEWrite_ByDriveRef;
+	fbSoERead_ByDriveRef					: FB_SoERead_ByDriveRef;
+	fbChangeSlaveState						: FB_ChangeEtherCATSlaveState;
+	fbAdsRead								: ADSREAD;
+	stPlcDriveRef							: ST_PlcDriveRef;				// ADS buffer (need to change aNetId into sNetId)
+	stDriveRef								: ST_DriveRef;					// come from stPlcDriveRef
+	bDualChannel							: BOOL;
+	stSoE_String							: ST_SoE_String;				// buffer for byDualChannel
+	P_0_0278_Value							: WORD;							//	0- NO	1- YES
+	iStep									: INT;							// Actual Step
+	iLastStep								: INT;							// Last step before error
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtExecute	(CLK:= bExecute );
+
+CASE iStep	OF
+
+	0:																//	Enable FB, lock input parameters
+		IF rtExecute.Q THEN
+			bBusy							:= TRUE;
+			bError							:= FALSE;
+			udiErrorID						:= 0;
+			uiSoEErrorID					:= 0;
+			udiADSerrorID					:= 0;
+			iLastStep						:= 0;
+			IF ABS(lrPosition) < LREAL#0.0001 THEN
+				fbSoEAX5000SetPositionOffset.Position := LREAL#0.0001;
+			ELSE
+				fbSoEAX5000SetPositionOffset.Position := lrPosition; 
+			END_IF
+			fbSoEAX5000SetPositionOffset.Memory	:= eMemory;
+			fbSoEAX5000SetPositionOffset.Relative := bRelative;
+			fbSoEAX5000SetPositionOffset.Feedback := eFeedback;
+			iStep							:= iStep+10;
+		END_IF			
+
+	10:																// Get Drive channel from AXIS_REF by ADS
+		fbAdsRead.NETID						:= '';
+		fbAdsRead.PORT						:= AMSPORT_R0_NC;		// set ADS Port to NC
+		fbAdsRead.IDXGRP					:= NCIDXG_AXPARMS + Axis.NcToPlc.AxisId;	// set ADS Group to AXIS Parameters
+		fbAdsRead.IDXOFFS					:= NCIDXO_AXP_HWAMSADDR;// set ADS offset to channel number
+		fbAdsRead.LEN						:= SIZEOF(stPlcDriveRef);
+		fbAdsRead.DESTADDR					:= ADR(stPlcDriveRef);
+		fbAdsRead.TMOUT						:= T#5S;
+		fbAdsRead.READ						:= TRUE;
+		iStep								:= istep+10;
+		
+	20:																// reading actual channel (DriveNo) from AXIS_REF	
+		fbAdsRead.READ						:= FALSE;
+		IF NOT fbAdsRead.BUSY THEN
+			IF  NOT fbAdsRead.ERR THEN
+				iStep							:= iStep+10;	
+				stDriveRef.sNetId				:= F_CreateAmsNetId(stPlcDriveRef.aNetId);	// change AmsNetId array into string
+				stDriveRef.nSlaveAddr			:= stPlcDriveRef.nSlaveAddr;
+				stDriveRef.nDriveNo				:= stPlcDriveRef.nDriveNo;	
+				fbChangeSlaveState.sEtherCAT_NetID:= stDriveRef.sNetId;
+				fbChangeSlaveState.nSlaveAddr	:= stDriveRef.nSlaveAddr;
+			ELSIF fbAdsRead.ERR THEN
+				udiADSerrorID					:= fbAdsRead.ERRID;
+				iLastStep						:= iStep;
+				iStep							:= 999;				
+			END_IF
+		END_IF
+		
+	30:																// Read drive diag number
+		fbSoEReadDiagNumber.NetId			:= '';
+		fbSoEReadDiagNumber.Execute			:= TRUE;
+		iStep								:= iStep+10;
+
+	40:																// Choose method
+		fbSoEReadDiagNumber.Execute			:= FALSE;
+		IF NOT fbSoEReadDiagNumber.Busy THEN
+			IF fbSoEReadDiagNumber.DiagNumber = (16#F341 OR 16#F340) THEN
+				iStep						:= 50;					// Position errors -> Reset errors and write 
+			ELSIF	fbSoEReadDiagNumber.DiagNumber >= (16#F000) THEN
+				iLastStep					:= iStep;				// Do nothing in other error states
+				iStep						:= 999;
+			ELSE												
+				iStep						:= 200;					// Drive Ready -> Write without changing OP State			
+			END_IF
+		END_IF
+	
+	50:																// Request INIT State
+		fbChangeSlaveState.byReguestedState	:= EC_DEVICE_STATE_INIT;
+		fbChangeSlaveState.bExecute			:= TRUE;
+		iStep								:= iStep+10;
+
+	60,80:															// Wait till state changed
+		fbChangeSlaveState.bExecute			:= FALSE;
+		IF NOT fbChangeSlaveState.bBusy THEN
+			IF NOT fbChangeSlaveState.bError THEN
+				iStep							:= iStep+10;
+			ELSE
+				udiErrorID						:= fbChangeSlaveState.udiErrorID;
+				iLastStep						:= iStep;
+				iStep 							:= 999;
+			END_IF
+		END_IF
+		
+	70:																// Request PreOP State	
+		fbChangeSlaveState.byReguestedState	:= EC_DEVICE_STATE_PREOP;
+		fbChangeSlaveState.bExecute			:= TRUE;
+		iStep								:= iStep+10;
+		
+	90:																// Write drive password (unlock P-0-0278)
+		fbSoEWritePassword.Password.strData	:= 'AX5000';
+		fbSoEWritePassword.NetId			:= '';
+		fbSoEWritePassword.Execute			:= TRUE;
+		iStep								:= iStep + 10;
+		
+	100:															// wait till password passes
+		fbSoEWritePassword.Execute			:= FALSE;
+		IF NOT fbSoEWritePassword.Busy THEN
+			IF NOT fbSoEWritePassword.Error THEN
+				iStep							:= iStep + 10;
+			ELSE 
+				udiADSerrorID					:= fbSoEWritePassword.AdsErrId;
+				uiSoEErrorID					:= fbSoEWritePassword.SercosErrId;
+				iLastStep						:= iStep;
+				iStep							:= 999;
+			END_IF
+		END_IF
+		
+	110:															// Ignore offset error (P-0-0278), channel 1	
+		P_0_0278_Value						:= 1;
+		fbSoEWrite_ByDriveRef.stDriveRef	:= stDriveRef;
+		fbSoEWrite_ByDriveRef.stDriveRef.nDriveNo:= 0;
+		fbSoEWrite_ByDriveRef.nIdn			:= P_0_IDN  + 278;		// SoE Parameters Group P-0-IDN offset
+		fbSoEWrite_ByDriveRef.nElement		:= EC_SOE_ELEMENT_VALUE;// Change value of the parameter
+		fbSoEWrite_ByDriveRef.pSrcBuf		:= ADR(P_0_0278_Value);
+		fbSoEWrite_ByDriveRef.cbBufLen		:= SIZEOF(P_0_0278_Value);
+		fbSoEWrite_ByDriveRef.bExecute		:= TRUE;
+		iStep								:= iStep + 10;				
+		
+	120,160:														// Writing done ?		
+		fbSoEWrite_ByDriveRef.bExecute		:= FALSE;
+		IF NOT fbSoEWrite_ByDriveRef.bBusy THEN
+			IF NOT fbSoEWrite_ByDriveRef.bError THEN
+				iStep							:= iStep + 10;
+			ELSE
+				udiADSerrorID					:= fbSoEWrite_ByDriveRef.iAdsErrId;
+				uiSoEErrorID					:= fbSoEWrite_ByDriveRef.iSercosErrId;
+				iLastStep						:= iStep;
+				iStep							:= 999;
+			END_IF	
+		END_IF
+		
+	130:															// reset second channel if needed
+		fbSoERead_ByDriveRef.stDriveRef		:= stDriveRef;
+		fbSoERead_ByDriveRef.nIdn			:= P_0_IDN  + 324;		// SoE Parameters Group P-0-IDN offset
+		fbSoERead_ByDriveRef.nElement		:= EC_SOE_ELEMENT_VALUE;// Change value of the parameter
+		fbSoERead_ByDriveRef.pDstBuf		:= ADR(stSoE_String);
+		fbSoERead_ByDriveRef.cbBufLen		:= SIZEOF(stSoE_String);
+		fbSoERead_ByDriveRef.bExecute		:= TRUE;
+		iStep								:= iStep + 10;				
+		
+	140:															// Reading done ?	skip reseting channel 2 for AX51xx	
+		fbSoERead_ByDriveRef.bExecute		:= FALSE;
+		IF NOT fbSoERead_ByDriveRef.bBusy THEN
+			IF NOT fbSoERead_ByDriveRef.bError THEN
+				bDualChannel := STRING_TO_BYTE(MID(stSoE_String.strData, 1, 4)) = 2;		// Sprawdza nazwe AX5xxx i rozpoznaje ilosc kanalow
+				IF bDualChannel THEN
+					iStep						:= iStep + 10;			// reset channel 2
+				ELSE
+					iStep						:= iStep + 30;			// skip reseting channel 2
+				END_IF
+			ELSE
+				udiADSerrorID					:= fbSoERead_ByDriveRef.iAdsErrId;
+				uiSoEErrorID					:= fbSoERead_ByDriveRef.iSercosErrId;
+				iLastStep						:= iStep;
+				iStep							:= 999;
+			END_IF	
+		END_IF
+		
+	150:															// Ignore offset error (P-0-0278), channel 2
+		fbSoEWrite_ByDriveRef.stDriveRef.nDriveNo:= 1;
+		fbSoEWrite_ByDriveRef.bExecute		:= TRUE;
+		iStep								:= iStep + 10;
+
+	170:															// Reset Drive (S-0-0099)
+		fbSoEReset.Execute					:= TRUE; 
+		fbSoEReset.NetId					:= ''; 
+		iStep								:= iStep + 10;
+		
+	180:															// Wait for drive reset (S-0-0099)
+		fbSoEReset.Execute					:= FALSE;
+		IF NOT fbSoEReset.Busy THEN
+			IF NOT fbSoEReset.Error THEN
+				iStep							:= iStep + 10;
+			ELSE
+				udiADSerrorID					:= fbSoEReset.AdsErrId;
+				uiSoEErrorID					:= fbSoEReset.SercosErrId;
+				iLastStep						:= iStep;
+				iStep							:= 999;
+			END_IF
+		END_IF
+		
+	190:															// Request OP State
+		fbChangeSlaveState.byReguestedState	:= EC_DEVICE_STATE_OP;
+		fbChangeSlaveState.bExecute			:= TRUE;
+		iStep								:= iStep+10;
+	
+	200:															// Wait till state changed
+		fbChangeSlaveState.bExecute			:= FALSE;	
+		IF NOT fbChangeSlaveState.bBusy THEN
+			IF NOT fbChangeSlaveState.bError THEN
+				iStep							:= iStep+10;
+			ELSE
+				udiErrorID						:= fbChangeSlaveState.udiErrorID;
+				iLastStep						:= iStep;
+				iStep 							:= 999;
+			END_IF				
+		END_IF
+		
+	210:															// Set new encoder offset	
+		fbSoEAX5000SetPositionOffset.Feedback:= ePositionOffsetFeedback1;	// set to feedback 1 only
+		fbSoEAX5000SetPositionOffset.Execute:= TRUE; 
+		iStep								:= iStep + 10;
+
+	220:															//	offset set already?
+		fbSoEAX5000SetPositionOffset.Execute:= FALSE;
+		IF NOT fbSoEAX5000SetPositionOffset.Busy THEN
+			IF NOT fbSoEAX5000SetPositionOffset.Error THEN
+				iStep							:= iStep + 10;
+			ELSE
+				udiErrorID						:= fbSoEAX5000SetPositionOffset.ErrorID;
+				iLastStep						:= iStep;
+				iStep							:= 999;
+			END_IF
+		END_IF
+	
+	230:															//	FB Termination
+		bBusy								:= FALSE;
+		iStep								:= 0;
+
+	999:															//	ERROR State
+		bBusy								:=	FALSE;
+		bError								:=	TRUE;
+		iStep								:=	0;
+	
+END_CASE
+
+fbAdsRead();
+fbChangeSlaveState();
+fbSoEWritePassword(Axis:=Axis);
+fbSoEAX5000SetPositionOffset(Axis:=Axis);
+fbSoEReadDiagNumber(Axis:=Axis);
+fbSoEReset(Axis:=Axis);
+fbSoEWrite_ByDriveRef();
+fbSoERead_ByDriveRef();]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SetPositionOffset">
+      <LineId Id="8031" Count="235" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

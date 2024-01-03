@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <GVL Name="GVL_Machine" Id="{b279d21c-4165-48a2-80ce-68f81466db4a}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	eMode									: E_MachineMode := E_MachineMode.eInitialization;	// Global machine mode
+																						(*	eInitialization			:= 0,
+																							eManual					:= 1,
+																							eMaintenance			:= 2,
+																							eAutomatic				:= 3,
+																							eSemiAutomatic			:= 4,
+																							eFirstFilling			:= 5,
+																							eEmptying				:= 6	*)
+																							
+	eCommand								: E_MachineCommand; 							// Global machine command
+																						(*	eAbort	  				:= 10,
+																							eStop	  				:= 20,
+																							eRun 	  				:= 30,
+																							eReset	  				:= 40	*)
+																							
+	eState									: E_MachineState; 								// Global machine state
+																						(*	eIdle					:= 0,
+																							eAborting				:= 10,
+																							eAborted				:= 20,
+																							eStopping				:= 30,
+																							eStopped				:= 40,
+																							eStarting				:= 50,
+																							eRunning				:= 60,
+																							eReseting				:= 70,
+																							eError					:= 1000	*)
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_FBHoldingBrakeCtrlIO" Id="{a71b2b00-1ef2-403e-b42a-9f3f34a37b0b}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.05.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_FBHoldingBrakeCtrlIO:
+STRUCT
+	bForceLock 						: BOOL;								// 
+	bForceUnlock					: BOOL;								// 
+	bBusy							: BOOL;
+	bError							: BOOL; 							// General error: parameter or CoE read.
+																		// If bError = TRUE and bInitialized = FALSE - error during read motor data.
+																		// If bError = TRUE and bInitialized = TRUE and (iAdsErrId <> 0 or iCANopenErrId <> 0) then I2T read error
+																		// If bError = TRUE and bInitialized = TRUE and iAdsErrId = 0 and iCANopenErrId = 0 then parameter error: rTorqueLimit outside permitted range rTorqueLimitLow..rTorqueLimitHigh or Empty stDriveRef
+	uiAdsErrId						: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	uiSecErrId						: UINT;								// Sercos Error ID for AX5000, CanOpen error ID for AX8000
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

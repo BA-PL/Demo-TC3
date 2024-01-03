@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <Itf Name="I_ErrorHandling" Id="{da216883-1660-4181-8363-d7bbed513f94}">
+    <Declaration><![CDATA[INTERFACE I_ErrorHandling
+]]></Declaration>
+    <Property Name="P_Error" Id="{2bb939aa-a95e-454f-a6d7-d1d817398b7a}">
+      <Declaration><![CDATA[PROPERTY P_Error : bool]]></Declaration>
+      <Get Name="Get" Id="{e8aa9bbc-3388-4f63-b995-747841c7ae25}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="P_ErrorID" Id="{a105f56c-fd7d-4285-a6bc-da3fa6a15c52}">
+      <Declaration><![CDATA[PROPERTY P_ErrorID : udint]]></Declaration>
+      <Get Name="Get" Id="{697f4561-6929-4c35-a4e4-26ff7b85b532}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Method Name="ToString" Id="{7c2321d9-78d6-4ab4-b395-3241892617ac}">
+      <Declaration><![CDATA[METHOD ToString : String(255)
+VAR_INPUT
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

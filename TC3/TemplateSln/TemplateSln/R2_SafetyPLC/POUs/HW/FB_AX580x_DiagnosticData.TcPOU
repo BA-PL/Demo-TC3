@@ -1,0 +1,399 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_AX580x_DiagnosticData" Id="{4f12c1c0-ae02-43a3-939c-3c5e9794c507}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*									19.05.2017											*)
+(*			Blok funkcyjny pobierający informacje diagnostyczne z modułu AX580x			*)
+(*			v1.0:																		*)
+(*				- First version based on EL1904 v2.4									*)
+(*______________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_AX580x_DiagnosticData IMPLEMENTS I_ErrorHandling
+VAR_INPUT
+	sNetId						: T_AmsNetId;					(* Adres master EtherCAT *)
+	uiSlaveAddr					: UINT;							(* Adres slave EtherCAT modułu EL1904 *)
+	bExecute					: BOOL;							(* Zbocze narastające aktywuje komende *)
+END_VAR
+VAR_OUTPUT
+	stAX580x_DiagnosticData		: ST_AX580x_DiagnosticData;		(* Wyjściowa struktura danych *)
+	bBusy						: BOOL;							(* Wyjście jest ustawione gdy aktualnie wykonywana jest komenda *)
+	bError						: BOOL;							(* Wyjście jest ustawione gdy wystąpił błąd *) 
+	udiErrorId					: UDINT;						(* Kod błedu *)
+	bNewData					: BOOL;							(* Po otrzymaniu nowych danych przyjmuje wartość TRUE na jeden cykl *)
+END_VAR
+VAR
+	fbEcCoESdoRead				: FB_EcCoESdoRead;
+	stTempData					: ST_AX580x_DiagnosticData;		(* Tymczasowa struktura danych *)
+	BSubIndex					: BYTE;
+	wIndex						: WORD;
+	iStep						: INT;
+	pDstBuf						: PVOID;
+	cbBufLen					: UDINT;
+    sPath 						: STRING;
+	rtExecute					: R_TRIG;
+	rtError						: R_TRIG;
+	bRead						: BOOL;							(* Odczyt *)
+	wTemp_800E_0A				: WORD;							(* Wartosc tymczasowa *)
+	wTemp_800E_0B				: WORD;							(* Wartosc tymczasowa *)
+	wTemp_800E_0C				: WORD;							(* Wartosc tymczasowa *)
+	wTemp_800E_0D				: WORD;							(* Wartosc tymczasowa *)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtExecute(CLK:=bExecute);
+
+CASE iStep OF	
+	(* Wspolne *)	
+	0:
+												(* Read the module name *)
+		bNewData	:= FALSE;
+		bRead		:= FALSE;
+		IF rtExecute.Q THEN
+			bBusy			:= TRUE;
+			bError			:= FALSE;
+			udiErrorId		:= 0;
+			wIndex 			:= 16#1008;
+			BSubIndex 		:= 0;
+			pDstBuf 		:= ADR (stTempData.sDeviceName);
+			cbBufLen 		:= SIZEOF(stTempData.sDeviceName);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	10:												(* Read the HW version *)
+		bRead		:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#1009;
+			BSubIndex 		:= 0;
+			pDstBuf 		:= ADR (stTempData.sHardwareVersion);
+			cbBufLen 		:= SIZEOF(stTempData.sHardwareVersion);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	20:												(* Read the SW version *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#100A;
+			BSubIndex 		:= 0;
+			pDstBuf 		:= ADR (stTempData.sSoftwareVersion);
+			cbBufLen 		:= SIZEOF(stTempData.sSoftwareVersion);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	30:												(* Read the FSoE address *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#F980;
+			BSubIndex 		:= 1;
+			pDstBuf 		:= ADR (stTempData.dwFSoEAddress);
+			cbBufLen 		:= SIZEOF(stTempData.dwFSoEAddress);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF;
+	40:												(* Read the serial no *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#F980;
+			BSubIndex 		:= 2;
+			pDstBuf 		:= ADR (stTempData.dwSerialNumber);
+			cbBufLen 		:= SIZEOF(stTempData.dwSerialNumber);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	50:												(* Read temperature MC1 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA80;
+			BSubIndex 		:= 1;
+			pDstBuf 		:= ADR (stTempData.wTemperaturePrimaryMC);
+			cbBufLen 		:= SIZEOF(stTempData.wTemperaturePrimaryMC);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	60:												(* Read temperature MC2 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA80;
+			BSubIndex 		:= 2;
+			pDstBuf 		:= ADR (stTempData.wTemperatureSecondaryMC);
+			cbBufLen 		:= SIZEOF(stTempData.wTemperatureSecondaryMC);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	(* Module specific *)
+	70:												(* Reason for switching off index 01 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA82;
+			BSubIndex 		:= 1;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA82_01);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA82_01);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	80:												(* Reason for switching off index 02 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA82;
+			BSubIndex 		:= 2;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA82_02);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA82_02);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	90:												(* Reason for switching off index 03 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA82;
+			BSubIndex 		:= 3;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA82_03);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA82_03);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	100:											(* Reason for switching off index 04 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA82;
+			BSubIndex 		:= 4;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA82_04);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA82_04);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	110:											(* Reason for shutdown index 01 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 1;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_01);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_01);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	120:											(* Reason for shutdown index 02 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 2;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_02);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_02);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	130:											(* Reason for shutdown index 03 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 3;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_03);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_03);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	140:											(* Reason for shutdown index 04 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 4;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_04);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_04);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	150:											(* Reason for shutdown index 05 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 5;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_05);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_05);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	160:											(* Reason for shutdown index 06 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 6;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_06);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_06);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	170:											(* Reason for shutdown index 07 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 7;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_07);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_07);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	180:											(* Reason for shutdown index 08 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA10;
+			BSubIndex 		:= 8;
+			pDstBuf 		:= ADR(stTempData.CoE_0xFA10_08);
+			cbBufLen 		:= SIZEOF(stTempData.CoE_0xFA10_08);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	190: (* Koniec odczytu *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			iStep 			:= 200;
+		END_IF
+	
+	200: (* Konwersje *)
+		(* Zmiana numeru seryjnego na STRING *)
+		stTempData.sSerialNumber 		:= '00000000';
+		stTempData.sSerialNumber 		:= CONCAT(DELETE(stTempData.sSerialNumber, LEN(DWORD_TO_STRING(stTempData.dwSerialNumber)),1),DWORD_TO_STRING(stTempData.dwSerialNumber));
+
+		(* Collect axis errors *)
+		stTempData.bAxis1_NoErrorReaction := FALSE;
+		stTempData.bAxis1_STOErrorReaction := FALSE;
+		stTempData.bAxis1_SS1ErrorReaction := FALSE;
+		stTempData.bAxis2_NoErrorReaction := FALSE;
+		stTempData.bAxis2_STOErrorReaction := FALSE;
+		stTempData.bAxis2_SS1ErrorReaction := FALSE;
+		stTempData.bError_FA10_xx := (stTempData.CoE_0xFA10_01 > 0 AND stTempData.CoE_0xFA10_01 < 9);// OR (stTempData.CoE_0xFA10_02 > 0) OR (stTempData.CoE_0xFA10_03 > 0) OR (stTempData.CoE_0xFA10_04 > 0) OR
+									// (stTempData.CoE_0xFA10_05 > 0) OR (stTempData.CoE_0xFA10_06 > 0) OR (stTempData.CoE_0xFA10_07 > 0) OR (stTempData.CoE_0xFA10_08 > 0);
+		// specific axis error
+		IF stTempData.CoE_0xFA10_01 = 0 THEN 
+			// axis 1
+			IF stTempData.CoE_0xFA10_07 > 0 THEN	
+				stTempData.bAxis1_STOErrorReaction := (stTempData.CoE_0xFA10_07 AND 16#FF) = 16#40;
+				stTempData.bAxis1_SS1ErrorReaction := (stTempData.CoE_0xFA10_07 AND 16#FF) = 16#50;
+			ELSE
+				stTempData.bAxis1_NoErrorReaction := TRUE;
+			END_IF
+			// axis 2
+			IF stTempData.CoE_0xFA10_08 > 0 THEN	
+				stTempData.bAxis2_STOErrorReaction := (stTempData.CoE_0xFA10_08 AND 16#FF) = 16#40;
+				stTempData.bAxis2_SS1ErrorReaction := (stTempData.CoE_0xFA10_08 AND 16#FF) = 16#50;
+			ELSE
+				stTempData.bAxis2_NoErrorReaction := TRUE;
+			END_IF
+		END_IF
+		
+		(* General Error bit *)
+		stTempData.bGeneralError := stTempData.bError_FA10_xx OR stTempData.bAxis1_STOErrorReaction OR stTempData.bAxis1_SS1ErrorReaction OR stTempData.bAxis2_STOErrorReaction OR stTempData.bAxis2_SS1ErrorReaction;
+		(* Przepisanie danych tymczasowych na wyjscie *)	
+		stAX580x_DiagnosticData 		:= stTempData;
+		(* Ustawienie flag i powrot do poczatku *)
+		bBusy							:= FALSE;
+		bNewData						:= TRUE;
+		iStep 							:= 0;
+		
+	1000: (* ERROR *)
+		iStep 							:= 0;
+END_CASE
+
+fbEcCoESdoRead(
+	sNetId		:= sNetId,
+	nSlaveAddr	:= uiSlaveAddr,
+	nSubIndex	:= BSubIndex,
+	nIndex		:= wIndex,
+	pDstBuf		:= pDstBuf,
+	cbBufLen	:= cbBufLen,
+	bExecute 	:= bRead);
+	
+A_Error();]]></ST>
+    </Implementation>
+    <Action Name="A_Error" Id="{d6a5561b-9226-42ef-904c-9482ed2d21f1}">
+      <Implementation>
+        <ST><![CDATA[rtError(CLK:= fbEcCoESdoRead.bError, Q=> );
+IF rtError.Q THEN
+	bBusy 			:= FALSE;
+	bError 			:= TRUE;
+	bRead			:= FALSE;
+	udiErrorId 		:= fbEcCoESdoRead.nErrId;
+	iStep 			:= 1000;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Property Name="P_Error" Id="{c9e1b424-c6b4-4436-9af2-596dfaab00d2}">
+      <Declaration><![CDATA[PROPERTY P_Error : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{f76a6eaa-34be-405a-8a51-d34eec42a11a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="P_ErrorID" Id="{687c48fa-e7e7-4169-afa7-f6b74cead565}">
+      <Declaration><![CDATA[PROPERTY P_ErrorID : UDINT
+]]></Declaration>
+      <Get Name="Get" Id="{bb814146-d2d8-4f5d-992b-c279a9eeef4f}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ToString" Id="{6108c80f-0492-4bec-b3f7-40befeac24d6}">
+      <Declaration><![CDATA[{attribute 'object_name' := 'ToString'}
+METHOD ToString : STRING(255)
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_AX580x_DiagnosticData">
+      <LineId Id="3" Count="89" />
+      <LineId Id="251" Count="8" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="260" Count="8" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="269" Count="8" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="278" Count="8" />
+      <LineId Id="132" Count="0" />
+      <LineId Id="287" Count="8" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="296" Count="8" />
+      <LineId Id="152" Count="0" />
+      <LineId Id="314" Count="49" />
+      <LineId Id="163" Count="9" />
+      <LineId Id="365" Count="0" />
+      <LineId Id="386" Count="0" />
+      <LineId Id="413" Count="2" />
+      <LineId Id="410" Count="2" />
+      <LineId Id="420" Count="2" />
+      <LineId Id="409" Count="0" />
+      <LineId Id="387" Count="0" />
+      <LineId Id="391" Count="6" />
+      <LineId Id="401" Count="1" />
+      <LineId Id="408" Count="0" />
+      <LineId Id="404" Count="2" />
+      <LineId Id="416" Count="0" />
+      <LineId Id="364" Count="0" />
+      <LineId Id="186" Count="0" />
+      <LineId Id="189" Count="5" />
+      <LineId Id="461" Count="0" />
+      <LineId Id="195" Count="13" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AX580x_DiagnosticData.A_Error">
+      <LineId Id="8" Count="0" />
+      <LineId Id="2" Count="5" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AX580x_DiagnosticData.P_Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AX580x_DiagnosticData.P_ErrorID.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_AX580x_DiagnosticData.ToString">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

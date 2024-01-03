@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETYStatusGroup" Id="{cefa4de4-c7b9-48e7-893d-5b500354ce44}">
+    <Declaration><![CDATA[TYPE ST_SAFETYStatusGroup :
+STRUCT
+	dwStatusGroup					: DWORD;
+	BState							: BYTE;
+	BDiagnosis						: BYTE;
+	BInputs							: BYTE;
+	BOutputs						: BYTE;
+	eSAFETY_GroupState				: E_SAFETY_GroupState;
+	bRUN_STOP 						: BOOL;
+	bERR_Ack 						: BOOL;
+	bFB_ERR 						: BOOL;
+	bCOM_ERR 						: BOOL;
+	bOUT_ERR 						: BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

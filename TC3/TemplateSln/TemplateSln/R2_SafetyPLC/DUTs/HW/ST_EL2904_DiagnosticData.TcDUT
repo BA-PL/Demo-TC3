@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_EL2904_DiagnosticData" Id="{fefa3d20-1c4d-495b-a22b-bf43662438b6}">
+    <Declaration><![CDATA[TYPE ST_EL2904_DiagnosticData EXTENDS ST_ELxxxx_Data:
+STRUCT
+	(* FA80:03 Temperature Outputs - Temperature measurement (right board)*)
+	wTemperatureOut		: WORD;
+	bOutput1			: BOOL; (* Output 1 *)
+	bOutput2			: BOOL; (* Output 2 *)
+	bOutput3			: BOOL; (* Output 3 *)
+	bOutput4			: BOOL; (* Output 4 *)
+	(* 800E:0C Error at the output *)
+	(* External supply or cross-circuit.  These diagnostic messages are displayed only if Current Measurement active = false. *)
+	bOutputCross1		: BOOL; (* Output 1 *)
+	bOutputCross2		: BOOL; (* Output 2 *)
+	bOutputCross3		: BOOL; (* Output 3 *)
+	bOutputCross4		: BOOL; (* Output 4 *)
+	(* Open load or current below minimum value of 20 mA or current above maximum value of 500 mA *)
+	bOutputOpen1		: BOOL; (* Output 1 *)
+	bOutputOpen2		: BOOL; (* Output 2 *)
+	bOutputOpen3		: BOOL; (* Output 3 *)
+	bOutputOpen4		: BOOL; (* Output 4 *)
+	(*800E:0D Supply error*)
+	bFieldVoltH			: BOOL; (* Field voltage too high *)
+	bFieldVoltL			: BOOL; (* Field voltage too low *)
+	(*800E:0E Temperature error*)
+	bTHUC1				: BOOL; (* Overtemperature uC1 *)
+	bTHUC2				: BOOL; (* Overtemperature uC2 *)
+	bTOutBoardH			: BOOL; (* Overtemperature of the output board *)
+	bTLUC1				: BOOL; (* Temperature too low uC1 *)
+	bTLUC2				: BOOL; (* Temperature too low uC2 *)
+	bTOutBoardL			: BOOL; (* Temperature of the output board too low *)
+	bTDiffProcBoard		: BOOL; (* Temperature difference on the processor board too large *)
+	bTDiffBoards		: BOOL; (* Temperature difference between the boards is too large *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

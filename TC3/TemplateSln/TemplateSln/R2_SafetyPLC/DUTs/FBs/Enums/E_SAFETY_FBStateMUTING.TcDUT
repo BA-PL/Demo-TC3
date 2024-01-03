@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_FBStateMUTING" Id="{afd2e5f3-58ad-48e2-9168-1a08b3251dcb}">
+    <Declaration><![CDATA[TYPE E_SAFETY_FBStateMUTING :
+(* Refers to the following function blocks: MUTING *)
+(
+	eSAFETY_FBStateMUTING_UNDEFINED		:= 0,
+	eSAFETY_FBStateMUTING_RUN 			:= 1,
+	eSAFETY_FBStateMUTING_STOP 			:= 2,
+	eSAFETY_FBStateMUTING_SAFE 			:= 3,
+	eSAFETY_FBStateMUTING_ERROR 		:= 4,
+	eSAFETY_FBStateMUTING_RESET			:= 5,
+	eSAFETY_FBStateMUTING_DELAYOUT		:= 8,
+	eSAFETY_FBStateMUTING_MUTING1		:= 9,
+	eSAFETY_FBStateMUTING_MUTING2		:= 10,
+	eSAFETY_FBStateMUTING_MUTING3		:= 11,
+	eSAFETY_FBStateMUTING_MUTING4		:= 12,
+	eSAFETY_FBStateMUTING_MUTING5		:= 13,
+	eSAFETY_FBStateMUTING_MUTING6		:= 14,
+	eSAFETY_FBStateMUTING_MUTING7		:= 15,
+	eSAFETY_FBStateMUTING_MUTING8		:= 16,
+	eSAFETY_FBStateMUTING_MUTING9		:= 17
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

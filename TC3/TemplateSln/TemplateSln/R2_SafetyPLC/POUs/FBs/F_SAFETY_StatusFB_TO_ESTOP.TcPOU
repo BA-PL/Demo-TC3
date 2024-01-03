@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_SAFETY_StatusFB_TO_ESTOP" Id="{a038978e-c779-4940-950d-642f86327372}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_SAFETY_StatusFB_TO_ESTOP : ST_SAFETY_FBESTOP 	(* Struktura dedykowana *)
+VAR_INPUT
+	stFBStatus						: ST_SAFETY_FBStatus; 	(* Struktura ogolna *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_SAFETY_StatusFB_TO_ESTOP.uStatus.stStatusWords	:= stFBStatus;									(* Przepisanie *)
+F_SAFETY_StatusFB_TO_ESTOP.eState 					:= stFBStatus.BState;							(* Ustawienie enum *)
+F_SAFETY_StatusFB_TO_ESTOP.bGeneralError			:= stFBStatus.wDiagnosis <> 0;					(* General Error *)
+]]></ST>
+    </Implementation>
+    <LineIds Name="F_SAFETY_StatusFB_TO_ESTOP">
+      <LineId Id="3" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

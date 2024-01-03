@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.4">
+  <GVL Name="GVL_EventLogger_Simple" Id="{764274ba-1093-46c0-a618-662ceee715cf}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	arrMessageTriggers		: ARRAY [1..nMaxNumMessages] OF BOOL; // auto clear
+	arrWarningTriggers		: ARRAY [1..nMaxNumWarnings] OF BOOL; // auto clear
+	arrErrorTriggers 		: ARRAY [1..nMaxNumErrors] OF BOOL; // manual clear
+	arrErrorConfirmations	: ARRAY [1..nMaxNumErrors] OF BOOL; // auto clear
+END_VAR
+VAR_GLOBAL CONSTANT
+	nMaxNumMessages 	: UDINT := 3;
+	nMaxNumWarnings 	: UDINT := 3;
+	nMaxNumErrors 		: UDINT := 3;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

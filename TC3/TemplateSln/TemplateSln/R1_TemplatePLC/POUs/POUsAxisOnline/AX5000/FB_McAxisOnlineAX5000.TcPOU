@@ -1,0 +1,851 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.16">
+  <POU Name="FB_McAxisOnlineAX5000" Id="{acb09ecf-b7bd-49dd-87ab-dcbcc12c15f6}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									7.12.2018
+//	Wszystkomajacy blok funkcyjny do sterowania osia, 
+//	wymagane biblioteki: Tc2_EtherCAT, Tc2_Drive, Tc2_MC2_Drive, Tc2_MC2, Tc2_Utilities
+//  v1.2	|| TC v 3.1.4022.27		|| - dodane opisy bledow w formie zmiennych typu string
+// 	v1.1 	|| TC v 3.1.4022.20	 	|| - ACT_MotorMonitoring - only for real axis
+// 	v1.0 	|| TC v 3.1.4022.16	 	|| - first edition
+//==================================================================================================
+{attribute 'reflection'}
+FUNCTION_BLOCK FB_McAxisOnlineAX5000
+VAR_IN_OUT
+	stMcAxisOnline						: ST_McAxisOnline;
+	Axis								: AXIS_REF;
+END_VAR
+VAR
+	mcPower								: MC_Power;
+	mcStop								: MC_Stop;
+	mcHalt								: MC_Halt;
+	mcStopSS1							: MC_Stop;
+	mcStopSS2							: MC_Stop;
+	mcReset								: MC_Reset;
+	mcHome								: MC_Home;
+	mcSetPosition						: MC_SetPosition;
+	fbSetPositionOffset					: FB_SetPositionOffset;
+	mcJog								: MC_Jog;
+
+	mcMoveAbsolute						: MC_MoveAbsolute;
+	mcMoveRelative						: MC_MoveRelative;
+	mcMoveVelocity						: MC_MoveVelocity;
+	mcMoveModulo						: MC_MoveModulo;
+	mcMoveAbsolute2						: MC_MoveAbsolute;
+	mcMoveRelative2						: MC_MoveRelative;
+	mcMoveVelocity2						: MC_MoveVelocity;
+	mcMoveModulo2						: MC_MoveModulo;
+
+	fbMotorMonitoring					: FB_MotorMonitoringAX5000;
+	fbHoldingBrakeCtrl					: FB_HoldingBrakeCtrlAX5000;
+	fbNcLimitSwitch						: FB_NcSWLimitSwitchCtrl;
+	tonGetDriveDiag						: TON;
+	fbReadChannelErrorCode				: FB_AxisDiag;
+	
+	mcReadDriveAddress					: MC_ReadDriveAddress;
+	mcReadParameterSet					: MC_ReadParameterSet;
+	fbGetDriveRef						: FB_GetDriveRef;
+
+	// Internal
+	bInitialized						: BOOL;
+			
+	// Initialization
+	iInitStep							: INT;
+	bInitializationError				: BOOL;
+	wInitializationErrorCounter			: WORD;
+	bDriveAddressReady					: BOOL;
+	bDriveRefReady						: BOOL;
+	bReadParameterSetReady				: BOOL;
+	tonDelay							: TON;
+	// Re init
+	udiOnlineChangeCntOld				: UDINT;
+	bOnlineChangeDetected				: BOOL;
+	bReInit								: BOOL;
+	bReInitialized						: BOOL;
+	bReInitializationError				: BOOL;
+	// Axis diag struct
+	stAX5000Diag						: ST_AX5000Diag;
+	{attribute 'instance-path'}
+	{attribute 'noinit'}
+	sInstancePath						: STRING;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Device dependent initialization 
+ACT_Initialization();
+// Device independent commands, mostly NC 
+ACT_States();
+ACT_SWLimitSwitch();
+ACT_Stop();
+ACT_Power();
+ACT_Homing();
+ACT_Jog();
+ACT_Move();
+ACT_ResetAndDiag();
+ACT_SetPosition();
+// Device dependent commands
+// Motor monitoring possible only with real axis
+IF NOT Axis.Status.OpMode.SimulationAxis THEN
+	ACT_MotorMonitoring();
+END_IF
+// Device dependent commands, possible only on real axis after complete initialization
+IF bInitialized AND NOT Axis.Status.OpMode.SimulationAxis THEN
+	ACT_SetPositionIO();
+	ACT_HoldingBrakeCtrl();
+END_IF
+
+// Device independent error collection
+ACT_ErrorCollection();]]></ST>
+    </Implementation>
+    <Action Name="ACT_ErrorCollection" Id="{8b67ff1b-ea31-4559-bb77-f7871b767ed4}">
+      <Implementation>
+        <ST><![CDATA[// Error flags
+stMcAxisOnline.stError.bDriveError					:= Axis.Status.DriveDeviceError;
+
+stMcAxisOnline.stError.bNcError						:= Axis.Status.Error;
+
+stMcAxisOnline.stError.bFBError						:= stMcAxisOnline.mcPower.bError OR stMcAxisOnline.mcReset.bError OR stMcAxisOnline.mcHome.bError OR stMcAxisOnline.mcJog.bError
+													OR stMcAxisOnline.mcHalt.bError OR stMcAxisOnline.mcStop.bError OR stMcAxisOnline.mcSS1.bError OR stMcAxisOnline.mcSS2.bError
+													OR stMcAxisOnline.mcMoveAbsolute.bError OR stMcAxisOnline.mcMoveRelative.bError OR stMcAxisOnline.mcMoveVelocity.bError OR stMcAxisOnline.mcMoveModulo.bError
+													OR stMcAxisOnline.mcMoveAbsolute2.bError OR stMcAxisOnline.mcMoveRelative2.bError OR stMcAxisOnline.mcMoveVelocity2.bError OR stMcAxisOnline.mcMoveModulo2.bError
+													OR stMcAxisOnline.stNcLimitSwitch.bError OR stMcAxisOnline.mcSetPosition.bError;
+									
+stMcAxisOnline.stError.bCommunicationError			:= stMcAxisOnline.stChannelErrorCode.bError OR stMcAxisOnline.stSetPositionOffset.bError OR stMcAxisOnline.stMotorMonitoring.bError OR stMcAxisOnline.stHoldingBrake.bError;
+
+stMcAxisOnline.stError.bError						:= stMcAxisOnline.stError.bDriveError OR stMcAxisOnline.stError.bNcError OR stMcAxisOnline.stError.bFBError OR stMcAxisOnline.stError.bCommunicationError;
+stMcAxisOnline.bError								:= stMcAxisOnline.stError.bError; // Forward one stage up
+
+// Error codes
+stMcAxisOnline.stError.uiDriveErrorID 				:= stMcAxisOnline.stChannelErrorCode.uiChannelErrorCode;
+stMcAxisOnline.stError.uiDriveErrorIDHex 			:= stMcAxisOnline.stChannelErrorCode.uiChannelErrorCodeHex;
+
+stMcAxisOnline.stError.udiNcErrorID 				:= Axis.Status.ErrorID;
+stMcAxisOnline.stError.udiNcErrorIDHex 				:= Axis.Status.ErrorID;
+	
+
+stMcAxisOnline.stError.udiFBErrorID 				:= 	stMcAxisOnline.mcPower.udiErrorID + 
+														stMcAxisOnline.mcReset.udiErrorID + 
+														stMcAxisOnline.mcHome.udiErrorID + 
+														stMcAxisOnline.mcJog.udiErrorID +
+														stMcAxisOnline.mcHalt.udiErrorID + 
+														stMcAxisOnline.mcStop.udiErrorID + 
+														stMcAxisOnline.mcSS1.udiErrorID + 
+														stMcAxisOnline.mcSS2.udiErrorID +
+														stMcAxisOnline.mcMoveAbsolute.udiErrorID + 
+														stMcAxisOnline.mcMoveRelative.udiErrorID + 
+														stMcAxisOnline.mcMoveVelocity.udiErrorID + 
+														stMcAxisOnline.mcMoveModulo.udiErrorID +
+														stMcAxisOnline.mcMoveAbsolute2.udiErrorID + 
+														stMcAxisOnline.mcMoveRelative2.udiErrorID + 
+														stMcAxisOnline.mcMoveVelocity2.udiErrorID + 
+														stMcAxisOnline.mcMoveModulo2.udiErrorID +
+														stMcAxisOnline.stNcLimitSwitch.udiErrorID + 
+														stMcAxisOnline.mcSetPosition.udiErrorID;
+
+stMcAxisOnline.stError.udiFBErrorIDHex 				:= stMcAxisOnline.stError.udiFBErrorID;
+
+stMcAxisOnline.stError.udiErrorID					:= stMcAxisOnline.stSetPositionOffset.udiErrorID;
+stMcAxisOnline.stError.uiAdsErrorID					:= stMcAxisOnline.stChannelErrorCode.uiAdsErrId + stMcAxisOnline.stMotorMonitoring.uiAdsErrId + stMcAxisOnline.stHoldingBrake.uiAdsErrId;
+stMcAxisOnline.stError.uiSecErrorID					:= stMcAxisOnline.stChannelErrorCode.uiSecErrId + stMcAxisOnline.stMotorMonitoring.uiSecErrId + stMcAxisOnline.stHoldingBrake.uiSecErrId;
+
+stMcAxisOnline.stError.sNcError						:= F_AxErrMsg(stMcAxisOnline.stError.udiNcErrorID);
+stMcAxisOnline.stError.sDriveError					:= F_AX5xErrMsg(stMcAxisOnline.stError.uiDriveErrorID);]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_HoldingBrakeCtrl" Id="{fe91b77d-db06-4967-a22d-3afd6094245b}">
+      <Implementation>
+        <ST><![CDATA[fbHoldingBrakeCtrl(
+					bForceLock			:= stMcAxisOnline.stHoldingBrake.bForceLock,
+					bForceUnlock		:= stMcAxisOnline.stHoldingBrake.bForceUnlock,
+					bBusy				=> stMcAxisOnline.stHoldingBrake.bBusy,
+					bError				=> stMcAxisOnline.stHoldingBrake.bError,
+					iAdsErrId			=> stMcAxisOnline.stHoldingBrake.uiAdsErrId,
+					iSecErrId			=>stMcAxisOnline.stHoldingBrake.uiSecErrId , 
+					Axis				:= Axis );
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Homing" Id="{47966959-39c2-4ae6-ba84-c2142b694629}">
+      <Implementation>
+        <ST><![CDATA[mcHome(		Axis						:= Axis,
+			Execute						:= stMcAxisOnline.mcHome.bExecute,
+			Position					:= stMcAxisOnline.mcHome.lrPosition,
+			HomingMode					:= stMcAxisOnline.mcHome.eHomingMode,
+			BufferMode					:= stMcAxisOnline.mcHome.eBufferMode,
+			Options						:= stMcAxisOnline.mcHome.stOptions,
+			bCalibrationCam				:= stMcAxisOnline.mcHome.bCalibrationCam,
+			Done						=> stMcAxisOnline.mcHome.bDone,
+			Busy						=> stMcAxisOnline.mcHome.bBusy,
+			Active						=> stMcAxisOnline.mcHome.bActive,
+			CommandAborted				=> stMcAxisOnline.mcHome.bCommandAborted,
+			Error						=> stMcAxisOnline.mcHome.bError,
+			ErrorID						=> stMcAxisOnline.mcHome.udiErrorID);]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Initialization" Id="{6026bcaa-cb2d-40c9-83f6-6afb321ef5d1}">
+      <Implementation>
+        <ST><![CDATA[// bInitialized flag is set just once. 
+// bReInitialized ise set each time we do online change or request reinit operation
+// bDriveAddressReady, bReadParameterSetReady, bDriveRefReady - set just once after successed read
+
+// Online change detection
+bOnlineChangeDetected					:= udiOnlineChangeCntOld <> _AppInfo.OnlineChangeCnt;
+udiOnlineChangeCntOld 					:= _AppInfo.OnlineChangeCnt;
+// Reset init
+IF bReInit OR bOnlineChangeDetected THEN
+	iInitStep							:= 0;
+END_IF
+
+//Initialization process
+CASE iInitStep OF
+	0:	// Read Drive Address
+		
+		stMcAxisOnline.mcReadDriveAddress.bExecute	:=	 TRUE;
+		iInitStep						:= iInitStep + 10;
+		
+	10: // Wait for data
+	
+		IF NOT stMcAxisOnline.mcReadDriveAddress.bBusy THEN
+			stMcAxisOnline.mcReadDriveAddress.bExecute	:=	 FALSE;
+			IF stMcAxisOnline.mcReadDriveAddress.bDone THEN
+				iInitStep 				:= iInitStep + 10;
+				bDriveAddressReady 		:= TRUE;
+			ELSE
+				iInitStep 				:= 1000;		// Error step
+			END_IF
+		END_IF
+		
+	20:	// Read Parameter Set
+		
+		stMcAxisOnline.mcReadParameterSet.bExecute		:=	 TRUE;
+		iInitStep						:= iInitStep + 10;
+		
+	30: // Wait for data
+	
+		IF NOT stMcAxisOnline.mcReadParameterSet.bBusy THEN
+			stMcAxisOnline.mcReadParameterSet.bExecute	:=	 FALSE;
+			IF stMcAxisOnline.mcReadParameterSet.bDone THEN
+				iInitStep 				:= iInitStep + 10;
+				bReadParameterSetReady 	:= TRUE;
+			ELSE
+				iInitStep 				:= 1000;		// Error step
+			END_IF
+		END_IF	
+	
+	40:	// Get Drive Ref
+		
+		stMcAxisOnline.stGetDriveRef.bExecute		:=	 TRUE;
+		iInitStep						:= iInitStep + 10;
+		
+	50: // Wait for data
+	
+		IF NOT stMcAxisOnline.stGetDriveRef.bBusy THEN
+			stMcAxisOnline.stGetDriveRef.bExecute	:=	 FALSE;
+			IF NOT stMcAxisOnline.stGetDriveRef.bError THEN
+				iInitStep 				:= iInitStep + 10;
+				bDriveRefReady 			:= TRUE;
+			ELSE
+				iInitStep 				:= 1000;		// Error step
+			END_IF
+		END_IF
+	
+	60: // Success - initialized flag, clear error
+		bReInitialized					:= bInitialized;	// TRUE only when it's not first initialization e.g. online change
+		bInitialized 					:= TRUE;
+		bReInitializationError			:= FALSE;			// TRUE only when it's not first initialization e.g. online change
+		bInitializationError			:= FALSE;
+		iInitStep 						:= iInitStep + 10;
+		
+	70: // Idle
+	
+		;
+		
+	1000: // Error step
+		wInitializationErrorCounter 	:= wInitializationErrorCounter + 1;
+		IF wInitializationErrorCounter < 100 THEN
+			iInitStep					:= iInitStep + 5;			// Go to delay
+		ELSE
+			bReInitializationError		:= bInitializationError;	// TRUE only when it's not first initialization e.g. online change
+			bInitializationError		:= TRUE;
+			bReInitialized				:= FALSE;
+			iInitStep 					:= iInitStep + 10;
+		END_IF
+
+	1005: // Delay step
+		tonDelay(IN:= TRUE, PT:= T#1S);
+		IF tonDelay.Q THEN
+			tonDelay(IN:= FALSE, PT:= T#1S);
+			iInitStep					:= 0;
+		END_IF
+		
+	1010: // Idle after error
+		;
+	
+END_CASE
+
+mcReadDriveAddress(	Axis				:= Axis,
+					Execute				:= stMcAxisOnline.mcReadDriveAddress.bExecute,
+					Done				=> stMcAxisOnline.mcReadDriveAddress.bDone,
+					Busy				=> stMcAxisOnline.mcReadDriveAddress.bBusy,
+					Error				=> stMcAxisOnline.mcReadDriveAddress.bError,
+					ErrorID				=> stMcAxisOnline.mcReadDriveAddress.udiErrorID,
+					DriveAddress		=> stMcAxisOnline.stDriveAddress);
+				
+mcReadParameterSet(	Parameter			:= stMcAxisOnline.stAxisParameter,
+					Axis				:= Axis,
+					Execute				:= stMcAxisOnline.mcReadParameterSet.bExecute,
+					Done				=> stMcAxisOnline.mcReadParameterSet.bDone,
+					Busy				=> stMcAxisOnline.mcReadParameterSet.bBusy,
+					Error				=> stMcAxisOnline.mcReadParameterSet.bError,
+					ErrorID				=> stMcAxisOnline.mcReadParameterSet.udiErrorID);
+					
+fbGetDriveRef(		bExecute			:= stMcAxisOnline.stGetDriveRef.bExecute,
+					bBusy				=> stMcAxisOnline.stGetDriveRef.bBusy,
+					bError				=> stMcAxisOnline.stGetDriveRef.bError,
+					udiErrorID			=> stMcAxisOnline.stGetDriveRef.udiErrorID,
+					stDriveRef			=> stMcAxisOnline.stDriveRef,
+					Axis				:= Axis);
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Jog" Id="{2f4c6bae-0279-48e2-8f09-a46b1a2fa620}">
+      <Implementation>
+        <ST><![CDATA[// Direct access from bSlow or bFast, if none then free choice
+IF stMcAxisOnline.mcJog.bSlowForward OR stMcAxisOnline.mcJog.bSlowBackward THEN
+	stMcAxisOnline.mcJog.eMode			:= MC_JOGMODE_STANDARD_SLOW;
+ELSIF stMcAxisOnline.mcJog.bFastForward OR stMcAxisOnline.mcJog.bFastBackward THEN
+	stMcAxisOnline.mcJog.eMode			:= MC_JOGMODE_STANDARD_FAST;
+END_IF
+
+mcJog(		Axis						:= Axis,
+			JogForward					:= stMcAxisOnline.mcJog.bJogForward OR stMcAxisOnline.mcJog.bSlowForward OR stMcAxisOnline.mcJog.bFastForward,
+			JogBackwards				:= stMcAxisOnline.mcJog.bJogBackwards OR stMcAxisOnline.mcJog.bSlowBackward OR stMcAxisOnline.mcJog.bFastBackward,
+			Mode						:= stMcAxisOnline.mcJog.eMode,
+			Position					:= stMcAxisOnline.mcJog.lrPosition,
+			Velocity					:= stMcAxisOnline.mcJog.lrVelocity,
+			Acceleration				:= stMcAxisOnline.mcJog.lrAcceleration,
+			Deceleration				:= stMcAxisOnline.mcJog.lrDeceleration,
+			Jerk						:= stMcAxisOnline.mcJog.lrJerk,
+			Done						=> stMcAxisOnline.mcJog.bDone,
+			Busy						=> stMcAxisOnline.mcJog.bBusy,
+			Active						=> stMcAxisOnline.mcJog.bActive,
+			CommandAborted				=> stMcAxisOnline.mcJog.bCommandAborted,
+			Error						=> stMcAxisOnline.mcJog.bError,
+			ErrorID						=> stMcAxisOnline.mcJog.udiErrorID);]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_MotorMonitoring" Id="{4475ed5c-c639-466e-82be-dbc76d20153e}">
+      <Implementation>
+        <ST><![CDATA[fbMotorMonitoring(
+					bReset				:= stMcAxisOnline.stMotorMonitoring.bReset, 
+					rTorqueLimit		:= stMcAxisOnline.stMotorMonitoring.rTorqueLimit , 
+					bError				=> stMcAxisOnline.stMotorMonitoring.bError , 
+					uiAdsErrId			=> stMcAxisOnline.stMotorMonitoring.uiAdsErrId , 
+					uiSercosErrId		=> stMcAxisOnline.stMotorMonitoring.uiSecErrId, 
+					bInitialized		=> stMcAxisOnline.stMotorMonitoring.bInitialized , 
+					bWarning			=> stMcAxisOnline.stMotorMonitoring.bWarning , 
+					rWarningCurrent		=> stMcAxisOnline.stMotorMonitoring.rWarningCurrent , 
+					rTorquePerc			=> stMcAxisOnline.stMotorMonitoring.rTorquePerc,
+					rTorquePercMax		=> stMcAxisOnline.stMotorMonitoring.rTorquePercMax,
+					rTorque				=> stMcAxisOnline.stMotorMonitoring.rTorque , 
+					rTorqueF			=> stMcAxisOnline.stMotorMonitoring.rTorqueF , 
+					rTorqueMax			=> stMcAxisOnline.stMotorMonitoring.rTorqueMax , 
+					rCurrent			=> stMcAxisOnline.stMotorMonitoring.rCurrent , 
+					rCurrentF			=> stMcAxisOnline.stMotorMonitoring.rCurrentF , 
+					rCurrentMax			=> stMcAxisOnline.stMotorMonitoring.rCurrentMax , 
+					rI2T				=> stMcAxisOnline.stMotorMonitoring.rI2T , 
+					rI2TMax				=> stMcAxisOnline.stMotorMonitoring.rI2TMax , 
+					Axis				:= Axis );]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Move" Id="{b39d6015-9291-4897-b73b-8db53e453a09}">
+      <Implementation>
+        <ST><![CDATA[{region "Primary"}
+mcMoveAbsolute(	Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveAbsolute.bExecute,
+				Position				:= stMcAxisOnline.mcMoveAbsolute.lrPosition,
+				Velocity				:= stMcAxisOnline.mcMoveAbsolute.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveAbsolute.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveAbsolute.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveAbsolute.lrJerk,
+				BufferMode				:= stMcAxisOnline.mcMoveAbsolute.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveAbsolute.stOptions,
+				Done					=> stMcAxisOnline.mcMoveAbsolute.bDone,
+				Busy					=> stMcAxisOnline.mcMoveAbsolute.bBusy,
+				Active					=> stMcAxisOnline.mcMoveAbsolute.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveAbsolute.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveAbsolute.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveAbsolute.udiErrorID);
+
+mcMoveRelative(	Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveRelative.bExecute,
+				Distance				:= stMcAxisOnline.mcMoveRelative.lrDistance,
+				Velocity				:= stMcAxisOnline.mcMoveRelative.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveRelative.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveRelative.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveRelative.lrJerk,
+				BufferMode				:= stMcAxisOnline.mcMoveRelative.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveRelative.stOptions,
+				Done					=> stMcAxisOnline.mcMoveRelative.bDone,
+				Busy					=> stMcAxisOnline.mcMoveRelative.bBusy,
+				Active					=> stMcAxisOnline.mcMoveRelative.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveRelative.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveRelative.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveRelative.udiErrorID);
+				
+mcMoveVelocity(	Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveVelocity.bExecute,
+				Velocity				:= stMcAxisOnline.mcMoveVelocity.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveVelocity.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveVelocity.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveVelocity.lrJerk,
+				Direction				:= stMcAxisOnline.mcMoveVelocity.eDirection,
+				BufferMode				:= stMcAxisOnline.mcMoveVelocity.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveVelocity.stOptions,
+				InVelocity				=> stMcAxisOnline.mcMoveVelocity.bInVelocity,
+				Busy					=> stMcAxisOnline.mcMoveVelocity.bBusy,
+				Active					=> stMcAxisOnline.mcMoveVelocity.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveVelocity.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveVelocity.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveVelocity.udiErrorID);
+stMcAxisOnline.mcMoveVelocity.bDone		:= stMcAxisOnline.mcMoveVelocity.bInVelocity;
+
+mcMoveModulo(	Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveModulo.bExecute,
+				Position				:= stMcAxisOnline.mcMoveModulo.lrPosition,
+				Velocity				:= stMcAxisOnline.mcMoveModulo.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveModulo.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveModulo.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveModulo.lrJerk,
+				Direction				:= stMcAxisOnline.mcMoveModulo.eDirection,
+				BufferMode				:= stMcAxisOnline.mcMoveModulo.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveModulo.stOptions,
+				Done					=> stMcAxisOnline.mcMoveModulo.bDone,
+				Busy					=> stMcAxisOnline.mcMoveModulo.bBusy,
+				Active					=> stMcAxisOnline.mcMoveModulo.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveModulo.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveModulo.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveModulo.udiErrorID);
+{endregion}
+{region "Secondary"}
+mcMoveAbsolute2(Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveAbsolute2.bExecute,
+				Position				:= stMcAxisOnline.mcMoveAbsolute2.lrPosition,
+				Velocity				:= stMcAxisOnline.mcMoveAbsolute2.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveAbsolute2.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveAbsolute2.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveAbsolute2.lrJerk,
+				BufferMode				:= stMcAxisOnline.mcMoveAbsolute2.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveAbsolute2.stOptions,
+				Done					=> stMcAxisOnline.mcMoveAbsolute2.bDone,
+				Busy					=> stMcAxisOnline.mcMoveAbsolute2.bBusy,
+				Active					=> stMcAxisOnline.mcMoveAbsolute2.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveAbsolute2.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveAbsolute2.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveAbsolute2.udiErrorID);
+
+mcMoveRelative2(Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveRelative2.bExecute,
+				Distance				:= stMcAxisOnline.mcMoveRelative2.lrDistance,
+				Velocity				:= stMcAxisOnline.mcMoveRelative2.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveRelative2.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveRelative2.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveRelative2.lrJerk,
+				BufferMode				:= stMcAxisOnline.mcMoveRelative2.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveRelative2.stOptions,
+				Done					=> stMcAxisOnline.mcMoveRelative2.bDone,
+				Busy					=> stMcAxisOnline.mcMoveRelative2.bBusy,
+				Active					=> stMcAxisOnline.mcMoveRelative2.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveRelative2.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveRelative2.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveRelative2.udiErrorID);
+				
+mcMoveVelocity2(Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveVelocity2.bExecute,
+				Velocity				:= stMcAxisOnline.mcMoveVelocity2.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveVelocity2.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveVelocity2.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveVelocity2.lrJerk,
+				Direction				:= stMcAxisOnline.mcMoveVelocity2.eDirection,
+				BufferMode				:= stMcAxisOnline.mcMoveVelocity2.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveVelocity2.stOptions,
+				InVelocity				=> stMcAxisOnline.mcMoveVelocity2.bInVelocity,
+				Busy					=> stMcAxisOnline.mcMoveVelocity2.bBusy,
+				Active					=> stMcAxisOnline.mcMoveVelocity2.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveVelocity2.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveVelocity2.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveVelocity2.udiErrorID);
+stMcAxisOnline.mcMoveVelocity2.bDone	:= stMcAxisOnline.mcMoveVelocity2.bInVelocity;
+
+mcMoveModulo2(	Axis					:= Axis,
+				Execute					:= stMcAxisOnline.mcMoveModulo2.bExecute,
+				Position				:= stMcAxisOnline.mcMoveModulo2.lrPosition,
+				Velocity				:= stMcAxisOnline.mcMoveModulo2.lrVelocity,
+				Acceleration			:= stMcAxisOnline.mcMoveModulo2.lrAcceleration,
+				Deceleration			:= stMcAxisOnline.mcMoveModulo2.lrDeceleration,
+				Jerk					:= stMcAxisOnline.mcMoveModulo2.lrJerk,
+				Direction				:= stMcAxisOnline.mcMoveModulo2.eDirection,
+				BufferMode				:= stMcAxisOnline.mcMoveModulo2.eBufferMode,
+				Options					:= stMcAxisOnline.mcMoveModulo2.stOptions,
+				Done					=> stMcAxisOnline.mcMoveModulo2.bDone,
+				Busy					=> stMcAxisOnline.mcMoveModulo2.bBusy,
+				Active					=> stMcAxisOnline.mcMoveModulo2.bActive,
+				CommandAborted			=> stMcAxisOnline.mcMoveModulo2.bCommandAborted,
+				Error					=> stMcAxisOnline.mcMoveModulo2.bError,
+				ErrorID					=> stMcAxisOnline.mcMoveModulo2.udiErrorID);
+{endregion}]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Power" Id="{92925399-40d6-4cfc-9430-e7cbc9515f81}">
+      <Implementation>
+        <ST><![CDATA[mcPower(	Axis						:= Axis,									//
+			Enable						:= stMcAxisOnline.mcPower.bEnable,
+			Enable_Positive				:= stMcAxisOnline.mcPower.bEnable_Positive,
+			Enable_Negative				:= stMcAxisOnline.mcPower.bEnable_Negative,
+			Override					:= stMcAxisOnline.mcPower.lrOverride,
+			BufferMode					:= stMcAxisOnline.mcPower.eBufferMode,
+			Options						:= stMcAxisOnline.mcPower.stOptions,
+			Status						=> stMcAxisOnline.mcPower.bStatus,
+			Busy						=> stMcAxisOnline.mcPower.bBusy,
+			Active						=> stMcAxisOnline.mcPower.bActive,
+			Error						=> stMcAxisOnline.mcPower.bError,
+			ErrorID						=> stMcAxisOnline.mcPower.udiErrorID);]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_ResetAndDiag" Id="{962ef621-fbb2-49ba-91ae-a1632f86221e}">
+      <Implementation>
+        <ST><![CDATA[tonGetDriveDiag(IN:= stMcAxisOnline.stError.bDriveError AND NOT tonGetDriveDiag.Q, PT:= T#5S, Q=> , ET=> );
+
+IF Axis.Status.OpMode.SimulationAxis THEN
+	mcReset(
+		Axis						:= Axis,
+		Execute						:= stMcAxisOnline.mcReset.bExecute,
+		Done						=> stMcAxisOnline.mcReset.bDone,
+		Busy						=> stMcAxisOnline.mcReset.bBusy,
+		Error						=> stMcAxisOnline.mcReset.bError,
+		ErrorID						=> stMcAxisOnline.mcReset.udiErrorID);	
+ELSE
+	fbReadChannelErrorCode(
+		Reset:=					stMcAxisOnline.mcReset.bExecute,
+		GetDiag				:=	(stMcAxisOnline.stChannelErrorCode.bExecute OR tonGetDriveDiag.Q),
+		Axis				:=	Axis , 
+		stAX5000Diag		:=	stAX5000Diag , 
+		Error				=> 	stMcAxisOnline.mcReset.bError , 
+		AdsErrId			=>	stMcAxisOnline.mcReset.udiErrorID , 
+		SercosErrId			=>	stMcAxisOnline.stChannelErrorCode.uiAdsErrId, //???
+		ResetAct			=> , 
+		DiagAct				=> , 
+		Busy				=> 	stMcAxisOnline.mcReset.bBusy );
+	
+	stMcAxisOnline.stChannelErrorCode.bError 				:= stAX5000Diag.bC1DError;
+	stMcAxisOnline.stChannelErrorCode.uiChannelErrorCode 	:= UDINT_TO_UINT (stAX5000Diag.iDiagNumber);
+	stMcAxisOnline.stChannelErrorCode.uiChannelErrorCodeHex := UDINT_TO_UINT (stAX5000Diag.iDiagNumber);
+END_IF
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_SetPosition" Id="{7d152d19-b386-438b-bd0c-d98c0ee3a463}">
+      <Implementation>
+        <ST><![CDATA[mcSetPosition(		Axis				:= Axis,
+					Execute				:= stMcAxisOnline.mcSetPosition.bExecute,
+					Position			:= stMcAxisOnline.mcSetPosition.lrPosition,
+					Mode				:= stMcAxisOnline.mcSetPosition.bMode,
+					Options				:= stMcAxisOnline.mcSetPosition.stOptions,
+					Done				=> stMcAxisOnline.mcSetPosition.bDone,
+					Busy				=> stMcAxisOnline.mcSetPosition.bBusy,
+					Error				=> stMcAxisOnline.mcSetPosition.bError,
+					ErrorID				=> stMcAxisOnline.mcSetPosition.udiErrorID);
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_SetPositionIO" Id="{da5fdef9-a5da-428f-b5a3-fbc791e4f4cc}">
+      <Implementation>
+        <ST><![CDATA[fbSetPositionOffset(
+	bExecute			:= stMcAxisOnline.stSetPositionOffset.bExecute , 
+	lrPosition			:= stMcAxisOnline.stSetPositionOffset.lrPosition , 
+	bRelative			:= stMcAxisOnline.stSetPositionOffset.bRelative , 
+	eFeedback			:= stMcAxisOnline.stSetPositionOffset.eFeedback , 
+	eMemory				:= stMcAxisOnline.stSetPositionOffset.eMemory , 
+	bBusy				=> stMcAxisOnline.stSetPositionOffset.bBusy , 
+	bError				=> stMcAxisOnline.stSetPositionOffset.bError, 
+	udiErrorID			=> stMcAxisOnline.stSetPositionOffset.udiErrorID, 
+	uiSoEErrorID		=> stMcAxisOnline.stSetPositionOffset.uiSecErrId,
+	Axis				:= Axis );]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_States" Id="{cc524d14-4858-4af0-ac35-31032874dcd8}">
+      <Implementation>
+        <ST><![CDATA[// Read States and forward main states
+Axis.ReadStatus();
+stMcAxisOnline.stStatus.stAxisStatus		:= Axis.Status;
+stMcAxisOnline.stStatus.dwAxisId			:= Axis.NcToPlc.AxisId;
+stMcAxisOnline.stStatus.bNcError			:= Axis.Status.Error;
+stMcAxisOnline.stStatus.udiNcErrorCode		:= Axis.Status.ErrorID;
+stMcAxisOnline.stStatus.udiNcErrorCodeHex	:= Axis.Status.ErrorID;
+
+stMcAxisOnline.stStatus.sAxisName			:= stMcAxisOnline.stAxisParameter.sAxisName;
+stMcAxisOnline.stStatus.lrActPos			:= Axis.NcToPlc.ActPos;
+stMcAxisOnline.stStatus.lrModuloActPos		:= Axis.NcToPlc.ModuloActPos;
+stMcAxisOnline.stStatus.lrActVelo			:= Axis.NcToPlc.ActVelo;
+stMcAxisOnline.stStatus.lrActAcc			:= Axis.NcToPlc.ActAcc;
+stMcAxisOnline.stStatus.lrActTorque			:= Axis.NcToPlc.ActTorque;
+stMcAxisOnline.stStatus.lrPosDiff			:= Axis.NcToPlc.PosDiff;
+stMcAxisOnline.stStatus.lrSetPos			:= Axis.NcToPlc.SetPos;
+stMcAxisOnline.stStatus.lrSetVelo			:= Axis.NcToPlc.SetVelo;
+stMcAxisOnline.stStatus.lrSetAcc			:= Axis.NcToPlc.SetAcc;
+stMcAxisOnline.stStatus.lrSetTorque			:= Axis.NcToPlc.SetTorque;
+stMcAxisOnline.stStatus.lrPosDiff			:= Axis.NcToPlc.PosDiff;
+stMcAxisOnline.stStatus.bAxisReady			:= Axis.Status.Operational;
+stMcAxisOnline.stStatus.bHomed				:= Axis.Status.Homed;
+stMcAxisOnline.stStatus.bCoupled			:= Axis.Status.Coupled;
+
+// zezwolenie na zjazd z krancowki hw
+Axis.PlcToNc.ControlDWord.8				:= stMcAxisOnline.stStatus.bAcceptBlockedDrive;
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Stop" Id="{fa659ce1-3df4-418e-aa6c-cd20f9ecd0f3}">
+      <Implementation>
+        <ST><![CDATA[mcHalt(		Axis						:= Axis,
+			Execute						:= stMcAxisOnline.mcHalt.bExecute,
+			Deceleration				:= stMcAxisOnline.mcHalt.lrDeceleration,
+			Jerk						:= stMcAxisOnline.mcHalt.lrJerk,
+			BufferMode					:= stMcAxisOnline.mcHalt.eBufferMode,
+			Options						:= stMcAxisOnline.mcHalt.stOptions,
+			Done						=> stMcAxisOnline.mcHalt.bDone,
+			Busy						=> stMcAxisOnline.mcHalt.bBusy,
+			Active						=> stMcAxisOnline.mcHalt.bActive,
+			CommandAborted				=> stMcAxisOnline.mcHalt.bCommandAborted,
+			Error						=> stMcAxisOnline.mcHalt.bError,
+			ErrorID						=> stMcAxisOnline.mcHalt.udiErrorID);
+			
+mcStop(		Axis						:= Axis,
+			Execute						:= stMcAxisOnline.mcStop.bExecute,
+			Deceleration				:= stMcAxisOnline.mcStop.lrDeceleration,
+			Jerk						:= stMcAxisOnline.mcStop.lrJerk,
+			Options						:= stMcAxisOnline.mcStop.stOptions,
+			Done						=> stMcAxisOnline.mcStop.bDone,
+			Busy						=> stMcAxisOnline.mcStop.bBusy,
+			Active						=> stMcAxisOnline.mcStop.bActive,
+			CommandAborted				=> stMcAxisOnline.mcStop.bCommandAborted,
+			Error						=> stMcAxisOnline.mcStop.bError,
+			ErrorID						=> stMcAxisOnline.mcStop.udiErrorID);
+			
+mcStopSS2(	Axis						:= Axis,
+			Execute						:= stMcAxisOnline.mcSS2.bExecute,
+			Deceleration				:= stMcAxisOnline.mcSS2.lrDeceleration,
+			Jerk						:= stMcAxisOnline.mcSS2.lrJerk,
+			Options						:= stMcAxisOnline.mcSS2.stOptions,
+			Done						=> stMcAxisOnline.mcSS2.bDone,
+			Busy						=> stMcAxisOnline.mcSS2.bBusy,
+			Active						=> stMcAxisOnline.mcSS2.bActive,
+			CommandAborted				=> stMcAxisOnline.mcSS2.bCommandAborted,
+			Error						=> stMcAxisOnline.mcSS2.bError,
+			ErrorID						=> stMcAxisOnline.mcSS2.udiErrorID);
+			
+mcStopSS1(	Axis						:= Axis,
+			Execute						:= stMcAxisOnline.mcSS1.bExecute,
+			Deceleration				:= stMcAxisOnline.mcSS1.lrDeceleration,
+			Jerk						:= stMcAxisOnline.mcSS1.lrJerk,
+			Options						:= stMcAxisOnline.mcSS1.stOptions,
+			Done						=> stMcAxisOnline.mcSS1.bDone,
+			Busy						=> stMcAxisOnline.mcSS1.bBusy,
+			Active						=> stMcAxisOnline.mcSS1.bActive,
+			CommandAborted				=> stMcAxisOnline.mcSS1.bCommandAborted,
+			Error						=> stMcAxisOnline.mcSS1.bError,
+			ErrorID						=> stMcAxisOnline.mcSS1.udiErrorID);
+// SS1 - after MC_Stop function we have to disable drive			
+stMcAxisOnline.mcPower.bEnable R= stMcAxisOnline.mcPower.bEnable_Positive R= stMcAxisOnline.mcPower.bEnable_Negative R= (stMcAxisOnline.mcSS1.bDone OR stMcAxisOnline.mcSS1.bCommandAborted OR stMcAxisOnline.mcSS1.bError);]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_SWLimitSwitch" Id="{71327204-ff82-44d5-ad10-13aa9ad15ee9}">
+      <Implementation>
+        <ST><![CDATA[fbNcLimitSwitch(	udiAxisID		:= Axis.NcToPlc.AxisId, 
+					bRead			:= stMcAxisOnline.stNcLimitSwitch.bRead, 
+					bWrite			:= stMcAxisOnline.stNcLimitSwitch.bWrite, 
+					bReset			:= stMcAxisOnline.stNcLimitSwitch.bReset, 
+					lrSetMinPos		:= stMcAxisOnline.stNcLimitSwitch.lrSetMinPos, 
+					lrSetMaxPos		:= stMcAxisOnline.stNcLimitSwitch.lrSetMaxPos, 
+					bSetMinMon		:= stMcAxisOnline.stNcLimitSwitch.bSetMinMon, 
+					bSetMaxMon		:= stMcAxisOnline.stNcLimitSwitch.bSetMaxMon, 
+					bBusy			=> stMcAxisOnline.stNcLimitSwitch.bBusy, 
+					bError			=> stMcAxisOnline.stNcLimitSwitch.bError, 
+					udiErrorID		=> stMcAxisOnline.stNcLimitSwitch.udiErrorID, 
+					lrActMinPos		=> stMcAxisOnline.stNcLimitSwitch.lrActMinPos, 
+					lrActMaxPos		=> stMcAxisOnline.stNcLimitSwitch.lrActMaxPos, 
+					bActMinMon		=> stMcAxisOnline.stNcLimitSwitch.bActMinMon, 
+					bActMaxMon		=> stMcAxisOnline.stNcLimitSwitch.bActMaxMon);]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="FB_McAxisOnlineAX5000">
+      <LineId Id="323" Count="0" />
+      <LineId Id="318" Count="0" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="7" Count="7" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="396" Count="0" />
+      <LineId Id="393" Count="2" />
+      <LineId Id="155" Count="0" />
+      <LineId Id="247" Count="0" />
+      <LineId Id="233" Count="1" />
+      <LineId Id="236" Count="0" />
+      <LineId Id="232" Count="0" />
+      <LineId Id="238" Count="1" />
+      <LineId Id="237" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_ErrorCollection">
+      <LineId Id="328" Count="0" />
+      <LineId Id="293" Count="0" />
+      <LineId Id="305" Count="0" />
+      <LineId Id="295" Count="9" />
+      <LineId Id="291" Count="1" />
+      <LineId Id="327" Count="0" />
+      <LineId Id="323" Count="0" />
+      <LineId Id="309" Count="1" />
+      <LineId Id="326" Count="0" />
+      <LineId Id="315" Count="1" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="319" Count="0" />
+      <LineId Id="332" Count="0" />
+      <LineId Id="336" Count="2" />
+      <LineId Id="333" Count="0" />
+      <LineId Id="339" Count="2" />
+      <LineId Id="334" Count="0" />
+      <LineId Id="342" Count="2" />
+      <LineId Id="335" Count="0" />
+      <LineId Id="345" Count="0" />
+      <LineId Id="347" Count="1" />
+      <LineId Id="320" Count="0" />
+      <LineId Id="349" Count="0" />
+      <LineId Id="329" Count="0" />
+      <LineId Id="311" Count="0" />
+      <LineId Id="352" Count="0" />
+      <LineId Id="350" Count="0" />
+      <LineId Id="355" Count="0" />
+      <LineId Id="354" Count="0" />
+      <LineId Id="358" Count="0" />
+      <LineId Id="356" Count="0" />
+      <LineId Id="359" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_HoldingBrakeCtrl">
+      <LineId Id="28" Count="0" />
+      <LineId Id="35" Count="3" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="39" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_Homing">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="4" />
+      <LineId Id="15" Count="5" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_Initialization">
+      <LineId Id="237" Count="120" />
+      <LineId Id="69" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_Jog">
+      <LineId Id="24" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="12" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_MotorMonitoring">
+      <LineId Id="62" Count="3" />
+      <LineId Id="67" Count="4" />
+      <LineId Id="81" Count="1" />
+      <LineId Id="73" Count="7" />
+      <LineId Id="61" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_Move">
+      <LineId Id="227" Count="0" />
+      <LineId Id="234" Count="63" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="228" Count="0" />
+      <LineId Id="232" Count="0" />
+      <LineId Id="298" Count="63" />
+      <LineId Id="233" Count="0" />
+      <LineId Id="230" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_Power">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="9" />
+      <LineId Id="16" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_ResetAndDiag">
+      <LineId Id="43" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="89" Count="3" />
+      <LineId Id="85" Count="1" />
+      <LineId Id="59" Count="1" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="66" Count="6" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="73" Count="2" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_SetPosition">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="6" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="12" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_SetPositionIO">
+      <LineId Id="13" Count="9" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_States">
+      <LineId Id="2" Count="1" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="61" Count="1" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="75" Count="1" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="67" Count="3" />
+      <LineId Id="66" Count="0" />
+      <LineId Id="73" Count="1" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="26" Count="1" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="78" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_Stop">
+      <LineId Id="2" Count="0" />
+      <LineId Id="4" Count="9" />
+      <LineId Id="1" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="41" Count="2" />
+      <LineId Id="45" Count="5" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="64" Count="10" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="76" Count="10" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="89" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_McAxisOnlineAX5000.ACT_SWLimitSwitch">
+      <LineId Id="2" Count="13" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

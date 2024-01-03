@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_EL1904_DiagnosticData" Id="{95f2410d-f323-455f-95f9-f048b8b4b58e}">
+    <Declaration><![CDATA[TYPE ST_EL1904_DiagnosticData EXTENDS ST_ELxxxx_Data:
+STRUCT
+	bInput1				: BOOL;
+	bInput2				: BOOL;
+	bInput3				: BOOL;
+	bInput4				: BOOL;
+	(* 800E:0A Sensor test error - Error during the sensor test *)
+	bSensorTestError1	: BOOL; (* Error at input 1 *)
+	bSensorTestError2	: BOOL; (* Error at input 2 *)
+	bSensorTestError3	: BOOL; (* Error at input 3 *)
+	bSensorTestError4	: BOOL; (* Error at input 4 *)
+	(* 800E:0B Error during two-channel evaluation - Error during the contiguous evaluation of two channels, 
+													i.e. the two channels contradict each other. *)
+	b2ChEvError1		: BOOL; (* Error in the first input pair *)
+	b2ChEvError2		: BOOL; (* Error in the second input pair *)
+	(* 800E:0C Error in the safety mat operation mode: input pair disagree - Error in the input pair *)
+	b2ChMatError1		: BOOL; (* Error in the first input pair  - BIT 0, 1 - 11 bin *)
+	b2ChMatError2		: BOOL; (* Error in the second input pair - BIT 2, 3 - 11 bin *)
+	(* 800E:0D Error in the safety mat operation mode: external supply - Error in the test pulses in the safety mat operating mode; 
+																		i.e. the terminal has detected an external supply. *)
+	bTestPulsesError1	: BOOL; (* Error at input 1 *)
+	bTestPulsesError2	: BOOL; (* Error at input 2 *)
+	bTestPulsesError3	: BOOL; (* Error at input 3 *)
+	bTestPulsesError4	: BOOL; (* Error at input 4 *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

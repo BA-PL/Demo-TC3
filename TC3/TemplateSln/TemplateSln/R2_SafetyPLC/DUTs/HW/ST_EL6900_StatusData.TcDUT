@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_EL6900_StatusData" Id="{b4e312f9-2969-47f7-b50c-c1feab3568dd}">
+    <Declaration><![CDATA[TYPE ST_EL6900_StatusData :
+STRUCT
+	dwStatusConnections			: DWORD; 										(* 2110:0 *) (* Liczba polaczen *)
+	arrstStatusConnections		: ARRAY [1..128] OF ST_SAFETYStatusConnection; 	(* 2110:01-80 *)
+	dwStatusGroups				: DWORD; 										(* 2120:0 *) (* Liczba grup *)
+	arrstStatusGroups			: ARRAY [1..32] OF ST_SAFETYStatusGroup; 		(* 2120:01-20 *)
+	dwStatusFunctionBlocks		: DWORD; 										(* 2130:0 *) (* Liczba blokow *)
+	arrstStatusFunctionBlocks	: ARRAY [1..255] OF ST_SAFETY_FBStatus; 		(* 2130:01-FF *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

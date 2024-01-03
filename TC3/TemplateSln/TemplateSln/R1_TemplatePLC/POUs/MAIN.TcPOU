@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.4">
+  <POU Name="MAIN" Id="{775ad47a-05a2-48ca-8ec9-dcbe16aa4be1}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									02.11.2018
+//	Projekt startowy
+// 	v1.2	|| TC v 3.1.4022.4		|| - zmiana wywolania osi
+// 	v1.1	|| TC v 3.1.4020.32		|| - Aktualizacja
+// 	v1.0	|| TC v 3.1.4020.28		|| - Pierwsza wersja
+//==================================================================================================
+PROGRAM MAIN
+VAR
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[P_SystemDiagnostics();
+
+P_EventLogger_Simple();
+
+P_ErrorCollection();
+
+P_ModeStateManager();
+
+P_Template_SAFETY(eMachineMode:= GVL_Machine.eMode, eMachineCommand:= GVL_Machine.eCommand, eMachineState=> , bError=> );
+
+P_Template(eMachineMode:= GVL_Machine.eMode, eMachineCommand:= GVL_Machine.eCommand, eMachineState=> , Axis1 := GVL.Axis[1]);
+(*
+P_Template_CAM(	eMachineMode		:= GVL_Machine.eMode, 
+				eMachineCommand		:= GVL_Machine.eCommand, 
+				eMachineState		=> GVL_Machine.eState,
+				Axis1				:= GVL.Axis[1], 
+				Axis2				:= GVL.Axis[2], 
+				Axis3				:= GVL.Axis[3]);
+*)]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="49" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="52" Count="13" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

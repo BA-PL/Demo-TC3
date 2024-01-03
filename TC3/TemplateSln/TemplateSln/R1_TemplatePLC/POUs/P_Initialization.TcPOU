@@ -1,0 +1,160 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_Initialization" Id="{97803ff5-a944-4b0c-b0e5-208abcc7a28c}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									2.11.2018
+//	Program inicjalizujacy prace maszyny - powinien byc wykonywany tylko w trybie E_MachineMode.eInitialization
+//	Przejscie do innych trybow powinno byc mozliwe po wystawieniu flagi bInitialized
+//	Program podczas inicjalizacji tlumi globalne flagi: GVL.bMuteGeneralError i GVL.bMuteGeneralFatalError
+//	Reset mozliwy tylko w przypadku bledu.
+//	Zawiera opsje testu - ignorujemy wowczas bledy i przechodzimy od razu do stanu bInitialized
+// 	v1.0	|| TC v 3.1.4022.25		|| - Pierwsza wersja
+//==================================================================================================
+PROGRAM P_Initialization
+VAR_INPUT
+	bReset					: BOOL;
+	bTestMode				: BOOL;				// Deactivate error detecton - go to initialized
+END_VAR
+VAR_OUTPUT
+	bInitialized			: BOOL;
+	bBusy					: BOOL;
+	bError					: BOOL;
+END_VAR
+VAR
+	iStep					: INT;
+	rtReset					: R_TRIG;
+	rtError					: R_TRIG;
+	tonWatchdog				: TON;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Wait some time to initialize
+tonWatchdog(IN:= bBusy, PT:= T#1M, Q=> , ET=> );
+rtError(CLK:= tonWatchdog.Q, Q=> );
+
+IF rtError.Q THEN
+	iStep							:= 1000;
+END_IF
+
+// Reset - reinitialize
+rtReset(CLK:= bReset, Q=> );
+
+IF bTestMode THEN
+	iStep							:= 500;
+END_IF
+
+CASE iStep OF
+
+	0: // Idle
+	
+		iStep	 					:= iStep + 10;
+	
+	10: 
+	
+		IF P_SystemInfo.bOK THEN
+			iStep 					:= iStep + 10;
+		ELSE
+			// There is problem with System - usually persistent data
+			P_SystemInfo.bConfirm 	:= bReset;
+		END_IF
+	
+	20:
+
+		IF P_EtherCAT_Diag.bOK THEN
+			iStep 					:= iStep + 10;
+		END_IF
+
+	30:
+
+		IF P_Checks.bOK THEN
+			iStep 					:= iStep + 10;
+		END_IF
+		
+	40:
+
+		IF P_TaskInfo.bOK THEN
+			iStep 					:= iStep + 10;
+		END_IF
+		
+	50:
+	// Serial No, etc
+		iStep 						:= 500;
+		
+	500: // Initialized
+	
+		;
+	
+	1000: // Error step, wait for reset
+	
+		IF rtReset.Q THEN
+			P_SystemInfo.bConfirm 	:= TRUE;
+			iStep 					:= 0;
+		END_IF;
+
+END_CASE
+
+bBusy 								:= iStep < 500;
+bError 								:= iStep = 1000;
+bInitialized						:= iStep = 500;
+
+// Mute Errors during init phase
+GVL.bMuteGeneralError				:= bBusy;
+GVL.bMuteGeneralFatalError			:= bBusy;
+]]></ST>
+    </Implementation>
+    <LineIds Name="P_Initialization">
+      <LineId Id="113" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="109" Count="2" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="119" Count="1" />
+      <LineId Id="47" Count="1" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="87" Count="4" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="92" Count="2" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="100" Count="3" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="104" Count="2" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="63" Count="4" />
+      <LineId Id="196" Count="0" />
+      <LineId Id="198" Count="0" />
+      <LineId Id="197" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="8" Count="1" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="144" Count="1" />
+      <LineId Id="143" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

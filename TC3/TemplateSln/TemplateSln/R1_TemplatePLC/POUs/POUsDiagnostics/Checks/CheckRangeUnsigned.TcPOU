@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+  <POU Name="CheckRangeUnsigned" Id="{36bf99f8-15d6-410e-b338-663fb75109d2}" SpecialFunc="CheckRangeUnsigned">
+    <Declaration><![CDATA[// Implicitly generated code : DO NOT EDIT
+FUNCTION CheckRangeUnsigned : UDINT
+VAR_INPUT
+	value, lower, upper: UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Implicitly generated code : Only an Implementation suggestion
+IF (value < lower) THEN
+	CheckRangeUnsigned := lower;
+	GVL_Checks.dCheckRangeUnsigned := GVL_Checks.dCheckRangeUnsigned + 1;
+	ADSLOGSTR(4,'Checks critical error - UDINT overflow.','');
+ELSIF(value > upper) THEN
+	CheckRangeUnsigned := upper;
+	GVL_Checks.dCheckRangeUnsigned := GVL_Checks.dCheckRangeUnsigned + 1;
+	ADSLOGSTR(4,'Checks critical error - UDINT overflow.','');
+ELSE
+	CheckRangeUnsigned := value;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="CheckRangeUnsigned">
+      <LineId Id="3" Count="0" />
+      <LineId Id="16" Count="9" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

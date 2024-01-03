@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<TcModuleClass>
+	<Translations>
+		<Text TxtId="NewEventClass1_DisplayText">
+			<Text LcId="1031"><![CDATA[MyMessages List German]]></Text>
+			<Text LcId="1033"><![CDATA[MyMessages List English]]></Text>
+			<Text LcId="1045"><![CDATA[MyMessages List Polish]]></Text>
+		</Text>
+		<Text TxtId="MyMessages_Event1_DisplayText">
+			<Text LcId="1031"><![CDATA[Meldung A]]></Text>
+			<Text LcId="1033"><![CDATA[Message A]]></Text>
+			<Text LcId="1045"><![CDATA[Wiadomość A]]></Text>
+		</Text>
+		<Text TxtId="MyMessages_Event2_DisplayText">
+			<Text LcId="1031"><![CDATA[Meldung B]]></Text>
+			<Text LcId="1033"><![CDATA[Message B]]></Text>
+			<Text LcId="1045"><![CDATA[Wiadomość B]]></Text>
+		</Text>
+		<Text TxtId="MyMessages_Event3_DisplayText">
+			<Text LcId="1031"><![CDATA[Meldung C]]></Text>
+			<Text LcId="1033"><![CDATA[Message Cóąśłżźćń asdf]]></Text>
+			<Text LcId="1045"><![CDATA[Wiadomość C]]></Text>
+		</Text>
+		<Text TxtId="MyWarnings_DisplayText">
+			<Text LcId="1031"><![CDATA[MyWarnings List German]]></Text>
+			<Text LcId="1033"><![CDATA[MyWarnings List English]]></Text>
+			<Text LcId="1045"><![CDATA[MyWarnings List Polish]]></Text>
+		</Text>
+		<Text TxtId="MyWarnings_Event1_DisplayText">
+			<Text LcId="1031"><![CDATA[Meldung A]]></Text>
+			<Text LcId="1033"><![CDATA[Warning A]]></Text>
+			<Text LcId="1045"><![CDATA[Wiadomosc A]]></Text>
+		</Text>
+		<Text TxtId="MyWarnings_Event2_DisplayText">
+			<Text LcId="1031"><![CDATA[Meldung B]]></Text>
+			<Text LcId="1033"><![CDATA[Warning B]]></Text>
+			<Text LcId="1045"><![CDATA[Wiadomosc B]]></Text>
+		</Text>
+		<Text TxtId="MyWarnings_Event3_DisplayText">
+			<Text LcId="1031"><![CDATA[Meldung C]]></Text>
+			<Text LcId="1033"><![CDATA[Warning C]]></Text>
+			<Text LcId="1045"><![CDATA[Wiadomosc C]]></Text>
+		</Text>
+		<Text TxtId="MyErrors_DisplayText">
+			<Text LcId="1031"><![CDATA[MyErrors List German]]></Text>
+			<Text LcId="1033"><![CDATA[MyErrors List English]]></Text>
+			<Text LcId="1045"><![CDATA[MyErrors List Polish]]></Text>
+		</Text>
+		<Text TxtId="MyErrors_Event1">
+			<Text LcId="1031"><![CDATA[Error A German]]></Text>
+			<Text LcId="1033"><![CDATA[Error A English]]></Text>
+			<Text LcId="1045"><![CDATA[Error A Polish]]></Text>
+		</Text>
+		<Text TxtId="MyErrors_Event2">
+			<Text LcId="1031"><![CDATA[Error B German]]></Text>
+			<Text LcId="1033"><![CDATA[Error B English]]></Text>
+			<Text LcId="1045"><![CDATA[Error B Polish]]></Text>
+		</Text>
+		<Text TxtId="MyErrors_Event3">
+			<Text LcId="1031"><![CDATA[Error C German]]></Text>
+			<Text LcId="1033"><![CDATA[Error C English]]></Text>
+			<Text LcId="1045"><![CDATA[Error C Polish]]></Text>
+		</Text>
+	</Translations>
+	<DataTypes>
+		<DataType>
+			<Name GUID="{6A8156E7-378A-4114-876B-4A28E9062240}" PersistentType="true">MyMessages</Name>
+			<DisplayName TxtId=""><![CDATA[NewEventClass1_DisplayText]]></DisplayName>
+			<EventId>
+				<Name Id="1">NewEventClass1Event1</Name>
+				<DisplayName TxtId=""><![CDATA[MyMessages_Event1_DisplayText]]></DisplayName>
+				<Severity>Verbose</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="2">NewEventClass1Event2</Name>
+				<DisplayName TxtId=""><![CDATA[MyMessages_Event2_DisplayText]]></DisplayName>
+				<Severity>Verbose</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="3">NewEventClass1Event3</Name>
+				<DisplayName TxtId=""><![CDATA[MyMessages_Event3_DisplayText]]></DisplayName>
+				<Severity>Verbose</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="4">NewEventClass1Event4</Name>
+				<DisplayName TxtId=""><![CDATA[MyMessages_Event4_DisplayText]]></DisplayName>
+				<Severity>Verbose</Severity>
+			</EventId>
+			<Hides>
+				<Hide GUID="{5DDBDF6E-30A2-49D8-A0EC-0CFE4D53B811}"/>
+			</Hides>
+		</DataType>
+		<DataType>
+			<Name GUID="{5DDBDF6E-30A2-49D8-A0EC-0CFE4D53B822}" PersistentType="true">MyWarnings</Name>
+			<DisplayName TxtId=""><![CDATA[MyWarnings_DisplayText]]></DisplayName>
+			<EventId>
+				<Name Id="1">MyWarningsEvent1</Name>
+				<DisplayName TxtId=""><![CDATA[MyWarnings_Event1_DisplayText]]></DisplayName>
+				<Severity>Warning</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="2">MyWarningsEvent2</Name>
+				<DisplayName TxtId=""><![CDATA[MyWarnings_Event2_DisplayText]]></DisplayName>
+				<Severity>Warning</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="3">MyWarningsEvent3</Name>
+				<DisplayName TxtId=""><![CDATA[MyWarnings_Event3_DisplayText]]></DisplayName>
+				<Severity>Warning</Severity>
+			</EventId>
+		</DataType>
+		<DataType>
+			<Name GUID="{5DDBDF6E-30A2-49D8-A0EC-0CFE4D53B833}" PersistentType="true">MyErrors</Name>
+			<DisplayName TxtId=""><![CDATA[MyErrors_DisplayText]]></DisplayName>
+			<EventId>
+				<Name Id="1">MyErrorsEvent1</Name>
+				<DisplayName TxtId=""><![CDATA[MyErrors_Event1]]></DisplayName>
+				<Severity>Error</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="2">MyErrorsEvent2</Name>
+				<DisplayName TxtId=""><![CDATA[MyErrors_Event2]]></DisplayName>
+				<Severity>Error</Severity>
+			</EventId>
+			<EventId>
+				<Name Id="3">MyErrorsEvent3</Name>
+				<DisplayName TxtId=""><![CDATA[MyErrors_Event3]]></DisplayName>
+				<Severity>Error</Severity>
+			</EventId>
+		</DataType>
+	</DataTypes>
+</TcModuleClass>

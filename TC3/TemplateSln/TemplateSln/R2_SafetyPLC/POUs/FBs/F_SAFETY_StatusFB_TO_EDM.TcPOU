@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_SAFETY_StatusFB_TO_EDM" Id="{797010e5-f260-47ec-a939-98141bb65bc0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_SAFETY_StatusFB_TO_EDM : ST_SAFETY_FBEDM
+VAR_INPUT
+	stFBStatus						: ST_SAFETY_FBStatus; 	(* Struktura ogolna *)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_SAFETY_StatusFB_TO_EDM.uStatus.stStatusWords	:= stFBStatus;									(* Przepisanie *)
+F_SAFETY_StatusFB_TO_EDM.eState 				:= stFBStatus.BState;							(* Ustawienie enum *)
+F_SAFETY_StatusFB_TO_EDM.bGeneralError			:= stFBStatus.wDiagnosis <> 0;					(* General Error *)]]></ST>
+    </Implementation>
+    <LineIds Name="F_SAFETY_StatusFB_TO_EDM">
+      <LineId Id="3" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

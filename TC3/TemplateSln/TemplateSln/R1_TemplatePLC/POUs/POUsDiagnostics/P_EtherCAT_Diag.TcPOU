@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_EtherCAT_Diag" Id="{2bb6c28a-ac16-46e2-970b-e6a5cd247af3}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.06.2018
+//		Program wysyłający błędy magistrali EBus do EvenLogger'a
+//
+//	v1.4	|| TC v 3.1.4022.16		|| - Przeniesiono logowanie do EventLoggera wraz z zabepieczeniem przed zbyt szybkim logowaniem zdarzeń do programu P_SystemDiag_EventLog. 
+//	v1.3	|| TC v 3.1.4020.28		|| - Dodano zabezpieczenie przed zbyt sczęstym logowaniem eventów i zmieniono system logowania błędów ramek. Od teraz każda ramka ma swój EventId. Wstępnie zarezerwowano 8 ramek.
+//  v1.2	|| TC v 3.1.4020.28		|| - Usunięto zbędne wejścia (sFormat, pDataAdr i udiDataLen) na fbDevDiag które podoowały generowanie błędów przekroczeń indeksów
+//									|| - Dodano logowanie do EventLoggera 
+//	v1.1 	|| TC v 3.1.4020.14 	|| - Dodane wyjscia bOk, bWarning, bError
+//	v1.0 	|| TC v 3.1.4020.0 		|| - Pierwsza wersja
+//==================================================================================================
+PROGRAM P_EtherCAT_Diag
+VAR CONSTANT
+	iNumOfFrames				: INT := 8;							// Liczba FrmWcState
+END_VAR
+VAR_OUTPUT
+	bOK							: BOOL;								// Brak bledow i ostrzezen
+	bWarning					: BOOL;								// Ostrzezenie - nie wystepuja w tym podprogramie - wystepuja dla zachowania spojnosci
+	bError						: BOOL;								// Zbiorcza flaga bledow
+END_VAR
+VAR
+	uiDevState		AT %I*		: UINT;								// DevState mastera EtherCAT'a
+																	(*	0x0001 = Link error
+																		0x0002 = I/O locked after link error (I/O reset required)
+																		0x0004 = Link error (redundancy adapter)
+																		0x0008 = Missing one frame (redundancy mode)
+																		0x0010 = Out of send resources (I/O reset required)
+																		0x0020 = Watchdog triggered
+																		0x0040 = Ethernet driver (miniport) not found
+																		0x0080 = I/O reset active
+																		0x0100 = At least one device in 'INIT' state
+																		0x0200 = At least one device in 'PRE-OP' state
+																		0x0400 = At least one device in 'SAFE-OP' state
+																		0x0800 = At least one device indicates an error state
+																		0x1000 = DC not in sync*)
+	uiFrmWcState		AT %I*	: ARRAY[1..iNumOfFrames] OF UINT;	// FrmWcState
+																	(*	0x0001 = wrong working counter of 1. EtherCAT command received
+																		0x0002 = wrong working counter of 2. EtherCAT command received
+																		0x0004 = wrong working counter of 3. EtherCAT command received
+																		...
+																		...
+																		0x4000 = wrong working counter of 15. EtherCAT command received
+																		0x8000 = complete frame missing*)
+	iIterator					: INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bError 									:= uiDevState <> 0;							// Ustawienie flagi bledu zgodnie z uiDevState
+
+FOR iIterator := 1 TO iNumOfFrames DO
+	IF uiFrmWcState[iIterator] <> 0 THEN
+		bError 							:= TRUE;									// Ustawienei flagi bledu gdy chociaz jeden frame jest z bledem
+		EXIT;
+	END_IF
+END_FOR
+
+bOK 									:= NOT bError AND NOT bWarning;]]></ST>
+    </Implementation>
+    <LineIds Name="P_EtherCAT_Diag">
+      <LineId Id="172" Count="8" />
+      <LineId Id="101" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

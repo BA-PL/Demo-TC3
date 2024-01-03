@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_ReadChannelErrorCodeEL72xx" Id="{63635ac9-45d1-4eb4-8928-0c9e4b48d47f}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									11.07.2018
+//	This object shall provide the text id of the last DiagMessage of type error, which occurred in this axis.
+//  v1.0	|| TC v 3.1.4022.22		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_ReadChannelErrorCodeEL72xx
+VAR_INPUT
+	bExecute 						: BOOL;
+	stDriveRef						: ST_DriveRef;						// 
+END_VAR
+VAR_OUTPUT
+	bBusy							: BOOL;
+	bError							: BOOL; 							// General error: parameter or CoE read.
+	uiAdsErrId						: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	uiCANopenErrId					: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	uiChannelErrorCode				: UINT;								// Error Code: 16#10F3: usiSubindexOfLatestMessage
+	{attribute 'displaymode':='hex'}
+	uiChannelErrorCodeHex			: UINT;								// Error Code: 16#10F3: usiSubindexOfLatestMessage
+END_VAR
+VAR
+	fbCoERead						: FB_CoERead_ByDriveRef;			// FB for read CoE parameters
+	bDriveRefOK						: BOOL;
+	usiSubindexOfLatestMessage		: USINT;
+	arrMessage						: ARRAY [1..28] OF BYTE;
+	iStep							: INT;
+	rtExecute						: R_TRIG;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//=================== Call triggers and timers ==================
+rtExecute(CLK:= bExecute, Q=> );
+
+//======= Check for parameter error - each cycle ================
+bDriveRefOK 							:= (stDriveRef.nSlaveAddr <> 0) AND (stDriveRef.sNetId <> '');
+
+//======================== Read params ==========================
+CASE iStep OF
+	
+	0, 1000: // Read: 16#10F3:02 - Newest Message, Subindex of the latest message: UINT8
+
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK AND rtExecute.Q THEN
+			fbCoERead.nIndex			:= 16#10F3;
+			fbCoERead.nSubIndex			:= 16#02;
+			fbCoERead.pDstBuf			:= ADR(usiSubindexOfLatestMessage);
+			fbCoERead.cbBufLen			:= SIZEOF(usiSubindexOfLatestMessage);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= 10;
+		END_IF
+	
+	10:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				uiAdsErrId				:= fbCoERead.iAdsErrId;
+				uiCANopenErrId			:= fbCoERead.iCANopenErrId;
+				iStep					:= 1000;								// Error step
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+		
+	20: // Read: 16#10F3:usiSubindexOfLatestMessage - Message usiSubindexOfLatestMessage-5
+	
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK THEN
+			fbCoERead.nIndex			:= 16#10F3;
+			fbCoERead.nSubIndex			:= usiSubindexOfLatestMessage;
+			fbCoERead.pDstBuf			:= ADR(arrMessage);
+			fbCoERead.cbBufLen			:= SIZEOF(arrMessage);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= iStep + 10; 
+		END_IF
+	
+	30:	// Wait till read finish
+
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				uiAdsErrId				:= fbCoERead.iAdsErrId;
+				uiCANopenErrId			:= fbCoERead.iCANopenErrId;
+				iStep					:= 1000;								// Error step
+			ELSE
+				uiChannelErrorCode		:= 16#0100 * arrMessage[8] + arrMessage[7];
+				iStep 					:= 0;									// Read Done
+			END_IF
+		END_IF
+
+END_CASE
+
+bError									:= iStep = 1000;
+bBusy									:= iStep <> 0 AND NOT bError;
+//====================== Call CoE read FB =======================
+fbCoERead(stDriveRef:= stDriveRef);
+
+uiChannelErrorCodeHex					:= uiChannelErrorCode;]]></ST>
+    </Implementation>
+    <LineIds Name="FB_ReadChannelErrorCodeEL72xx">
+      <LineId Id="166" Count="66" />
+      <LineId Id="90" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,358 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_EL2904_DiagnosticData" Id="{305a43c7-0657-4e68-a17c-4254bbd622a0}" SpecialFunc="None">
+    <Declaration><![CDATA[(****************************************************************************************)
+(*							Beckhoff Automation Poland									*)
+(*									30.01.2017											*)
+(*			Blok funkcyjny pobierający informacje diagnostyczne z modułu EL2904			*)
+(*			v2.5:																		*)
+(*				- bReset, wErrorCount, ACT_Reset zmiana nazw pozostalych akcji			*)
+(*				- usunieta zmienna sPath												*)
+(*			v2.4:																		*)
+(*				- obsluga bledu															*)
+(*			v2.3:																		*)
+(*				- dostosowano do rozbudowanej struktury									*)
+(*			v1.2:																		*)
+(*				- uruchamianie zboczem narastającym bExecute							*)	
+(*______________________________________________________________________________________*)
+
+FUNCTION_BLOCK FB_EL2904_DiagnosticData IMPLEMENTS I_ErrorHandling
+VAR_INPUT
+	sNetId						: T_AmsNetId;					(* Adres mastera EtherCAT *)
+	uiSlaveAddr					: UINT;							(* Adres slave EtherCAT modułu EL2904 *)
+	bExecute					: BOOL;							(* Zbocze narastające aktywuje komende *)
+	bReset						: BOOL;							(* 	*)
+END_VAR
+VAR_OUTPUT
+	stEL2904_DiagnosticData		: ST_EL2904_DiagnosticData;		(* Wyjściowa struktura danych *)
+	bBusy						: BOOL;							(* Wyjście jest ustawione gdy aktualnie wykonywana jest komenda *)
+	bError						: BOOL;							(* Wyjście jest ustawione gdy wystąpił błąd *) 
+	udiErrorId					: UDINT;						(* Kod błedu *)
+	bNewData					: BOOL;							(* Po otrzymaniu nowych danych przyjmuje wartość TRUE na jeden cykl *)
+END_VAR
+VAR
+	fbEcCoESdoRead				: FB_EcCoESdoRead;
+	stTempData					: ST_EL2904_DiagnosticData;		(* Tymczasowa struktura danych *)
+	BSubIndex					: BYTE;
+	wIndex						: WORD;
+	iStep						: INT;
+	pDstBuf						: PVOID;
+	cbBufLen					: UDINT;
+	rtExecute					: R_TRIG;
+	rtError						: R_TRIG;
+	rtReset						: R_TRIG;
+	bRead						: BOOL;							(* Odczyt *)
+	wTemp_800E_0C				: WORD;							(* Wartosc tymczasowa *)
+	wTemp_800E_0D				: WORD;							(* Wartosc tymczasowa *)
+	wTemp_800E_0E				: WORD;							(* Wartosc tymczasowa *)
+	wErrorCount					: WORD;							// Licznik bledow
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ACT_Reset(); 									// Wywolanie akcji resetu
+
+rtExecute(CLK:=bExecute);
+
+CASE iStep OF		
+	(* Wspolne *)	
+	0:												(* Odczyt nazwy modułu *)
+		bNewData	:= FALSE;
+		bRead		:= FALSE;
+		IF rtExecute.Q THEN
+			bBusy			:= TRUE;
+			bError			:= FALSE;
+			udiErrorId		:= 0;
+			wIndex 			:= 16#1008;
+			BSubIndex 		:= 0;
+			pDstBuf 		:= ADR (stTempData.sDeviceName);
+			cbBufLen 		:= SIZEOF(stTempData.sDeviceName);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	10:												(* Odczyt wersji HW *)
+		bRead		:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#1009;
+			BSubIndex 		:= 0;
+			pDstBuf 		:= ADR (stTempData.sHardwareVersion);
+			cbBufLen 		:= SIZEOF(stTempData.sHardwareVersion);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	20:												(* Odczyt wersji SW *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#100A;
+			BSubIndex 		:= 0;
+			pDstBuf 		:= ADR (stTempData.sSoftwareVersion);
+			cbBufLen 		:= SIZEOF(stTempData.sSoftwareVersion);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	30:												(* Odczyt adresu FSoE *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#F980;
+			BSubIndex 		:= 1;
+			pDstBuf 		:= ADR (stTempData.dwFSoEAddress);
+			cbBufLen 		:= SIZEOF(stTempData.dwFSoEAddress);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF;
+	40:												(* Odczyt numeru seryjnego *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#F980;
+			BSubIndex 		:= 2;
+			pDstBuf 		:= ADR (stTempData.dwSerialNumber);
+			cbBufLen 		:= SIZEOF(stTempData.dwSerialNumber);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	50:												(* Odczyt Temperature measurement 1 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA80;
+			BSubIndex 		:= 1;
+			pDstBuf 		:= ADR (stTempData.wTemperaturePrimaryMC);
+			cbBufLen 		:= SIZEOF(stTempData.wTemperaturePrimaryMC);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	60:												(* Odczyt Temperature measurement 2 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA80;
+			BSubIndex 		:= 2;
+			pDstBuf 		:= ADR (stTempData.wTemperatureSecondaryMC);
+			cbBufLen 		:= SIZEOF(stTempData.wTemperatureSecondaryMC);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	(*Charakterystyczne dla modulu *)
+	70:												(* Odczyt FA80:03 Temperature Outputs *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#FA80;
+			BSubIndex 		:= 3;
+			pDstBuf 		:= ADR (stTempData.wTemperatureOut);
+			cbBufLen 		:= SIZEOF(stTempData.wTemperatureOut);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	80:												(* Odczyt DO 1 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#7001;
+			BSubIndex 		:= 1;
+			pDstBuf 		:= ADR(stTempData.bOutput1);
+			cbBufLen 		:= SIZEOF(stTempData.bOutput1);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	90:												(* Odczyt DO 2 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#7001;
+			BSubIndex 		:= 2;
+			pDstBuf 		:= ADR(stTempData.bOutput2);
+			cbBufLen 		:= SIZEOF(stTempData.bOutput2);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	100:											(* Odczyt DO 3 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#7001;
+			BSubIndex 		:= 3;
+			pDstBuf 		:= ADR(stTempData.bOutput3);
+			cbBufLen 		:= SIZEOF(stTempData.bOutput3);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	110:											(* Odczyt DO 4 *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#7001;
+			BSubIndex 		:= 4;
+			pDstBuf 		:= ADR(stTempData.bOutput4);
+			cbBufLen 		:= SIZEOF(stTempData.bOutput4);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	120:											(* Odczyt 800E 0C *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#800E;
+			BSubIndex 		:= 16#0C;
+			pDstBuf 		:= ADR (wTemp_800E_0C);
+			cbBufLen 		:= SIZEOF(wTemp_800E_0C);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	130:											(* Odczyt 800E 0D *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#800E;
+			BSubIndex 		:= 16#0D;
+			pDstBuf 		:= ADR (wTemp_800E_0D);
+			cbBufLen 		:= SIZEOF(wTemp_800E_0D);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	140:											(* Odczyt 800E 0E *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			wIndex 			:= 16#800E;
+			BSubIndex 		:= 16#0E;
+			pDstBuf 		:= ADR (wTemp_800E_0E);
+			cbBufLen 		:= SIZEOF(wTemp_800E_0E);
+			bRead			:= TRUE;
+			iStep			:= iStep + 10;
+		END_IF
+	
+	150: (* Koniec odczytu *)
+		bRead				:= FALSE;
+		IF NOT fbEcCoESdoRead.bBusy AND NOT fbEcCoESdoRead.bError THEN
+			iStep 			:= 200;
+		END_IF
+	200: (* Konwersje *)
+		(* Zmiana numeru seryjnego na STRING *)
+		stTempData.sSerialNumber 		:= '00000000';
+		stTempData.sSerialNumber 		:= CONCAT(DELETE(stTempData.sSerialNumber, LEN(DWORD_TO_STRING(stTempData.dwSerialNumber)),1),DWORD_TO_STRING(stTempData.dwSerialNumber));
+		stTempData.bOutputCross1 		:= wTemp_800E_0C.0;
+		stTempData.bOutputCross2 		:= wTemp_800E_0C.1;
+		stTempData.bOutputCross3 		:= wTemp_800E_0C.2;
+		stTempData.bOutputCross4 		:= wTemp_800E_0C.3;
+		stTempData.bOutputOpen1 		:= wTemp_800E_0C.4;
+		stTempData.bOutputOpen2 		:= wTemp_800E_0C.5;
+		stTempData.bOutputOpen3 		:= wTemp_800E_0C.6;
+		stTempData.bOutputOpen4 		:= wTemp_800E_0C.7;
+		stTempData.bFieldVoltH 			:= wTemp_800E_0D.0;
+		stTempData.bFieldVoltL	 		:= wTemp_800E_0D.1;
+		stTempData.bTHUC1			 	:= wTemp_800E_0E.0;
+		stTempData.bTHUC2			 	:= wTemp_800E_0E.1;
+		stTempData.bTOutBoardH		 	:= wTemp_800E_0E.2;
+		stTempData.bTLUC1			 	:= wTemp_800E_0E.3;
+		stTempData.bTLUC2			 	:= wTemp_800E_0E.4;
+		stTempData.bTOutBoardL		 	:= wTemp_800E_0E.5;
+		stTempData.bTDiffProcBoard	 	:= wTemp_800E_0E.6;
+		stTempData.bTDiffBoards		 	:= wTemp_800E_0E.7;
+		(* General Error bit *)
+		stTempData.bGeneralError := stTempData.bOutputCross1 OR stTempData.bOutputCross2 OR stTempData.bOutputCross3 OR stTempData.bOutputCross4 OR
+									stTempData.bOutputOpen1 OR stTempData.bOutputOpen2 OR stTempData.bOutputOpen3 OR stTempData.bOutputOpen4 OR
+									stTempData.bFieldVoltH OR stTempData.bFieldVoltL OR stTempData.bTHUC1 OR stTempData.bTHUC2 OR stTempData.bTOutBoardH OR
+									stTempData.bTLUC1 OR stTempData.bTLUC2 OR stTempData.bTOutBoardL OR stTempData.bTDiffProcBoard OR stTempData.bTDiffBoards;
+		
+		(* Przepisanie danych tymczasowych na wyjscie *)	
+		stEL2904_DiagnosticData := stTempData;
+		(* Ustawienie flag i powrot do poczatku *)
+		bBusy							:= FALSE;
+		bNewData						:= TRUE;
+		iStep 							:= 0;
+	1000: (* ERROR *)
+		wErrorCount 					:= wErrorCount + 1;			// Inkrementacja licznika bledow
+		iStep 							:= 0;
+END_CASE
+
+fbEcCoESdoRead(
+	sNetId		:= sNetId,
+	nSlaveAddr	:= uiSlaveAddr,
+	nSubIndex	:= BSubIndex,
+	nIndex		:= wIndex,
+	pDstBuf		:= pDstBuf,
+	cbBufLen	:= cbBufLen,
+	bExecute 	:= bRead);
+	
+ACT_Error();]]></ST>
+    </Implementation>
+    <Action Name="ACT_Error" Id="{47070ad6-b867-49b6-b3d1-7e52b097edb8}">
+      <Implementation>
+        <ST><![CDATA[rtError(CLK:= fbEcCoESdoRead.bError, Q=> );
+IF rtError.Q THEN
+	bBusy 			:= FALSE;
+	bError 			:= TRUE;
+	bRead			:= FALSE;
+	udiErrorId 		:= fbEcCoESdoRead.nErrId;
+	iStep 			:= 1000;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Reset" Id="{e40b7b39-bbd5-481c-9c12-ad8984bc1a3f}">
+      <Implementation>
+        <ST><![CDATA[rtReset(CLK:= bReset, Q=> );			// Wywolanie triggera, wykrycie zbocza narastajacego zmiennej wejsciowej bReset
+IF rtReset.Q THEN
+	bBusy						:= FALSE;
+	bError						:= FALSE;
+	bNewData					:= FALSE;
+	bRead						:= FALSE;
+	iStep						:= 0;
+	udiErrorId					:= 0;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Property Name="P_Error" Id="{8a1c49a9-1daf-4ca9-b1db-f5ab77916db0}">
+      <Declaration><![CDATA[PROPERTY P_Error : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{f2c8781f-acdb-4cdf-86ec-5ea2c2d0e4d9}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="P_ErrorID" Id="{470ae557-b500-46cd-b665-e93430d2fca6}">
+      <Declaration><![CDATA[PROPERTY P_ErrorID : UDINT
+]]></Declaration>
+      <Get Name="Get" Id="{e0193026-aed0-4ea1-8255-73afc75cd002}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ToString" Id="{12c4aef8-fe2f-449a-8ad0-6db4178528ff}">
+      <Declaration><![CDATA[{attribute 'object_name' := 'ToString'}
+METHOD ToString : STRING(255)
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_EL2904_DiagnosticData">
+      <LineId Id="265" Count="1" />
+      <LineId Id="3" Count="198" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="202" Count="12" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL2904_DiagnosticData.ACT_Error">
+      <LineId Id="8" Count="0" />
+      <LineId Id="2" Count="5" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL2904_DiagnosticData.ACT_Reset">
+      <LineId Id="3" Count="0" />
+      <LineId Id="6" Count="1" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="4" Count="0" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL2904_DiagnosticData.P_Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL2904_DiagnosticData.P_ErrorID.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_EL2904_DiagnosticData.ToString">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

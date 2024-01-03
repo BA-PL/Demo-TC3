@@ -1,0 +1,172 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.17">
+  <POU Name="FB_AutostartPLCHMI" Id="{2b1287dc-0d8e-4f50-96ea-d61c3093d1b3}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									13.03.2019
+//	Function block to autostart PLC HMI. It also works after online change.
+// 
+//	v1.0 	|| TC v 3.1.4022.28 		|| First edition
+//==================================================================================================
+FUNCTION_BLOCK FB_AutostartPLCHMI
+VAR_INPUT
+	bEnable						: BOOL := TRUE;
+	sNetIdVisuClient		    : T_AmsNetId; (*Adres AMS klienta wizualizacji - pole opcjonalne*)
+END_VAR
+VAR_OUTPUT
+	bBusy						: BOOL;
+	bError						: BOOL;
+	udiErrorID					: UDINT;
+END_VAR
+VAR
+	iStep						: INT;
+	bInit						: BOOL := TRUE; (*flaga 1 cyklu*)
+	rtOnlineChange				: R_TRIG;
+	udiOnlineChangeCntLast		: UDINT;
+	fbGetDeviceIdentification	: FB_GetDeviceIdentification;
+	fbProcess					: NT_StartProcess;
+	Delay						: TON;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[rtOnlineChange(CLK := _AppInfo.OnlineChangeCnt <> udiOnlineChangeCntLast);
+CASE iStep OF
+	0:	
+		IF bEnable THEN
+			IF bInit OR rtOnlineChange.Q THEN
+				udiOnlineChangeCntLast := _AppInfo.OnlineChangeCnt;
+				bInit := FALSE;
+				bBusy := TRUE;
+				bError := FALSE;
+				udiErrorID := 0;
+				IF fbGetDeviceIdentification.stDevIdent.strImageOsName <> '' THEN
+					iStep := iStep + 20;
+				ELSE
+					iStep := iStep + 10;
+				END_IF
+			END_IF
+		END_IF
+		
+	10:	// Inicialisation
+		fbGetDeviceIdentification(bExecute:= TRUE, stDevIdent=>);
+		IF NOT fbGetDeviceIdentification.bBusy THEN
+			IF fbGetDeviceIdentification.bError THEN
+				iStep := 0;
+				udiErrorID := fbGetDeviceIdentification.nErrorID;
+				bError := TRUE;
+				bBusy := FALSE;
+			ELSE
+				iStep := iStep + 10;
+			END_IF
+			fbGetDeviceIdentification(bExecute:= FALSE);
+		END_IF
+		
+	20:	
+		IF fbGetDeviceIdentification.stDevIdent.strImageOsName = 'Windows CE' THEN
+			iStep:= iStep + 30;
+		ELSE
+			iStep:= iStep + 10;
+		END_IF
+		
+	30:	//Try to kill the Visu
+		fbProcess(
+			NETID:= sNetIdVisuClient, 
+			PATHSTR:='C:\WINDOWS\system32\taskkill.exe',
+			DIRNAME:='C:\WINDOWS\system32\', 
+			COMNDLINE:='/t /f /IM Tc3PlcHmi.exe' ,
+			START:=TRUE );
+		IF NOT fbProcess.BUSY THEN
+			fbProcess(START:=FALSE );
+			iStep:= iStep + 10;
+		END_IF
+	
+	40: //Closing need some time	
+		Delay(IN := TRUE, pt:=T#2S);
+		IF Delay.Q THEN
+			Delay(IN := FALSE);
+			iStep:= iStep + 10;
+		END_IF
+	
+	50:
+		IF fbGetDeviceIdentification.stDevIdent.strImageOsName = 'Windows CE' THEN
+			IF fbGetDeviceIdentification.stDevIdent.strHardwareCPU = 'ARM' THEN
+				fbProcess.PATHSTR := '\Hard Disk\TwinCAT\3.1\Components\Plc\Tc3PlcHmi\Tc3PlcHmiCE7ARMV7.exe';
+			ELSE
+				fbProcess.PATHSTR := '\Hard Disk\TwinCAT\3.1\Components\Plc\Tc3PlcHmi\Tc3PlcHmiCE7x86.exe';
+			END_IF
+			fbProcess.DIRNAME := '\Hard Disk\TwinCAT\3.1\Components\Plc\Tc3PlcHmi\';
+		ELSE
+			fbProcess.PATHSTR := 'C:\TwinCAT\3.1\Components\Plc\Tc3PlcHmi\Tc3PlcHmi.exe';
+			fbProcess.DIRNAME := 'C:\TwinCAT\3.1\Components\Plc\Tc3PlcHmi\';
+		END_IF
+		fbProcess(NETID:= sNetIdVisuClient,COMNDLINE := '', START:=TRUE );
+		IF NOT fbProcess.BUSY THEN
+			fbProcess(NETID:= sNetIdVisuClient,COMNDLINE := '', START:=FALSE );
+			IF fbProcess.ERR THEN
+				bError := TRUE;
+				udiErrorID := fbProcess.ERRID;
+			END_IF
+			iStep:= 0;
+			bBusy := FALSE;	
+		END_IF
+	ELSE
+		iStep := 0;
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="FB_AutostartPLCHMI">
+      <LineId Id="480" Count="0" />
+      <LineId Id="371" Count="2" />
+      <LineId Id="473" Count="0" />
+      <LineId Id="487" Count="1" />
+      <LineId Id="479" Count="0" />
+      <LineId Id="477" Count="1" />
+      <LineId Id="508" Count="0" />
+      <LineId Id="506" Count="0" />
+      <LineId Id="509" Count="0" />
+      <LineId Id="511" Count="0" />
+      <LineId Id="510" Count="0" />
+      <LineId Id="475" Count="0" />
+      <LineId Id="375" Count="2" />
+      <LineId Id="387" Count="1" />
+      <LineId Id="492" Count="0" />
+      <LineId Id="391" Count="0" />
+      <LineId Id="504" Count="1" />
+      <LineId Id="503" Count="0" />
+      <LineId Id="392" Count="0" />
+      <LineId Id="493" Count="1" />
+      <LineId Id="500" Count="0" />
+      <LineId Id="397" Count="3" />
+      <LineId Id="515" Count="0" />
+      <LineId Id="402" Count="4" />
+      <LineId Id="523" Count="7" />
+      <LineId Id="532" Count="0" />
+      <LineId Id="517" Count="1" />
+      <LineId Id="533" Count="0" />
+      <LineId Id="519" Count="0" />
+      <LineId Id="536" Count="0" />
+      <LineId Id="575" Count="0" />
+      <LineId Id="537" Count="1" />
+      <LineId Id="520" Count="0" />
+      <LineId Id="539" Count="0" />
+      <LineId Id="541" Count="1" />
+      <LineId Id="547" Count="0" />
+      <LineId Id="545" Count="0" />
+      <LineId Id="548" Count="0" />
+      <LineId Id="546" Count="0" />
+      <LineId Id="549" Count="0" />
+      <LineId Id="543" Count="1" />
+      <LineId Id="552" Count="0" />
+      <LineId Id="540" Count="0" />
+      <LineId Id="557" Count="0" />
+      <LineId Id="562" Count="0" />
+      <LineId Id="574" Count="0" />
+      <LineId Id="568" Count="1" />
+      <LineId Id="573" Count="0" />
+      <LineId Id="570" Count="0" />
+      <LineId Id="563" Count="0" />
+      <LineId Id="566" Count="0" />
+      <LineId Id="564" Count="0" />
+      <LineId Id="443" Count="1" />
+      <LineId Id="24" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

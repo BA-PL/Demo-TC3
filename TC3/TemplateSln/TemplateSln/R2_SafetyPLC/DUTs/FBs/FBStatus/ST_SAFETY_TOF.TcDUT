@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_TOF" Id="{e3426fe2-4c93-44b3-a948-06c6b7e1601f}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_TOF :
+STRUCT
+	{attribute 'hide'}
+	BUnknown						: BYTE;
+	BState							: BYTE;
+(* wDiagnosis *)
+	{attribute 'hide'}
+	bDiagBIT0						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT10						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT11						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT15						: BIT; 		(* Empty *)
+(* wInputs *)
+	{attribute 'hide'}
+	bInputBIT0						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT7						: BIT; 		(* Empty *)
+	bIn_TofIn						: BIT; 		(* .8 *)
+	{attribute 'hide'}
+	bInputBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT10						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT11						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT15						: BIT; 		(* Empty *)
+(* wOutputs *)
+	{attribute 'hide'}
+	bOutputBIT0						: BIT; 		(* Empty *)
+	bOut_TofOut						: BIT; 		(* .1 *)
+	{attribute 'hide'}
+	bOutputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT10					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT11					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT12					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT13					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT14					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT15					: BIT; 		(* Empty *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

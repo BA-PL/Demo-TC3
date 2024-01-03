@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_EL6900_DiagnosticData" Id="{45b2df08-2eaf-4e7c-95b7-1e41a7df7aaf}">
+    <Declaration><![CDATA[TYPE ST_EL6900_DiagnosticData EXTENDS ST_ELxxxx_Data:
+STRUCT
+	wSafetyProjectState		: WORD; 	(* F100:01 *)
+	eSAFETY_ProjectState	: E_SAFETY_ProjectState;
+	dwProjectCRC			: DWORD;	(* F980:03 *)
+	sProjectCRC				: STRING(4);
+	wVccPrimaryMC			: WORD;		(* FA80:03 *)
+	wVccSecondaryMC			: WORD;		(* FA80:04 *)
+	(* FA00:03 *)
+	(* Temperature error: 	16#0005 - Maximum temperature exceeded 
+							16#0006 - Temperature fell below minimum 
+							16#0007 - Temperature difference between the measuring points exceeded
+		Supply error		16#0101 - max. supply voltage uC1 exceeded
+							16#0102 - max. supply voltage uC2 exceeded
+							16#0103 - voltage fell below min. supply voltage uC1 
+							16#0104 - voltage fell below min. supply voltage uC2 *)
+	bTempMax				: BOOL;
+	bTempMin				: BOOL;
+	bTempDiff				: BOOL;
+	bSuppVoltuMaxC1			: BOOL;
+	bSuppVoltuMaxC2			: BOOL;
+	bSuppVoltuMinC1			: BOOL;
+	bSuppVoltuMinC2			: BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

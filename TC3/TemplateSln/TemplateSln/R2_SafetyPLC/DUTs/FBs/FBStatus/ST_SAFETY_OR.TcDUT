@@ -1,0 +1,103 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_OR" Id="{af45f7ee-b4ce-4792-909a-a7828ae688ba}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_OR :
+STRUCT
+	{attribute 'hide'}
+	BUnknown						: BYTE;
+	BState							: BYTE;
+(* wDiagnosis *)
+	{attribute 'hide'}
+	bDiagBIT0						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT10						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT11						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT15						: BIT; 		(* Empty *)
+(* wInputs *)
+	{attribute 'hide'}
+	bInputBIT0						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT7						: BIT; 		(* Empty *)
+	bIn_ORIn1						: BOOL; 	(* .8 *)
+	bIn_ORIn2						: BOOL; 	(* .9 *)
+	bIn_ORIn3						: BOOL; 	(* .10 *)
+	bIn_ORIn4						: BOOL; 	(* .11 *)
+	bIn_ORIn5						: BOOL; 	(* .12 *)
+	bIn_ORIn6						: BOOL; 	(* .13 *)
+	bIn_ORIn7						: BOOL; 	(* .14 *)
+	bIn_ORIn8						: BOOL; 	(* .15 *)
+(* wOutputs *)
+	bOut_OROut						: BOOL; 	(* .0 *)
+	{attribute 'hide'}
+	bOutputBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT10					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT11					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT12					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT13					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT14					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT15					: BIT; 		(* Empty *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

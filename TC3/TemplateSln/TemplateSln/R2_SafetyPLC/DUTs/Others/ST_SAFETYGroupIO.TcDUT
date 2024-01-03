@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETYGroupIO" Id="{750e42ac-6753-4a7f-b14f-81625d2bff73}">
+    <Declaration><![CDATA[TYPE ST_SAFETYGroupIO :
+STRUCT
+	RUN_STOP 				AT %Q* : BIT := TRUE;
+	ERR_Ack 				AT %Q* : BIT;
+	FB_ERR 					AT %I* : BIT;
+	COM_ERR 				AT %I* : BIT;
+	OUT_ERR 				AT %I* : BIT; (* Only in KL6904  *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

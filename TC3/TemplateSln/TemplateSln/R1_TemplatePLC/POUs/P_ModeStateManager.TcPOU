@@ -1,0 +1,158 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_ModeStateManager" Id="{bbac15c0-b65a-450f-84c9-d78a3c906803}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									2.11.2018
+//	Zarzadzeni trybami pracy i komendami - Satate Machine
+// 	v1.2	|| TC v 3.1.4022.25		|| - dodano Initialization 
+// 	v1.1	|| TC v 3.1.4022.4		|| - Aktualizacja - dodano test Abort z HMI 
+// 	v1.0	|| TC v 3.1.4022.4		|| - Pierwsza wersja
+//==================================================================================================
+PROGRAM P_ModeStateManager
+VAR
+	//	GVL_Machine - HMI handling
+	bHMIModeRequest_Automatic			: BOOL;
+	bHMIModeRequest_Manual				: BOOL;
+	bHMIModeRequest_Maintenance			: BOOL;
+	
+	bHMICommandRequest_Run				: BOOL;
+	bHMICommandRequest_Stop				: BOOL;
+	bHMICommandRequest_Reset			: BOOL;
+	bHMICommandRequest_Restart			: BOOL;
+	bHMICommandRequest_Abort			: BOOL;
+	// Rising edge detection
+	rtButtonAutomatic					: R_TRIG;
+	rtButtonManual						: R_TRIG;
+	rtButtonMaintenance					: R_TRIG;
+	rtButtonStart						: R_TRIG;
+	rtButtonReset						: R_TRIG;
+	rtButtonStop						: R_TRIG;
+	// State change permissions
+	bAllowChangeToManual				: BOOL;
+	bAllowChangeToMaintenance			: BOOL;
+	bAllowChangeToAutomatic				: BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Triggers
+rtButtonAutomatic(CLK:= bHMIModeRequest_Automatic);
+rtButtonManual(CLK:= bHMIModeRequest_Manual);
+rtButtonMaintenance(CLK:= bHMIModeRequest_Maintenance);
+rtButtonStart(CLK:= GVL_IO.di_PBStart OR bHMICommandRequest_Run);
+rtButtonStop(CLK:= GVL_IO.di_PBStop OR bHMICommandRequest_Stop);
+rtButtonReset(CLK:= GVL_IO.di_PBReset OR bHMICommandRequest_Reset);
+
+// SAFETY niezaleznie
+IF NOT GVL_IO.bSAFETY_PermissionSS1 OR bHMICommandRequest_Abort THEN
+	GVL_Machine.eCommand						:= E_MachineCommand.eAbort;
+	GVL_Machine.eState							:= E_MachineState.eAborted;
+END_IF
+		
+CASE GVL_Machine.eMode OF 
+
+	E_MachineMode.eInitialization:
+
+		// Reset just in case of init error
+		P_Initialization(bReset := (P_Initialization.bError AND rtButtonReset.Q), bTestMode := );
+		IF P_Initialization.bInitialized THEN
+			// Choose mode to go
+			GVL_Machine.eMode						:= E_MachineMode.eManual;
+		END_IF
+		
+	E_MachineMode.eAutomatic:
+
+		// Zmiana trybu tylko gdy maszyna nie jest w Running
+		IF GVL_Machine.eState <> E_MachineState.eRunning THEN
+			IF rtButtonMaintenance.Q THEN
+				GVL_Machine.eState				:= E_MachineState.eIdle;
+				GVL_Machine.eMode				:= E_MachineMode.eMaintenance;
+			END_IF
+		END_IF
+
+		//==============================================
+		IF rtButtonStart.Q THEN 
+			GVL_Machine.eCommand 	:= E_MachineCommand.eRun;
+		END_IF
+
+		IF rtButtonReset.Q AND GVL.bRestartRequired THEN
+			GVL_Machine.eCommand	:= E_MachineCommand.eRestart;
+		END_IF
+		
+		IF rtButtonReset.Q AND NOT GVL.bRestartRequired THEN
+			GVL_Machine.eCommand	:= E_MachineCommand.eReset;
+		END_IF
+		
+		IF GVL.bGeneralError OR GVL.bGeneralFatalError OR rtButtonStop.Q THEN
+			GVL_Machine.eCommand	:= E_MachineCommand.eStop ;
+		END_IF
+		
+	E_MachineMode.eMaintenance, E_MachineMode.eManual:
+	
+		// Reset, Restart, Error - not used
+		
+		// Zmiana trybu tylko gdy maszyna nie jest w Running
+		IF GVL_Machine.eState <> E_MachineState.eRunning THEN
+			IF rtButtonAutomatic.Q (* OR sth *) THEN
+				GVL_Machine.eState				:= E_MachineState.eIdle;
+				GVL_Machine.eMode				:= E_MachineMode.eAutomatic;
+			END_IF
+		END_IF
+		
+		//==============================================
+		IF rtButtonStart.Q THEN 
+			GVL_Machine.eCommand 	:= E_MachineCommand.eRun;
+		END_IF
+
+		IF rtButtonReset.Q AND GVL.bRestartRequired THEN
+			GVL_Machine.eCommand	:= E_MachineCommand.eRestart;
+		END_IF
+		
+		IF rtButtonReset.Q AND NOT GVL.bRestartRequired THEN
+			GVL_Machine.eCommand	:= E_MachineCommand.eReset;
+		END_IF
+		
+		IF rtButtonStop.Q THEN
+			GVL_Machine.eCommand	:= E_MachineCommand.eStop ;
+		END_IF
+
+END_CASE	]]></ST>
+    </Implementation>
+    <Action Name="Act_CollectMachineState" Id="{35dbdadd-8e9d-4826-9020-b6db73a59fd4}">
+      <Implementation>
+        <ST><![CDATA[// Action to decide global machine state
+GVL_Machine.eState; // := 
+]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="Act_ModeChangeSelector" Id="{93e687b8-71f2-4f96-a92e-dc8cc9cabd1b}">
+      <Implementation>
+        <ST><![CDATA[bAllowChangeToManual 				:= NOT (P_Template.eMachineState <> E_MachineState.eRunning); //
+bAllowChangeToMaintenance;
+bAllowChangeToAutomatic;
+]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="P_ModeStateManager">
+      <LineId Id="349" Count="14" />
+      <LineId Id="453" Count="0" />
+      <LineId Id="364" Count="0" />
+      <LineId Id="456" Count="0" />
+      <LineId Id="527" Count="0" />
+      <LineId Id="455" Count="0" />
+      <LineId Id="488" Count="1" />
+      <LineId Id="491" Count="0" />
+      <LineId Id="490" Count="0" />
+      <LineId Id="454" Count="0" />
+      <LineId Id="365" Count="55" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ModeStateManager.Act_CollectMachineState">
+      <LineId Id="1" Count="1" />
+      <LineId Id="15" Count="0" />
+    </LineIds>
+    <LineIds Name="P_ModeStateManager.Act_ModeChangeSelector">
+      <LineId Id="3" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

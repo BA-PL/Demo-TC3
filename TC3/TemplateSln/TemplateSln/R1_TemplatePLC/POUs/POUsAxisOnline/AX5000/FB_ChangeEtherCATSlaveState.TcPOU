@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_ChangeEtherCATSlaveState" Id="{64311408-f2d2-4d7b-a037-fcc411662873}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									23.05.2018
+//	Blok zmienia stan EtherCAT Slave i monitoruje flage ukonczenia
+//
+//	Niezbedne biblioteki: Tc2_EtherCAT
+//
+// 	v1.1	|| TC v 3.1.4022.16	|| - optymalizacja kodu
+// 	v1.0	|| TC v 3.1.4020.32	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_ChangeEtherCATSlaveState
+VAR_INPUT
+	bExecute								: BOOL;							// Start on rising edge
+	sEtherCAT_NetID							: STRING;						// EtherCAT Master NetID
+	nSlaveAddr								: UINT;							// EtherCAT Drive slave port
+	byReguestedState						: BYTE;							(* 	16#1- EC_DEVICE_STATE_INIT  
+																				16#2- EC_DEVICE_STATE_PREOP     
+																				16#3- EC_DEVICE_STATE_BOOTSTRAP     
+																				16#4- EC_DEVICE_STATE_SAFEOP  
+																				16#8- EC_DEVICE_STATE_OP
+																				16#10- EC_DEVICE_STATE_ERROR  *)
+END_VAR
+VAR_OUTPUT
+	byActualState							: BYTE;							(* 	16#1-EC_DEVICE_STATE_INIT  
+																				16#2-EC_DEVICE_STATE_PREOP     
+																				16#3-EC_DEVICE_STATE_BOOTSTRAP     
+																				16#4-EC_DEVICE_STATE_SAFEOP  
+																				16#8-EC_DEVICE_STATE_OP
+																				16#10-EC_DEVICE_STATE_ERROR  *)
+	bBusy									: BOOL;
+	bDone									: BOOL;
+	bError									: BOOL;
+	udiErrorID								: UDINT;	
+END_VAR
+VAR	
+	fbEcReqSlaveState						: FB_EcReqSlaveState;
+	fbEcGetSlaveState						: FB_EcGetSlaveState;
+	timerTON								: TON;
+	rtExecute								: R_TRIG;
+	iState									: INT;
+	iTry									: INT;							// number of tries
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[timerTON(PT:=T#500MS);
+rtExecute(CLK:=bExecute);
+
+CASE iState OF
+
+	0:																// Init parameters
+		IF rtExecute.Q THEN
+			bBusy							:= TRUE;
+			bDone							:= FALSE;
+			bError							:= FALSE;
+			udiErrorID						:= 0;
+			iTry							:= 0;
+			fbEcReqSlaveState.sNetId		:= sEtherCAT_NetID; 
+			fbEcGetSlaveState.sNetId		:= sEtherCAT_NetID; 
+			fbEcReqSlaveState.nSlaveAddr	:= nSlaveAddr; 
+			fbEcGetSlaveState.nSlaveAddr	:= nSlaveAddr;
+			fbEcReqSlaveState.state			:= byReguestedState;
+			fbEcReqSlaveState.bExecute		:= TRUE;
+			iState							:= iState + 10;			
+		END_IF
+		
+	10:																// State request
+		fbEcReqSlaveState.bExecute			:= FALSE;
+		IF NOT fbEcReqSlaveState.bBusy THEN
+			IF fbEcReqSlaveState.bError THEN
+				iState						:= 99;
+			ELSE
+				iState						:= iState + 10;
+			END_IF
+		END_IF
+
+		
+	20:																// Request every 0.5s
+		timerTON.IN							:= TRUE;
+		IF timerTON.Q THEN
+			timerTON.IN						:= FALSE;
+			fbEcGetSlaveState.bExecute		:= TRUE;
+			iState							:= iState + 10;
+		END_IF
+		
+	30:																// Done already?
+		fbEcGetSlaveState.bExecute			:= FALSE;	
+		IF NOT fbEcGetSlaveState.bBusy THEN
+			IF NOT fbEcGetSlaveState.bError AND fbEcGetSlaveState.state.deviceState = fbEcReqSlaveState.state THEN
+				bBusy						:= FALSE;
+				bDone						:= TRUE;
+				iState						:= 0;
+			ELSIF iTry = 40 THEN
+				iState						:= 99;
+			ELSE
+				iTry						:= iTry + 1;
+				iState						:= iState - 10;			
+			END_IF
+			byActualState					:= fbEcGetSlaveState.state.deviceState;
+		END_IF
+		
+	99:																// ERROR STATE
+		bError 								:= TRUE;
+		bBusy								:= FALSE;
+		udiErrorID							:= fbEcReqSlaveState.nErrId + fbEcGetSlaveState.nErrId;
+		iState								:= 0;
+		
+END_CASE
+
+fbEcReqSlaveState();
+fbEcGetSlaveState();]]></ST>
+    </Implementation>
+    <LineIds Name="FB_ChangeEtherCATSlaveState">
+      <LineId Id="498" Count="5" />
+      <LineId Id="505" Count="0" />
+      <LineId Id="507" Count="12" />
+      <LineId Id="521" Count="1" />
+      <LineId Id="524" Count="2" />
+      <LineId Id="529" Count="2" />
+      <LineId Id="533" Count="10" />
+      <LineId Id="545" Count="1" />
+      <LineId Id="548" Count="6" />
+      <LineId Id="558" Count="6" />
+      <LineId Id="566" Count="1" />
+      <LineId Id="579" Count="0" />
+      <LineId Id="583" Count="0" />
+      <LineId Id="568" Count="6" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

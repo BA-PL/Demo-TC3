@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_SAFETY_StatusFB_TO_DECOUPLE" Id="{691277ce-41df-43ee-b7f1-bceff6da647c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_SAFETY_StatusFB_TO_DECOUPLE : ST_SAFETY_FBDECOUPLE
+VAR_INPUT
+	stFBStatus						: ST_SAFETY_FBStatus; 	(* Struktura ogolna *)
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_SAFETY_StatusFB_TO_DECOUPLE.uStatus.stStatusWords 		:= stFBStatus;					(* Przepisanie *)
+F_SAFETY_StatusFB_TO_DECOUPLE.eState					 	:= stFBStatus.BState;			(* Ustawienie enum *)]]></ST>
+    </Implementation>
+    <LineIds Name="F_SAFETY_StatusFB_TO_DECOUPLE">
+      <LineId Id="3" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

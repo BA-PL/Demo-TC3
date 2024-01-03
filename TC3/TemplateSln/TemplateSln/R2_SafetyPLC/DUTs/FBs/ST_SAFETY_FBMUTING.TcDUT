@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_FBMUTING" Id="{6d6c74c6-064b-4745-911d-15bb7f54c402}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_FBMUTING:
+STRUCT
+	uStatus							: U_SAFETY_MUTING; 				(* Typ zalezny od bloku *)
+	eState							: E_SAFETY_FBStateMUTING;		(* Enum ze statusem bloku *)
+	bGeneralError					: BOOL; 						(* Gdy wystapi chociaz jeden Error *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

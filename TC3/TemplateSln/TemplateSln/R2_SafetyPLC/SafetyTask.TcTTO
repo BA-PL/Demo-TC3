@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <Task Name="SafetyTask" Id="{ba2a1fe2-00e3-4414-8533-e23a6e8902f1}">
+    <!--CycleTime in micro seconds.-->
+    <CycleTime>10000</CycleTime>
+    <Priority>21</Priority>
+    <PouCall>
+      <Name>MAINSafety</Name>
+    </PouCall>
+    <TaskFBGuid>{d407b71e-0bcc-4402-983c-4c4abc01ebb6}</TaskFBGuid>
+    <Fb_init>{0d93c131-d616-4a58-8d03-be7ca08422eb}</Fb_init>
+    <Fb_exit>{bd04d096-2314-43a1-8774-660ea16f4900}</Fb_exit>
+    <CycleUpdate>{3c86486f-dd7b-4b7a-942b-43f63122078a}</CycleUpdate>
+    <PostCycleUpdate>{88a005f5-1d60-42c6-baab-ad4a74cec584}</PostCycleUpdate>
+  </Task>
+</TcPlcObject>

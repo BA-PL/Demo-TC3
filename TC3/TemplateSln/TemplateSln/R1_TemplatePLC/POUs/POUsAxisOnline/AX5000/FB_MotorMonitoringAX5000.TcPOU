@@ -1,0 +1,482 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.5">
+  <POU Name="FB_MotorMonitoringAX5000" Id="{45819aca-0901-4f01-b2b6-9fa59a271882}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									22.09.2020
+//	Blok funkcyjny pozwala na monitorowanie i ograniczanie momentu oraz monitoring parametru I2T dla AX5xxx.
+//	Zmienne do zlinkowania zadeklarowane są wewnątrz bloku.
+//	Ograniczenie i monitorowanie momentu
+//	Ograniczenie momentu podawane jest przez wejście rTorqueLimit.
+//	Na wyjściu podana jest wartość surowa w %, jak i przeskalowana na A (prąd) i Nm (moment).
+//	Blok zwraca wartości bieżące, przefiltrowane i maksymalne.
+//	Wartości maksymalne mogą być wyzerowane za pomocą zmiennej bReset.
+//	Wewnętrznie wykorzystany jest blok FB_FilterEx.
+//	I2T: 	Określamy okno czasowe pomiaru
+//	Biblioteki: Tc2_MC2, Tc2_MC2_Drive, Tc2_Drive, Tc2_EtherCAT
+//
+// 	v1.4	|| TC v 3.1.4024.10		|| dostosowany do FW 2.13
+// 	v1.3	|| TC v 3.1.4022.22		|| optymalizacja kod poprawiony blad wyliczenia Torque filtered
+// 	v1.2	|| TC v 3.1.4022.22		|| optymalizacja kodu
+// 	v1.1	|| TC v 3.1.4022.16		|| optymalizacja kodu, poprawiona flaga initialized
+//  v1.0	|| TC v 3.1.4022.16		|| bazuje na FB_TorqueMonitoringEx2, dodane wyjscia zgodne z blokiem do AX8000 
+//==================================================================================================
+FUNCTION_BLOCK FB_MotorMonitoringAX5000
+VAR CONSTANT
+	rTorqueLimitLow					: REAL 		:= 0.01;				// Low limit used for bipolar torque limit value
+	rTorqueLimitHigh				: REAL		:= 100.0;				// High limit used for bipolar torque limit value
+END_VAR
+VAR_INPUT
+	bReset							: BOOL;
+	rTorqueLimit					: REAL 		:= rTorqueLimitHigh; 	// Bipolar torque limit: 0-500%, resolution 0.1%, value goes to: 16#6072 (Ch A)/ 16#6872 (Ch B)
+	tI2T_Window						: TIME 		:= T#100S;				// Has to be Task time * 100 * x 
+																		// x - how many probes per measurement
+																		// Samples - Task: 2 ms - tI2T_Window min 200 ms (1 probe), 100 probes then 20 s
+																		// Task: 10 ms - tI2T_Window min 1 s (1 probe), 100 probes then 100 s
+																		// If not proper time entered then it'll be adjusted
+END_VAR
+VAR_OUTPUT
+	bError							: BOOL; 							// Communication error
+	uiAdsErrId						: UINT;								// Forwarded output FB_SoeRead
+	uiSercosErrId					: UINT;								// Forwarded output FB_SoeRead
+	bInitialized					: BOOL;								// TRUE - Motor data read without errors, so it's possible to calculate torqe and current values in metric units
+	bWarning						: BOOL;								// Overcurrent (rCurrentF > rRatedCurrent)
+	rWarningCurrent					: REAL; 							// P_0_0093_Value in [A]
+	rTorquePerc						: REAL;								// [%]
+	rTorquePercMax					: REAL;								// Max [%]	
+	rTorque							: REAL; 							// [Nm]
+	rTorqueF						: REAL;								// Filtered
+	rTorqueMax						: REAL;								// Max
+	rCurrent						: REAL; 							// [A]
+	rCurrentF						: REAL;								// Filtered
+	rCurrentMax						: REAL;								// Max
+	rI2T							: REAL; 							// % nominal
+	rI2TMax							: REAL;
+END_VAR
+VAR_IN_OUT
+	Axis							: AXIS_REF;
+END_VAR
+VAR
+//======================== Internal =============================
+	rTorqueRAW						: REAL; 							// -1000 .. 1000 - RAW values the same as process image	
+	rContinuousStallTorque			: REAL; 							// P_0_0070_Value [Nm]
+	rContinuousStallCurrent			: REAL; 							// S_0_0111_Value [A]
+	rPeakCurrent					: REAL; 							// P_0_0092_Value in [A]
+	rSfTorque						: REAL; 							// A --> Nm P_0_0070_Value/S_0_0111_Value [Nm/A]
+	rSfCurrent						: REAL; 							// RAW --> A (-1000..1000 --> - rPeakCurrent .. rPeakCurrent)
+	bFirstCycle						: BOOL := TRUE;
+	iFW_High						: INT;
+	iFW_Low							: INT;
+	bDriveFirmware_GE_2_10			: BOOL;								// From FW >= 2.10 - different image size
+	iFWPos							: INT;
+	iFWLen							: INT;
+	sDriveFW						: STRING(66);
+	uiBipolarTorqueLimitValue AT %Q*	: UINT; 						// Raw data, linked to Bipolar torque limit value MDT, S-0-0092
+	iStep							: INT;
+	wInitErrorCount					: WORD;								// Initialization error counter, if bigger then 10 then error
+	arr_S_0_0030_Value				: ARRAY [1..66] OF BYTE;			// till FW 2.10 total len is 66 bytes (2 - Act len, 2 - Max len, 62 - String 
+	S_0_0030_Value					: STRING(61);
+	P_0_0092_Value					: DWORD;
+	P_0_0093_Value					: DWORD;
+	P_0_0070_Value					: DWORD;
+	S_0_0111_Value					: DWORD;
+//========================== I2T ================================
+	bCalculateI2T					: BOOL;								// TRUE in cycle when recalculation I2T necessary
+	bBufferFull						: BOOL;								// TRUE when array buffer is full
+	BIndex							: BYTE;								// Task no
+	tI2T_WindowOld					: TIME;								// Old time window to reinit I2T calculation if necessary
+	wProbeCyclesCount				: WORD;								// No of cycles for one I2T probe
+	wCyclesCount					: WORD;								// Act no of cycles for one I2T probe
+	wNoOfCycles						: WORD;								// Total cycles count for I2T window
+	wNoOfProbes						: WORD;								// Actual number of probes for I2T calculation
+	i								: INT;								// FOR loop
+	rCycleTime						: REAL;								// Task time in [ms]
+	rI2T_Window						: REAL;								// Time window in [ms]
+	rCurrentPom						: REAL;								// Sum of current values in probe
+	rCurrentAverage					: REAL;								// Arithmetical average
+	rI2T_Nominal					: REAL;								// I2T for In
+	rI2T_Actual						: REAL;								// I2T for real values
+	arrI2TBuffer					: ARRAY[1..100] OF REAL;			// Buffer window to calculate I2T
+//========================== FBs ================================
+	rtReset							: R_TRIG;							// Reset trigger
+	tonWait							: TON;								// Wait timer
+	fbFilterEx						: FB_FilterEx;						// Filter
+	fbSoERead						: FB_SoeRead;						// FB for read SoE parameters
+	fbGETCURTASKINDEX   			: GETCURTASKINDEX;					// FB to check task no
+//===============================================================
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//===== Initialization, reinitialization and reset  =============
+ACT_Init_Reset();
+//=================== Call triggers and timers ==================
+tonWait(IN:= NOT tonWait.Q, PT:= T#1S);
+//============= Read params and calculations ====================
+CASE iStep OF
+
+	0: 	// Read S_0_0030 - Manufacturer version
+
+		fbSoERead.Idn 					:= S_0_IDN + 30;
+		fbSoERead.Element				:= EC_SOE_ELEMENT_VALUE;
+		fbSoERead.pDstBuf				:= ADR(arr_S_0_0030_Value);
+		fbSoERead.BufLen				:= SIZEOF(arr_S_0_0030_Value);
+		fbSoERead.Execute				:= TRUE;
+		iStep 							:= iStep + 10;
+
+	10: // Wait till read finish 
+
+		IF NOT fbSoERead.Busy THEN
+			fbSoERead.Execute			:= FALSE;
+			IF fbSoERead.Error THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbSoERead.AdsErrId;
+					uiSercosErrId		:= fbSoERead.SercosErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 5;
+			END_IF
+		END_IF
+
+	15: // Read Drive firmware version
+
+		MEMCPY(ADR(S_0_0030_Value), (ADR(arr_S_0_0030_Value)+4), 62);
+		iFWPos							:= FIND(S_0_0030_Value,': v') + 3;
+		sDriveFW						:= DELETE(S_0_0030_Value, iFWPos -1,1);
+		iFWLen							:= FIND(sDriveFW,'.');
+		iFW_High						:= STRING_TO_INT(LEFT(sDriveFW, iFWLen-1));
+		sDriveFW						:= DELETE(sDriveFW,iFWLen,1);
+		iFWLen							:= FIND(sDriveFW,' ');
+		iFW_Low							:= STRING_TO_INT(LEFT(sDriveFW, iFWLen-1));
+		
+		bDriveFirmware_GE_2_10 			:= iFW_High >= 2 AND iFW_Low >= 10;				// Check if firmware >= 2.10
+		iStep	 						:= iStep + 5;		
+
+	20: // Read P_0_0092 - Configured channel peak current
+
+		fbSoERead.Idn 					:= P_0_IDN + 92;
+		fbSoERead.Element				:= EC_SOE_ELEMENT_VALUE;
+		fbSoERead.pDstBuf				:= ADR(P_0_0092_Value);
+		fbSoERead.BufLen				:= SIZEOF(P_0_0092_Value);
+		fbSoERead.Execute				:= TRUE;
+		iStep 							:= iStep + 10;
+
+	30: // Wait till read finish 
+
+		IF NOT fbSoERead.Busy THEN
+			fbSoERead.Execute			:= FALSE;
+			IF fbSoERead.Error THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbSoERead.AdsErrId;
+					uiSercosErrId		:= fbSoERead.SercosErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+
+	40: // Read P_0_0070 - Motor continuous stall torque
+
+		fbSoERead.Idn 					:= P_0_IDN + 70;
+		fbSoERead.Element				:= EC_SOE_ELEMENT_VALUE; 
+		fbSoERead.pDstBuf				:= ADR(P_0_0070_Value);
+		fbSoERead.BufLen 				:= SEL(bDriveFirmware_GE_2_10, 2, 4);		// In FW GE 2.10 size is 4
+		fbSoERead.Execute				:= TRUE;
+		iStep 							:= iStep + 10;
+
+	50: // Wait till read finish 
+
+		IF NOT fbSoERead.Busy THEN
+			fbSoERead.Execute			:= FALSE;
+			IF fbSoERead.Error OR P_0_0070_Value = 0 THEN						// P_0_0070_Value = 0 - probably linear motor or wrong motor data
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbSoERead.AdsErrId;
+					uiSercosErrId		:= fbSoERead.SercosErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+
+	60: // Read S_0_0111 - Motor continuous stall current
+
+		fbSoERead.Idn 					:= S_0_IDN + 111;
+		fbSoERead.Element				:= EC_SOE_ELEMENT_VALUE;
+		fbSoERead.pDstBuf				:= ADR(S_0_0111_Value);
+		fbSoERead.BufLen				:= SIZEOF(S_0_0111_Value);
+		fbSoERead.Execute				:= TRUE;
+		iStep 							:= iStep + 10;
+		
+	70: // Wait till read finish 
+
+		IF NOT fbSoERead.Busy THEN
+			fbSoERead.Execute			:= FALSE;
+			IF fbSoERead.Error OR S_0_0111_Value = 0 THEN			// S_0_0111_Value = 0 - wrong motor data
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbSoERead.AdsErrId;
+					uiSercosErrId		:= fbSoERead.SercosErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+
+	80: // Read P_0_0093 - Configured channel current
+
+		fbSoERead.Idn 					:= P_0_IDN + 93;
+		fbSoERead.Element				:= EC_SOE_ELEMENT_VALUE;
+		fbSoERead.pDstBuf				:= ADR(P_0_0093_Value);
+		fbSoERead.BufLen				:= SIZEOF(P_0_0093_Value);
+		fbSoERead.Execute				:= TRUE;
+		iStep 							:= iStep + 10;
+	
+	90: // Wait till read finish 
+
+		IF NOT fbSoERead.Busy THEN
+			fbSoERead.Execute			:= FALSE;
+			IF fbSoERead.Error THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbSoERead.AdsErrId;
+					uiSercosErrId		:= fbSoERead.SercosErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;							
+			END_IF
+		END_IF
+		
+	100: // Read data from unit finished - we can calculate params
+
+		rPeakCurrent 					:= DWORD_TO_REAL(P_0_0092_Value) / 1000.0;		// In [A]
+		rSfCurrent 						:= rPeakCurrent / 1000.0;						// iTorque -1000..1000 --> - rPeakCurrent .. rPeakCurrent
+		rContinuousStallTorque 			:= DWORD_TO_REAL(P_0_0070_Value) / 100;
+		rContinuousStallCurrent 		:= DWORD_TO_REAL(S_0_0111_Value) / 1000;
+		IF rContinuousStallCurrent <> 0 THEN
+			rSfTorque	 				:= rContinuousStallTorque / rContinuousStallCurrent;
+		END_IF
+		rWarningCurrent 				:= DWORD_TO_REAL(P_0_0093_Value) / 1000;
+		iStep 							:= 200;
+
+	200: // Read cycle time - we need it for I2T calculations
+
+		fbGETCURTASKINDEX(index => BIndex);
+		IF BIndex <> 0 THEN
+			iStep						:= iStep + 10;
+		END_IF
+
+	210:
+
+		rCycleTime 						:= UDINT_TO_REAL(_TaskInfo[BIndex].CycleTime) / 10000.0;	// Scale to [ms]
+		rI2T_Window 					:= TIME_TO_REAL(tI2T_Window);
+		wNoOfCycles						:= REAL_TO_WORD(rI2T_Window / rCycleTime);
+		// Time window too short
+		IF wNoOfCycles < 100 THEN
+			iStep						:= 1000;								// Error step
+		ELSE
+			wProbeCyclesCount 			:= wNoOfCycles / 100;
+			iStep						:= 300;
+		END_IF
+
+	300: // Calculations	
+
+		ACT_I2T();
+	
+	900: // Warning - wait and repeat read - problem during read motor data, i.e. EtherCAT doesn't work yet
+
+		IF tonWait.Q THEN
+			iStep 						:= 0;	// Repeat initialization phase 
+		END_IF
+		
+	1000: // Error - wait for reset 
+		;
+
+END_CASE
+//===============================================================
+
+bError		 							:= iStep = 1000;
+bInitialized 							:= iStep >= 300 AND NOT bError;
+ACT_Calculations();
+
+//========================= Warning =============================
+bWarning								:= rCurrentF > rWarningCurrent;
+
+//===================== Limit output torque =====================
+IF rTorqueLimit < rTorqueLimitLow THEN
+	uiBipolarTorqueLimitValue 			:= REAL_TO_UINT(rTorqueLimitHigh);			// Secure against 0 value - probably empty var connected to input
+ELSE
+	uiBipolarTorqueLimitValue 			:= REAL_TO_UINT(LIMIT(rTorqueLimitLow,rTorqueLimit,rTorqueLimitHigh)) * 10;
+END_IF
+
+//====================== Call SoE read FB =======================
+fbSoERead(	NetId:= '',
+			Timeout:= T#1s,
+			Axis:= Axis);]]></ST>
+    </Implementation>
+    <Action Name="ACT_Calculations" Id="{5b081c38-6be4-46b0-8862-28f02dd3a511}">
+      <Implementation>
+        <ST><![CDATA[//============== Raw values - always avaliable ==================
+rTorquePerc								:= LREAL_TO_REAL(Axis.NcToPlc.ActTorque); 		// [%]
+rTorqueRAW 								:= rTorquePerc * 10;							// -1000 .. 1000 - RAW values the same as process image
+//===================== Filter current value ====================
+fbFilterEx(rIn:= rTorqueRAW, tTimeConstant:= T#1S);
+
+// Calculations	- possible only with params
+IF bInitialized THEN
+	rCurrent 							:= rTorqueRAW * rSfCurrent;
+	rTorque 							:= rCurrent * rSfTorque;
+	rCurrentF 							:= fbFilterEx.rOut * rSfCurrent;
+	rTorqueF 							:= rCurrentF * rSfTorque;
+END_IF
+
+//=============== Save torque and current max values ===============
+IF ABS(rCurrentMax) < ABS(rCurrentF) THEN
+	rTorquePercMax						:= rTorquePerc;
+	rCurrentMax 						:= rCurrentF;
+	rTorqueMax 							:= rTorqueF;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_I2T" Id="{0e4a0811-3906-415f-940c-a7d965579ee1}">
+      <Implementation>
+        <ST><![CDATA[//======================= One probe =============================
+rCurrentPom 							:= rCurrentPom + ABS(rCurrent);
+wCyclesCount							:= wCyclesCount + 1;
+bCalculateI2T							:= FALSE;
+IF wCyclesCount = wProbeCyclesCount THEN
+	rCurrentAverage 					:= rCurrentPom / WORD_TO_REAL(wProbeCyclesCount);
+	rCurrentPom							:= 0;
+	wCyclesCount						:= 0;
+	bCalculateI2T						:= TRUE;							
+ELSIF wCyclesCount > wProbeCyclesCount THEN
+	iStep 								:= 1000;
+END_IF
+//===============================================================
+
+//==================== Recalculate I2T ==========================
+IF bCalculateI2T THEN
+	wNoOfProbes 						:= wNoOfProbes + 1;
+	bBufferFull 						:= wNoOfProbes >= 100;
+	MEMMOVE(ADR(arrI2TBuffer) + 4, ADR(arrI2TBuffer), SIZEOF(arrI2TBuffer) - 4);
+	arrI2TBuffer[1]						:= rCurrentAverage;
+	IF bBufferFull THEN
+		rI2T_Nominal					:= 100.0 * rContinuousStallCurrent;
+		rI2T_Actual						:= 0;
+		FOR i := 1 TO 100 DO
+			rI2T_Actual					:= rI2T_Actual + arrI2TBuffer[i];
+		END_FOR
+	ELSE
+		rI2T_Nominal					:= wNoOfProbes * rContinuousStallCurrent;
+		rI2T_Actual						:= rI2T_Actual + rCurrentAverage;
+	END_IF
+	rI2T								:= rI2T_Actual * 100 / rI2T_Nominal; // In [%]
+//====================== Save I2T max value =====================
+	IF rI2TMax < rI2T THEN
+		rI2TMax							:= rI2T;
+	END_IF
+END_IF
+//===============================================================]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Init_Reset" Id="{b5c68b69-9ae0-412a-962f-6f6d959abe7b}">
+      <Implementation>
+        <ST><![CDATA[//============== Reset max values and FB ========================
+rtReset(CLK:= bReset);
+// Reset I2T calculations when time window changed or reset CMD
+IF rtReset.Q OR tI2T_Window <> tI2T_WindowOld THEN
+	BIndex								:= 0;
+	wProbeCyclesCount					:= 0;
+	wCyclesCount						:= 0;
+	wNoOfCycles							:= 0;
+	wNoOfProbes							:= 0;
+	i									:= 0;
+	rCycleTime							:= 0;
+	rI2T_Window							:= 0;
+	rCurrentPom							:= 0;
+	rCurrentAverage						:= 0;
+	rI2T_Nominal						:= 0;
+	rI2T_Actual							:= 0;
+	rI2T								:= 0;
+	rI2TMax								:= 0;
+	MEMSET(ADR(arrI2TBuffer), 0, SIZEOF(arrI2TBuffer));
+	bBufferFull							:= FALSE;
+	bCalculateI2T						:= FALSE;
+	// If there is no Error then recalculate time-dipendent variables
+	IF NOT bError THEN
+		iStep							:= 200;
+	END_IF
+	tI2T_WindowOld 						:= tI2T_Window;
+END_IF
+
+IF rtReset.Q OR bFirstCycle THEN
+	fbSoERead.Execute					:= FALSE;
+	bWarning	 						:= FALSE;
+	bDriveFirmware_GE_2_10 				:= FALSE;
+	uiAdsErrId		 					:= 0;
+	uiSercosErrId	 					:= 0;
+	rWarningCurrent 					:= 0;
+	rTorquePerc 						:= 0;
+	rTorquePercMax 						:= 0;
+	rTorque 							:= 0;
+	rTorqueF 							:= 0;
+	rTorqueMax 							:= 0;
+	rCurrent 							:= 0;
+	rCurrentF 							:= 0;
+	rCurrentMax 						:= 0;
+	rTorqueRAW 							:= 0;
+	rContinuousStallTorque 				:= 0;
+	rContinuousStallCurrent 			:= 0;
+	rPeakCurrent 						:= 0;
+	rSfTorque 							:= 0;
+	rSfCurrent							:= 0;
+	iStep								:= 0;
+	wInitErrorCount						:= 0;
+	MEMSET(ADR(arr_S_0_0030_Value), 0, SIZEOF(arr_S_0_0030_Value));
+	S_0_0030_Value						:= '';
+	P_0_0092_Value						:= 0;
+	P_0_0093_Value						:= 0;
+	P_0_0070_Value						:= 0;
+	S_0_0111_Value						:= 0;
+	bFirstCycle	 						:= FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="FB_MotorMonitoringAX5000">
+      <LineId Id="5065" Count="225" />
+      <LineId Id="4038" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_MotorMonitoringAX5000.ACT_Calculations">
+      <LineId Id="33" Count="18" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_MotorMonitoringAX5000.ACT_I2T">
+      <LineId Id="131" Count="35" />
+      <LineId Id="126" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_MotorMonitoringAX5000.ACT_Init_Reset">
+      <LineId Id="2" Count="57" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

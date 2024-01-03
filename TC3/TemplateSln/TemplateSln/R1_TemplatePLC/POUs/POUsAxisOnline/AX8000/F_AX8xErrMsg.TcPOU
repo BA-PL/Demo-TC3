@@ -1,0 +1,209 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.16">
+  <POU Name="F_AX8xErrMsg" Id="{f692b216-9516-4ac4-9385-390b6169af7b}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//								7.12.2018
+//		Funkcja konwertujaca nr bledu na opis
+// 	v1.0	|| TC v 3.1.4022.27	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION F_AX8xErrMsg : STRING(255)
+VAR_INPUT
+	uiDriveError : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF uiDriveError < 1 THEN
+	F_AX8xErrMsg := '';
+	RETURN;
+END_IF
+
+CASE uiDriveError OF
+	16#2220: F_AX8xErrMsg:= '2220 =  Continuous over current (device internal)';
+	16#2310: F_AX8xErrMsg:= '2310 =  Continuous over current (device output side)';
+	16#2330: F_AX8xErrMsg:= '2330 = Earth leakage (motor-side)';
+	16#2340: F_AX8xErrMsg:= '2340 =  Short circuit (motor-side)';
+	16#2380: F_AX8xErrMsg:= '2380 =  Continuous over current (device output side) Phase U';
+	16#2381: F_AX8xErrMsg:= '2381 =  Continuous over current (device output side) Phase V';
+	16#2382: F_AX8xErrMsg:= '2382 =  Continuous over current (device output side) Phase W';
+	16#2383: F_AX8xErrMsg:= '2383 =  Phase U current offset out of range';
+	16#2384: F_AX8xErrMsg:= '2384 =  Phase V current offset out of range';
+	16#2385: F_AX8xErrMsg:= '2385 =  Phase W current offset out of range';
+	16#3110: F_AX8xErrMsg:= '3110 =  Mains over-voltage';
+	16#3120: F_AX8xErrMsg:= '3120 =  Mains under-voltage';
+	16#3130: F_AX8xErrMsg:= '3130 =  Phase failure';
+	16#3180: F_AX8xErrMsg:= '3180 =  Phase failure motor or Mains voltage over brake resistor operating voltage';
+	16#3181: F_AX8xErrMsg:= '3181 =  Phase frequency (motor-side) raised above 600 Hz or Wrong mains type';
+	16#3182: F_AX8xErrMsg:= '3182 =  Velocity actual Value raised above the max channel accepted velocity';
+	16#3183: F_AX8xErrMsg:= '3183 = The bipolar velocity limit is higher than 1/4 of position range limit per EtherCAT Sync1 cycle.';
+	16#3210: F_AX8xErrMsg:= '3210 =  DC link over-voltage';
+	16#3220: F_AX8xErrMsg:= '3220 =  DC link undervoltage';
+	16#3280: F_AX8xErrMsg:= '3280 =  DC link is not ready or  Device DC link over-voltage';
+	16#4110: F_AX8xErrMsg:= '4110 =  Excess ambient temperature';
+	16#4210: F_AX8xErrMsg:= '4210 =  Excess temperature device';
+	16#4310: F_AX8xErrMsg:= '4310 =  Drive overtemperature shut down';
+	16#4380: F_AX8xErrMsg:= '4380 =  Fan speed seems to be zero.';
+	16#5112: F_AX8xErrMsg:= '5112 =  Supply low voltage: supply +24V';
+	16#5180: F_AX8xErrMsg:= '5180 =  Output stage STO active.';
+	16#5181: F_AX8xErrMsg:= '5181 =  Power supply status,  torque off order';
+	16#5182: F_AX8xErrMsg:= '5182 =  Power supply status inactive';
+	16#5183: F_AX8xErrMsg:= '5183 =  Power supply status,  NC handling order';
+	16#5184: F_AX8xErrMsg:= '5184 =  Supply DC-link circuit is not ready';
+	16#5185: F_AX8xErrMsg:= '5185 =  Power supply status,  non-regenerative brake order';
+	16#5186: F_AX8xErrMsg:= '5186 =  Power supply status,  regenerative brake order';
+	16#5187: F_AX8xErrMsg:= '5187 =  Power supply communication is not established';
+	16#5190: F_AX8xErrMsg:= '5190 =  Test 5V supply failed';
+	16#5192: F_AX8xErrMsg:= '5192 =  Supply high voltage: supply +24V';
+	16#5441: F_AX8xErrMsg:= '5441 =  Positive limit switch active';
+	16#5442: F_AX8xErrMsg:= '5442 =  Negative limit switch active';
+	16#5580: F_AX8xErrMsg:= '5580 =  Read failure EEPROM';
+	16#5581: F_AX8xErrMsg:= '5581 =  Checksum failure EEPROM';
+	16#5582: F_AX8xErrMsg:= '5582 =  EEPROM contains blank Data';
+	16#5583: F_AX8xErrMsg:= '5583 =  Unexpected EEPROM';
+	16#5584: F_AX8xErrMsg:= '5584 =  EEPROM contains blank Data';
+	16#5585: F_AX8xErrMsg:= '5585 =  Unexpected EEPROM';
+	16#5586: F_AX8xErrMsg:= '5586 =  Restored Errormessages from persistant memory';
+	16#5587: F_AX8xErrMsg:= '5587 =  Missing factory settings in eeprom';
+	16#5588: F_AX8xErrMsg:= '5588 =  Missing ids in eeprom display board';
+	16#5589: F_AX8xErrMsg:= '5589 =  Read failure eeprom display board';
+	16#5590: F_AX8xErrMsg:= '5590 =  Detected incompatible Pcb';
+	16#5591: F_AX8xErrMsg:= '5591 =  Identity incompatible to a Pcb';
+	16#5592: F_AX8xErrMsg:= '5592 =  FirmwareIndex is incompatible to this Firmware.';
+	16#5593: F_AX8xErrMsg:= '5593 =  Structure Version is incompatible to this Firmware';
+	16#5594: F_AX8xErrMsg:= '5594 =  Simulating persistent data features.';
+	16#5595: F_AX8xErrMsg:= '5595 =  Modulo remainder will not be stored.';
+	16#5596: F_AX8xErrMsg:= '5596 =  Storing of persistant data failed.';
+	16#6010: F_AX8xErrMsg:= '6010 =  Software reset (watchdog)';
+	16#6080: F_AX8xErrMsg:= '6080 =  Failure config bits';
+	16#6180: F_AX8xErrMsg:= '6180 =  Internal Software Error Type A';
+	16#6181: F_AX8xErrMsg:= '6181 =  Internal Software Error Type B';
+	16#6182: F_AX8xErrMsg:= '6182 =  Internal Software Error Type C';
+	16#6183: F_AX8xErrMsg:= '6183 =  Internal Watchdog Error';
+	16#6190: F_AX8xErrMsg:= '6190 =  Init Timeout';
+	16#6310: F_AX8xErrMsg:= '6310 =  Loss of parameters';
+	16#6320: F_AX8xErrMsg:= '6320 =  Parameter error';
+	16#6380: F_AX8xErrMsg:= '6380 =  Parameter Interpolator: Illegal Interpolation sub mode select or  Parameters x with parametrized y is too low.';
+	16#6381: F_AX8xErrMsg:= '6381 =  Parameter x with parametrized y is too high';
+	16#6382: F_AX8xErrMsg:= '6382 =  Illegal Slotconfiguration. Slot is empty.';
+	16#6383: F_AX8xErrMsg:= '6383 =  Illegal Slotconfiguration. Double Feedback Selection.';
+	16#6384: F_AX8xErrMsg:= '6384 =  Illegal Slotconfiguration. Slot has to be empty.';
+	16#6385: F_AX8xErrMsg:= '6385 =  Parameter Interpolator. Operation Mode does not match';
+	16#6386: F_AX8xErrMsg:= '6386 =  Parameter Interpolator: Illegal NC-Task cycle time';
+	16#6387: F_AX8xErrMsg:= '6387 =  Parameter Motor. The configured DCLink Max Voltage is higher than the Motor Max Voltage.';
+	16#6388: F_AX8xErrMsg:= '6388 =  Parameter Torque Control: The value in Object 0x%x/%x is higher than the Motor peak current (0x%x/%x).';
+	16#6389: F_AX8xErrMsg:= '6389 =  Parameter Torque Control: The value in Object 0x%x/%x is higher than the Configured peak current (0x%x/%x).';
+	16#6390: F_AX8xErrMsg:= '6390 =  Factor Group Parameters: Feed constant illegal feed';
+	16#6391: F_AX8xErrMsg:= '6391 =  Factor Group Parameters: Feed constant illegal shaft revolutions';
+	16#6392: F_AX8xErrMsg:= '6392 =  Factor Group Parameters: Gear ratio illegal Motor shaft revolutions';
+	16#6393: F_AX8xErrMsg:= '6393 =  Factor Group Parameters: Gear ratio illegal Driving shaft revolutions';
+	16#6394: F_AX8xErrMsg:= '6394 =  Factor Group Parameters: Position encoder resolution illegal encoder increments';
+	16#6395: F_AX8xErrMsg:= '6395 =  Factor Group Parameters: Position encoder resolution illegal motor revolutions';
+	16#6396: F_AX8xErrMsg:= '6396 =  additional Factor Group Parameters: Feed constant illegal feed';
+	16#6397: F_AX8xErrMsg:= '6397 =  additional Factor Group Parameters: Feed constant illegal shaft revolutions';
+	16#6398: F_AX8xErrMsg:= '6398 =  additional Factor Group Parameters: Gear ratio illegal Motor shaft revolutions';
+	16#6399: F_AX8xErrMsg:= '6399 =  additional Factor Group Parameters: Gear ratio illegal Driving shaft revolutions';
+	16#7111: F_AX8xErrMsg:= '7111 =  Failure brake chopper';
+	16#7112: F_AX8xErrMsg:= '7112 =  Over current brake chopper';
+	16#7122: F_AX8xErrMsg:= '7122 =  Motor error or commutation malfunction';
+	16#7180: F_AX8xErrMsg:= '7180 =  Motor brake: Current monitoring error. Or  Brake resistor not found';
+	16#7181: F_AX8xErrMsg:= '7181 =  Motor thermal utilization has reached the warning level.  Or  Brake resistor power overload by DC link over-voltage';
+	16#7182: F_AX8xErrMsg:= '7182 =  Motor thermal utilization has left the warning level. Or  Wrong xml file';
+	16#7183: F_AX8xErrMsg:= '7183 =  Motor thermal utilization has reached the Error Level';
+	16#7184: F_AX8xErrMsg:= '7184 =  Motor overload shut down';
+	16#7185: F_AX8xErrMsg:= '7185 =  Motor overtemperature shut down';
+	16#7186: F_AX8xErrMsg:= '7186 = Detected moving axis on enable transition.';
+	16#7320: F_AX8xErrMsg:= '7320 =  HpfDsl: Encoder error (position invalid)';
+	16#7380: F_AX8xErrMsg:= '7380 =  Current sensor motor phase U or HpfDsl: Encoder start sequence failed';
+	16#7381: F_AX8xErrMsg:= '7381 =  Current sensor motor phase V or HpfDsl: Encoder shutdown failed';
+	16#7382: F_AX8xErrMsg:= '7382 =  Current sensor motor phase W or HpfDsl: Parameter access error';
+	16#7383: F_AX8xErrMsg:= '7383 =  HpfDsl: Internal error';
+	16#7384: F_AX8xErrMsg:= '7384 =  HpfDsl: Cyclic monitoring error';
+	16#7385: F_AX8xErrMsg:= '7385 =  HpfDsl: Encoder file processing';
+	16#7386: F_AX8xErrMsg:= '7386 =  HpfDsl: Found no encoder (No link to an encoder)!';
+	16#7580: F_AX8xErrMsg:= '7580 =  I2C_communication_failure';
+	16#8180: F_AX8xErrMsg:= '8180 =  System restart or sync lost';
+	16#8181: F_AX8xErrMsg:= '8181 =  Lost Distributed clocks Sync';
+	16#8182: F_AX8xErrMsg:= '8182 =  EtherCAT Statemachine shutdown with enabled Axis';
+	16#8183: F_AX8xErrMsg:= '8183 =  Controlword output cycle counter monitoring';
+	16#8480: F_AX8xErrMsg:= '8480 = Overspeed error';
+	16#8611: F_AX8xErrMsg:= '8611 = Following error';
+	16#8680: F_AX8xErrMsg:= '8680 =  Position Demand Value outside of the specified Position Range Limits';
+	16#8780: F_AX8xErrMsg:= '8780 =  Configured Sync1 Cycle Time is above Maximum';
+	16#8781: F_AX8xErrMsg:= '8781 =  Configured Sync1 Cycle Time is below Minimum';
+	16#8782: F_AX8xErrMsg:= '8782 =  Configured Sync1 Cycle Time is not a multiple of the Sync0 Cycle Time';
+	16#8783: F_AX8xErrMsg:= '8783 =  Configured Sync0 Cycle Time is not legal';
+	16#638A: F_AX8xErrMsg:= '638A =  The Axis seems not to be parameterised.';
+	16#638B: F_AX8xErrMsg:= '638B =  Parameter Torque Current curve: Unable to calculate Torque Current curve.';
+	16#638C: F_AX8xErrMsg:= '638C =  Motor type does not match';
+	16#638D: F_AX8xErrMsg:= '638D =  Connected Motor is compatible to the configured Motor';
+	16#638E: F_AX8xErrMsg:= '638E =  The Motor brake is automatically unlocked';
+	16#638F: F_AX8xErrMsg:= '638F =  Parameter Torque Control: The value in Object 0x%x/%x is higher then the Motor maximum voltage slope (0x%x/%x).';
+	16#639A: F_AX8xErrMsg:= '639A =  additional Factor Group Parameters: Position encoder resolution illegal encoder increments';
+	16#639B: F_AX8xErrMsg:= '639B =  additional Factor Group Parameters: Position encoder resolution illegal motor revolutions';
+	16#639C: F_AX8xErrMsg:= '639C =  Velocity factor illegal. A possible Value would be %u/%u.';
+	16#639D: F_AX8xErrMsg:= '639D =  Acceleration factor illegal. A possible Value would be %u/%u.';
+	16#639E: F_AX8xErrMsg:= '639E =  Scaling index object 0x%x does not fit the Factor group parameters for the first Encoder';
+	16#639F: F_AX8xErrMsg:= '639F =  Scaling index object 0x%x does not fit the Factor group parameters for the second Encoder';
+	16#63A0: F_AX8xErrMsg:= '63A0 =  Motor or Primary Feedback changed';
+	16#63A1: F_AX8xErrMsg:= '63A1 =  Secondary Feedback changed';
+	16#63A2: F_AX8xErrMsg:= '63A2 =  Offset position actual value: No position offset existing in source "encoder memory"';
+	16#63A3: F_AX8xErrMsg:= '63A3 =  Offset additional position actual value: No position offset existing in source "encoder memory"';
+	16#63A4: F_AX8xErrMsg:= '63A4 =  Offset position actual value: No position offset existing in source "drive memory"';
+	16#63A5: F_AX8xErrMsg:= '63A5 =  Offset additional position actual value: No position offset existing in source "drive memory"';
+	16#63A6: F_AX8xErrMsg:= '63A6 =  Jerk factor illegal. A possible Value would be %u/%u.';
+	16#63A7: F_AX8xErrMsg:= '63A7 =  The range %u of the Position range limit is below the minimum accepted value of %u.';
+	16#63A8: F_AX8xErrMsg:= '63A8 =  Position range limit Inc with remainder is not supported for primary feedback.';
+	16#63A9: F_AX8xErrMsg:= '63A9 =  Position range limit Inc with remainder is not supported for secondary feedback.';
+	16#63AA: F_AX8xErrMsg:= '63AA =  Object 0x%X/%X changed in EtherCAT SafeOP or OP.';
+	16#8A80: F_AX8xErrMsg:= '8A80 =  Illegal Modes of Operation';
+	16#8A81: F_AX8xErrMsg:= '8A81 =  Illegal Modes of Operation change';
+	16#A000: F_AX8xErrMsg:= 'A000 =  Transition Pre-Op to Safe-Op not successful. Sync Manager Length Error.';
+	16#A001: F_AX8xErrMsg:= 'A001 =  Transition Pre-Op to Safe-Op not successful. Sync Manager Address Error.';
+	16#A002: F_AX8xErrMsg:= 'A002 =  Transition Pre-Op to Safe-Op not successful. Sync Manager Settings Error.';
+	16#A003: F_AX8xErrMsg:= 'A003 =  Transition Pre-Op to Safe-Op not successful. Sync Manager Address Range overlap.';
+	16#A004: F_AX8xErrMsg:= 'A004 =  Sync Manager is disabledand has a Size unequal zero.';
+	16#A010: F_AX8xErrMsg:= 'A010 =  SDO Complete Access Error: Object 0x%x/%x';
+	16#A011: F_AX8xErrMsg:= 'A011 =  RxPdo Mapping Error: Unable to map Object (not possible).';
+	16#A012: F_AX8xErrMsg:= 'A012 =  TxPdo Mapping Error: Unable to map Object (not possible).';
+	16#A013: F_AX8xErrMsg:= 'A013 =  RxPdo Mapping Error: Double Mapping of Object.';
+	16#A014: F_AX8xErrMsg:= 'A014 =  TxPdo Mapping Error: Double Mapping of Object.';
+	16#A015: F_AX8xErrMsg:= 'A015 =  RxPdo Mapping Error: Unable to map Object (no Mappings left).';
+	16#A016: F_AX8xErrMsg:= 'A016 =  TxPdo Mapping Error: Unable to map Object (no Mappings left).';
+	16#A017: F_AX8xErrMsg:= 'A017 =  RxPdo Mapping Error: Object always has to be mapped.';
+	16#A018: F_AX8xErrMsg:= 'A018 =  TxPdo Mapping Error: Object 0x%x/%x always has to be mapped.';
+	16#A019: F_AX8xErrMsg:= 'A019 =  RxPdo Mapping Error: Object has to be mapped because of modes of operation.';
+	16#A01A: F_AX8xErrMsg:= 'A01A =  TxPdo Mapping Error: Object has to be mapped because of modes of operation.';
+	16#A01B: F_AX8xErrMsg:= 'A01B =  RxPdo BitMapping Error: Object 0x%x/%x is not next to Object 0x%x/%x. (SyncManager %u)';
+	16#A01C: F_AX8xErrMsg:= 'A01C =  TxPdo BitMapping Error: Object 0x%x/%x is not next to Object 0x%x/%x. (SyncManager %u)';
+	16#A01D: F_AX8xErrMsg:= 'A01D =  RxPdo BitMapping Error: Can not Transform Bit-Mappings to Byte-Mappings. (SyncManager %u)';
+	16#A01E: F_AX8xErrMsg:= 'A01E =  TxPdo BitMapping Error: Can not Transform Bit-Mappings to Byte-Mappings. (SyncManager %u)';
+	16#A080: F_AX8xErrMsg:= 'A080 =  Safe-Op is not possible because the local TwinCAT Runtime is in ConfigMode.';
+	16#A081: F_AX8xErrMsg:= 'A081 =  Transition Pre-Op to Safe-Op not successful. Safetycard not detected.';
+	16#A082: F_AX8xErrMsg:= 'A082 =  EtherCAT Slave Stack Error:';
+	16#FF01: F_AX8xErrMsg:= 'FF01 =  Init Timeout or Error reaction forced: Generative brake order';
+	16#FF02: F_AX8xErrMsg:= 'FF02 =  Error reaction forced: Non-generative brake order';
+	16#FF03: F_AX8xErrMsg:= 'FF03 =  Error reaction forced: Brake chopper off';
+	16#FF07: F_AX8xErrMsg:= 'FF07 =  Error reaction forced: Torque Off';
+	16#FF08: F_AX8xErrMsg:= 'FF08 =  Error reaction forced: Shorted Coils Brake';
+	16#FF09: F_AX8xErrMsg:= 'FF09 =  Error reaction forced: Open Loop Ramp';
+	16#FF0A: F_AX8xErrMsg:= 'FF0A =  Error reaction forced: Closed Loop Ramp';
+	16#FF0B: F_AX8xErrMsg:= 'FF0B =  Error reaction forced: NC handling';
+	16#FF0C: F_AX8xErrMsg:= 'FF0C =  Error reaction TorqueOff with emergency brake';
+	16#FFFC: F_AX8xErrMsg:= 'FFFC =  %s';
+	16#FFFD: F_AX8xErrMsg:= 'FFFD =  Debug firmware.  Replace "As soon as possible"!';
+	16#FFFE: F_AX8xErrMsg:= 'FFFE =  %s';
+	16#FFFF: F_AX8xErrMsg:= 'FFFF =  Internal Error.   Additional Errorcode 0x%x';
+
+ELSE
+	F_AX8xErrMsg := UINT_TO_STRING(uiDriveError);
+	F_AX8xErrMsg := concat(F_AX8xErrMsg, ' Unknown Error code');
+END_CASE
+F_AX8xErrMsg := F_AX8xErrMsg;]]></ST>
+    </Implementation>
+    <LineIds Name="F_AX8xErrMsg">
+      <LineId Id="3" Count="1" />
+      <LineId Id="6" Count="182" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_FBStateCS" Id="{fadbc5f1-3fd9-4b1e-bdaf-ab0b2c347300}">
+    <Declaration><![CDATA[TYPE E_SAFETY_FBStateCS :
+(* Refers to the following function blocks: CONNECTION SHUTDOWN *)
+(
+	eSAFETY_FBStateCS_UNDEFINED			:= 0,
+	eSAFETY_FBStateCS_RUN				:= 1,
+	eSAFETY_FBStateCS_STOP 				:= 2,
+	eSAFETY_FBStateCS_SAFE 				:= 3,
+	eSAFETY_FBStateCS_ERROR 			:= 4,
+	eSAFETY_FBStateCS_RESET				:= 5,
+	eSAFETY_FBStateCS_ACTIVE			:= 10,
+	eSAFETY_FBStateCS_DEACTIVE			:= 11
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

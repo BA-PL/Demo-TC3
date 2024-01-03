@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_ESTOP" Id="{f66afb92-79cd-4643-bbff-fcc0590eac9c}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_ESTOP :
+STRUCT
+	{attribute 'hide'}
+	BUnknown						: BYTE;
+	BState							: BYTE;
+(* wDiagnosis *)
+	bDiag_DiscError1_2				: BIT;		(* Bit 0: Discrepancy error input group 1 (EStopIn1/2) *)
+	bDiag_DiscError3_4				: BIT;		(* Bit 1: Discrepancy error input group 2 (EStopIn3/4) *)
+	bDiag_DiscError5_6				: BIT;		(* Bit 2: Discrepancy error input group 2 (EStopIn5/6) *)
+	bDiag_DiscError7_8				: BIT;		(* Bit 3: Discrepancy error input group 2 (EStopIn7/8) *)
+	bDiag_EDM1Error					: BIT;		(* Bit 4: EDM monitoring error EDM1 Error *)
+	bDiag_EDM2Error					: BIT;		(* Bit 5: EDM monitoring error EDM2 Error *)
+	{attribute 'hide'}
+	bDiagBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT7						: BIT; 		(* Empty *)
+	bDiag_DiscErrorSIADE1_2			: BIT;		(* Bit 8: Discrepancy error input group 1 with activated option "Safe Inputs after Disc Error"  (set in addition to bit 0) *)
+	bDiag_DiscErrorSIADE3_4			: BIT;		(* Bit 9: Discrepancy error input group 2 with activated option "Safe Inputs after Disc Error"  (set in addition to bit 1) *)
+	bDiag_DiscErrorSIADE5_6			: BIT;		(* Bit 10: Discrepancy error input group 3 with activated option "Safe Inputs after Disc Error"  (set in addition to bit 2) *)
+	bDiag_DiscErrorSIADE7_8			: BIT;		(* Bit 11: Discrepancy error input group 4 with activated option "Safe Inputs after Disc Error"  (set in addition to bit 3)*)
+	{attribute 'hide'}
+	bDiagBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT15						: BIT; 		(* Empty *)
+(* wInputs *)
+	bIn_Restart						: BIT; 		(* .0 *)
+	bIn_EDM1						: BIT; 		(* .1 *)
+	bIn_EDM2						: BIT; 		(* .2 *)
+	{attribute 'hide'}
+	bInputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT7						: BIT; 		(* Empty *)
+	bIn_EStopIn1					: BIT; 		(* .8 *)
+	bIn_EStopIn2					: BIT; 		(* .9 *)
+	bIn_EStopIn3					: BIT; 		(* .10 *)
+	bIn_EStopIn4					: BIT; 		(* .11 *)
+	bIn_EStopIn5					: BIT; 		(* .12 *)
+	bIn_EStopIn6					: BIT; 		(* .13 *)
+	bIn_EStopIn7					: BIT; 		(* .14 *)
+	bIn_EStopIn8					: BIT; 		(* .15 *)
+(* wOutputs *)
+	bOut_Error						: BIT; 		(* .0 *)
+	bOut_EstopOut					: BIT; 		(* .1 *)
+	bOut_EstopDelOut				: BIT; 		(* .2 *)
+	{attribute 'hide'}
+	bOutputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT10					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT11					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT12					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT13					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT14					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT15					: BIT; 		(* Empty *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

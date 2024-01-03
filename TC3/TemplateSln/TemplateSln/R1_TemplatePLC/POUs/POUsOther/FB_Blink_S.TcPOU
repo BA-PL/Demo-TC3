@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_Blink_S" Id="{cf256ac7-7962-4767-9504-b3ad334176c8}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Blink_S
+VAR_INPUT
+	Tv:TIME;		(*Czas trwania impulsu i przerwy*)
+END_VAR
+VAR_OUTPUT
+	Q:BOOL;			(*Wyjscie*)
+END_VAR
+VAR
+	ton1: TON;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ton1(IN:= TRUE, PT:= 2*Tv, Q=> , ET=> );
+Q := ton1.ET > Tv;
+IF ton1.Q THEN
+	ton1(IN:= FALSE);
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Blink_S">
+      <LineId Id="3" Count="3" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

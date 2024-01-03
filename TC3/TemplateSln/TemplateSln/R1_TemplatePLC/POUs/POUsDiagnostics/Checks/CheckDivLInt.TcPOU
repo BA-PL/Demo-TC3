@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+  <POU Name="CheckDivLInt" Id="{f59dd30b-73ea-4bd5-974c-0699274ce057}" SpecialFunc="CheckDivInt64">
+    <Declaration><![CDATA[// Implicitly generated code : DO NOT EDIT
+FUNCTION CheckDivLInt : LINT
+VAR_INPUT
+	divisor:LINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Implicitly generated code : Only an Implementation suggestion
+IF divisor = 0 THEN
+	CheckDivLInt:=1;
+	GVL_Checks.dCheckDivLInt := GVL_Checks.dCheckDivLInt + 1;
+	ADSLOGSTR(4,'Checks critical error - LINT variable divided by 0.','');
+ELSE
+	CheckDivLInt:=divisor;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="CheckDivLInt">
+      <LineId Id="3" Count="0" />
+      <LineId Id="13" Count="5" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="F_GetVersionSafetyDiag" Id="{857475fa-4e2a-42a1-9f3d-cf78f09662d8}" SpecialFunc="None">
+    <Declaration><![CDATA[(*************************************************************************************************)
+(*							Beckhoff Automation Poland												*)
+(*									24.05.2017														*)
+(*	Biblioteka sluzaca do diagnozowania stanu modulow oraz blokow funkcyjnych SAFETY				*)	
+(* 								v2.7																*)
+(*	Dodano FB_AX580x_DiagnosticData	ST_AX580x_DiagnosticData										*)		
+(* 								v2.6																*)
+(*	FB_ELx9xx - dodano Resety, obsluge bledow, zunifikowano kod										*)	
+(* 								v2.5																*)
+(*	obsluga bledow w blokach EL, poprawiednie w wizualizacji wyswietlania nr seryjnego - wiodace 0	*)	
+(* 								v2.4																*)
+(*	dodano zborczy blad dla struktur - bGeneralError										 		*)
+(* 								v2.3																*)
+(*	dodano inf o dokumentacji, uzupelniono diagnostyke, rozbudowano struktury diagnostyczne HW 		*)	
+(* 								v2.2																*)
+(*	usunieto bitmapy																				*)
+(* 																									*)
+(*	poprzednie wersje - inf wew																		*)
+
+	(* Based on docu:
+						EL6900en v 2.0.0 Date 2016-03-17 
+						EL1904en v 2.0.0 Date 2016-03-17 
+						EL2904en v 2.0.1 Date 2016-04-24
+		TC version: 4020.28
+*)											
+FUNCTION F_GetVersionSafetyDiag : UINT
+VAR_INPUT
+	nVersionElement: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE nVersionElement OF
+1:	(* major number *)
+	F_GetVersionSafetyDiag := stLibVersion_TC3SafetyDiag.iMajor;
+2:	(* minor number *)
+	F_GetVersionSafetyDiag := stLibVersion_TC3SafetyDiag.iMinor;
+3:	(* revision number *)
+	F_GetVersionSafetyDiag := stLibVersion_TC3SafetyDiag.iRevision;
+ELSE
+	F_GetVersionSafetyDiag := 16#FFFF;
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="F_GetVersionSafetyDiag">
+      <LineId Id="61" Count="8" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

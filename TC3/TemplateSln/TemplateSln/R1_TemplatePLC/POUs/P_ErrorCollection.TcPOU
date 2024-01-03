@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_ErrorCollection" Id="{12c6371e-2444-4a6d-b57d-58647b3301b7}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									2.11.2018
+//	Place to collect all module error, warning, ready etc flags. Here You can mute errors also.
+// 
+//	v1.0 	|| TC v 3.1.4022.25 		|| Pierwsza wersja
+//==================================================================================================
+PROGRAM P_ErrorCollection
+VAR
+	bOK										: BOOL;
+	bWarning								: BOOL;
+	bError									: BOOL;
+	bFatalError								: BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[bError := P_SystemDiagnostics.bError OR P_Template_SAFETY.bError; // And more....
+// Collect flags - real
+bWarning  								:= bWarning; 										// Collection
+bError  								:= bError; 											// Collection
+bFatalError  							:= bFatalError; 									// Collection
+bOk										:= NOT (bWarning OR bError OR bFatalError);
+// Pass to global, add mute if neccesary
+GVL.bGeneralWarning  					:= bWarning;										// Pass
+GVL.bGeneralError  						:= bError AND NOT GVL.bMuteGeneralError;			// Pass and mute
+GVL.bGeneralFatalError  				:= bFatalError AND NOT GVL.bMuteGeneralFatalError;	// Pass and mute
+GVL.bGeneralOK 							:= NOT GVL.bGeneralWarning OR GVL.bGeneralError OR GVL.bGeneralFatalError;
+// Machine units ready flag
+GVL.bAllUnitsReady 						:= NOT (P_Template.bError (*OR P_Template_CAM.bError*));	// All units
+// After fatal error and auto mode machine reset is required
+GVL.bRestartRequired					R= NOT GVL.bGeneralFatalError;
+GVL.bRestartRequired					S= GVL.bGeneralFatalError AND (GVL_Machine.eMode = E_MachineMode.eAutomatic);]]></ST>
+    </Implementation>
+    <LineIds Name="P_ErrorCollection">
+      <LineId Id="62" Count="0" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="38" Count="1" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="54" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_MCSetPositionIO" Id="{0cd070ee-98c4-41ab-9953-0f23ad800211}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.04.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_MCSetPositionIO:
+STRUCT
+	bExecute						: BOOL;								// Rising edge executes cmd
+	lrPosition						: LREAL;
+	bMode							: BOOL;								// RELATIVE = True, ABSOLUTE = False (Default)
+	stOptions						: Tc2_MC2.ST_SetPositionOptions;
+	bDone							: BOOL;
+	bBusy							: BOOL;
+	bError							: BOOL;
+	udiErrorID						: UDINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.16">
+  <POU Name="F_EL72ErrMsg" Id="{b54395cc-3a5f-432d-a3f2-9a678b70259b}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//								7.12.2018
+//		Funkcja konwertujaca nr bledu na opis
+// 	v1.0	|| TC v 3.1.4022.27	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION F_EL72ErrMsg : STRING(255)
+VAR_INPUT
+	uiDriveError : UINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF uiDriveError < 2 THEN
+	F_EL72ErrMsg := '';
+	RETURN;
+END_IF
+
+CASE uiDriveError OF
+	16#1: F_EL72ErrMsg:= '1 = No error';
+	16#2: F_EL72ErrMsg:= '2 = Communication established';
+	16#3: F_EL72ErrMsg:= '3 = General information; parameters depend on event. See device documentation for interpretation.';
+	16#1000: F_EL72ErrMsg:= '1000 = General information; parameters depend on event. See device documentation for interpretation.';
+	16#1012: F_EL72ErrMsg:= '1012 = EtherCAT state change Init - PreOp';
+	16#1021: F_EL72ErrMsg:= '1021 = EtherCAT state change PreOp - Init';
+	16#1024: F_EL72ErrMsg:= '1024 = EtherCAT state change PreOp - Safe-Op';
+	16#1042: F_EL72ErrMsg:= '1042 = EtherCAT state change SafeOp - PreOp';
+	16#1048: F_EL72ErrMsg:= '1048 = EtherCAT state change SafeOp - Op';
+	16#1084: F_EL72ErrMsg:= '1084 = EtherCAT state change Op - SafeOp';
+	16#1100: F_EL72ErrMsg:= '1100 = Detection of the mode of operation ended';
+	16#1135: F_EL72ErrMsg:= '1135 = Cycle time OK';
+	16#1157: F_EL72ErrMsg:= '1157 = Data saved manually';
+	16#1158: F_EL72ErrMsg:= '1158 = Data saved automatically';
+	16#1159: F_EL72ErrMsg:= '1159 = Data deleted';
+	16#117F: F_EL72ErrMsg:= '117F = Information';
+	16#1201: F_EL72ErrMsg:= '1201 = Communication to the field side restored.  This message appears, for example, if the voltage was removed from the power contacts and re-applied during operation';
+	16#1300: F_EL72ErrMsg:= '1300 = Position set - StartInputhandler';
+	16#1303: F_EL72ErrMsg:= '1303 = Encoder power supply unit OK';
+	16#1304: F_EL72ErrMsg:= '1304 = Encoder initialization successfully completed';
+	16#1305: F_EL72ErrMsg:= '1305 = Send encoder reset command';
+	16#1400: F_EL72ErrMsg:= '1400 = Drive is calibrated';
+	16#1401: F_EL72ErrMsg:= '1401 = Current drive status';
+	16#1705: F_EL72ErrMsg:= '1705 = Processor load is back in the normal range';
+	16#1706: F_EL72ErrMsg:= '1706 = Channel is no longer in saturation';
+	16#1707: F_EL72ErrMsg:= '1707 = Channel is no longer overloaded';
+	16#170A: F_EL72ErrMsg:= '170A = A measuring range error is no longer active';
+	16#170C: F_EL72ErrMsg:= '170C = Calibration data were saved';
+	16#170D: F_EL72ErrMsg:= '170D = Calibration data are not applied and saved until the command "0x5AFE" is sent';
+	16#2000: F_EL72ErrMsg:= '2000 = %s: %s';
+	16#2001: F_EL72ErrMsg:= '2001 = Network connection lost';
+	16#2002: F_EL72ErrMsg:= '2002 = Network connection found';
+	16#2003: F_EL72ErrMsg:= '2003 = Invalid IP configuration';
+	16#2004: F_EL72ErrMsg:= '2004 = Valid IP configuration, assigned by the DHCP server';
+	16#2005: F_EL72ErrMsg:= '2005 = DHCP client timeout';
+	16#2006: F_EL72ErrMsg:= '2006 = Duplicate IP address found';
+	16#2007: F_EL72ErrMsg:= '2007 = UDP handler initialized';
+	16#2008: F_EL72ErrMsg:= '2008 = TCP handler initialized';
+	16#2009: F_EL72ErrMsg:= '2009 = No free TCP sockets available.';
+	16#4000: F_EL72ErrMsg:= '4000 = General warning; parameters depend on event. See device documentation for interpretation.';
+	16#4001: F_EL72ErrMsg:= '4001 = Warning: 0x%X, 0x%X, 0x%X';
+	16#4002: F_EL72ErrMsg:= '4002 = %s: %s Connection Open (IN:%d OUT:%d API:%dms) from %d.%d.%d.%d successful';
+	16#4003: F_EL72ErrMsg:= '4003 = %s: %s Connection Close (IN:%d OUT:%d) from %d.%d.%d.%d successful';
+	16#4004: F_EL72ErrMsg:= '4004 = %s: %s Connection (IN:%d OUT:%d) with %d.%d.%d.%d timed out';
+	16#4005: F_EL72ErrMsg:= '4005 = %s: %s Connection Open (IN:%d OUT:%d) from %d.%d.%d.%d denied (Error: %u)';
+	16#4006: F_EL72ErrMsg:= '4006 = %s: %s Connection Open (IN:%d OUT:%d) from %d.%d.%d.%d denied (Input Data Size expected: %d Byte(s) received: %d Byte(s))';
+	16#4007: F_EL72ErrMsg:= '4007 = %s: %s Connection Open (IN:%d OUT:%d) from %d.%d.%d.%d denied (Output Data Size expected: %d Byte(s) received: %d Byte(s))';
+	16#4008: F_EL72ErrMsg:= '4008 = %s: %s Connection Open (IN:%d OUT:%d) from %d.%d.%d.%d denied (RPI:%dms not supported -> API:%dms)';
+	16#4101: F_EL72ErrMsg:= '4101 = Overtemperature. The internal temperature of the terminal exceeds the parameterized warning threshold';
+	16#4102: F_EL72ErrMsg:= '4102 = Discrepancy in the PDO-Configuration';
+	16#417F: F_EL72ErrMsg:= '417F = Warning: 0x%X, 0x%X, 0x%X';
+	16#428D: F_EL72ErrMsg:= '428D = Challenge is not Random';
+	16#4300: F_EL72ErrMsg:= '4300 = Subincrements deactivated: %d, %d';
+	16#4301: F_EL72ErrMsg:= '4301 = Encoder-Warning';
+	16#4400: F_EL72ErrMsg:= '4400 = Drive is not calibrated: %d, %d';
+	16#4401: F_EL72ErrMsg:= '4401 = Starttype not supported: 0x%X, %d';
+	16#4402: F_EL72ErrMsg:= '4402 = Command rejected: %d, %d';
+	16#4405: F_EL72ErrMsg:= '4405 = Invalid modulo subtype: %d, %d';
+	16#4410: F_EL72ErrMsg:= '4410 = Target overrun: %d, %d';
+	16#4411: F_EL72ErrMsg:= '4411 = DC-Link undervoltage (Warning)';
+	16#4412: F_EL72ErrMsg:= '4412 = DC-Link overvoltage (Warning)';
+	16#4413: F_EL72ErrMsg:= '4413 = I2T-Model Amplifier overload (Warning)';
+	16#4414: F_EL72ErrMsg:= '4414 = I2T-Model Motor overload (Warning)';
+	16#4415: F_EL72ErrMsg:= '4415 = Speed limitation active';
+	16#4416: F_EL72ErrMsg:= '4416 = Step lost detected at position: 0x%X%X';
+	16#4417: F_EL72ErrMsg:= '4417 = Motor overtemperature';
+	16#4418: F_EL72ErrMsg:= '4418 = Limit: Current';
+	16#4419: F_EL72ErrMsg:= '4419 = Limit: Amplifier I2T-model exceeds 100%%';
+	16#441A: F_EL72ErrMsg:= '441A = Limit: Motor I2T-model exceeds 100%%';
+	16#441B: F_EL72ErrMsg:= '441B = Limit: Velocity limitation';
+	16#441C: F_EL72ErrMsg:= '441C = STO while the axis was enabled';
+	16#4600: F_EL72ErrMsg:= '4600 = Wrong supply voltage range';
+	16#4610: F_EL72ErrMsg:= '4610 = Wrong output voltage range';
+	16#4705: F_EL72ErrMsg:= '4705 = Processor usage at %d %%';
+	16#470A: F_EL72ErrMsg:= '470A = EtherCAT Frame missed (change Settings or DC Operation Mode or Sync0 Shift Time)';
+	16#8000: F_EL72ErrMsg:= '8000 = %s: %s';
+	16#8001: F_EL72ErrMsg:= '8001 = General error; parameters depend on event. See device documentation for interpretation.';
+	16#8002: F_EL72ErrMsg:= '8002 = Communication aborted';
+	16#8003: F_EL72ErrMsg:= '8003 = Configuration error: 0x%X, 0x%X, 0x%X';
+	16#8004: F_EL72ErrMsg:= '8004 = %s: Unsuccessful FwdOpen-Response received from %d.%d.%d.%d (%s) (Error: %u)';
+	16#8005: F_EL72ErrMsg:= '8005 = %s: FwdClose-Request sent to %d.%d.%d.%d (%s)';
+	16#8006: F_EL72ErrMsg:= '8006 = %s: Unsuccessful FwdClose-Response received from %d.%d.%d.%d (%s) (Error: %u)';
+	16#8007: F_EL72ErrMsg:= '8007 = %s: Connection with %d.%d.%d.%d (%s) closed';
+	16#8100: F_EL72ErrMsg:= '8100 = Status word set: 0x%X, %d';
+	16#8101: F_EL72ErrMsg:= '8101 = Operation mode incompatible to PDO interface: 0x%X, %d';
+	16#8102: F_EL72ErrMsg:= '8102 = Invalid combination of Inputs and Outputs PDOs';
+	16#8103: F_EL72ErrMsg:= '8103 = No variable linkage';
+	16#8104: F_EL72ErrMsg:= '8104 = Terminal-Overtemperature';
+	16#8105: F_EL72ErrMsg:= '8105 = PD-Watchdog';
+	16#8135: F_EL72ErrMsg:= '8135 = Cycle time has to be a multiple of 125 µs';
+	16#8136: F_EL72ErrMsg:= '8136 = Configuration error: invalid sampling rate';
+	16#8137: F_EL72ErrMsg:= '8137 = Electronic type plate: CRC error';
+	16#8140: F_EL72ErrMsg:= '8140 = Sync Error';
+	16#8141: F_EL72ErrMsg:= '8141 = Sync%X Interrupt lost';
+	16#8142: F_EL72ErrMsg:= '8142 = Sync Interrupt asynchronous';
+	16#8143: F_EL72ErrMsg:= '8143 = Jitter too big';
+	16#817F: F_EL72ErrMsg:= '817F = Error: 0x%X, 0x%X, 0x%X';
+	16#8200: F_EL72ErrMsg:= '8200 = Write access error: %d, %d';
+	16#8201: F_EL72ErrMsg:= '8201 = No communication to field-side (Auxiliary voltage missing)';
+	16#8281: F_EL72ErrMsg:= '8281 = Ownership failed: %X';
+	16#8282: F_EL72ErrMsg:= '8282 = To many Keys founded';
+	16#8283: F_EL72ErrMsg:= '8283 = Key Creation failed: %X';
+	16#8284: F_EL72ErrMsg:= '8284 = Key loading failed';
+	16#8285: F_EL72ErrMsg:= '8285 = Reading Public Key failed: %X';
+	16#8286: F_EL72ErrMsg:= '8286 = Reading Public EK failed: %X';
+	16#8287: F_EL72ErrMsg:= '8287 = Reading PCR Value failed: %X';
+	16#8288: F_EL72ErrMsg:= '8288 = Reading Certificate EK failed: %X';
+	16#8289: F_EL72ErrMsg:= '8289 = Challenge could not be hashed: %X';
+	16#828A: F_EL72ErrMsg:= '828A = Tickstamp Process failed';
+	16#828B: F_EL72ErrMsg:= '828B = PCR Process failed: %X';
+	16#828C: F_EL72ErrMsg:= '828C = Quote Process failed: %X';
+	16#82FF: F_EL72ErrMsg:= '82FF = Bootmode not activated';
+	16#8300: F_EL72ErrMsg:= '8300 = Set position error: 0x%X, %d';
+	16#8301: F_EL72ErrMsg:= '8301 = Encoder increments not configured: 0x%X, %d';
+	16#8302: F_EL72ErrMsg:= '8302 = Encoder error';
+	16#8303: F_EL72ErrMsg:= '8303 = Encoder supply error';
+	16#8304: F_EL72ErrMsg:= '8304 = Encoder communication error, channel: %X';
+	16#8305: F_EL72ErrMsg:= '8305 = EnDat2.2 is not supported, channel: %X';
+	16#8306: F_EL72ErrMsg:= '8306 = Delay time, tolerance limit exceeded, 0x%X, channel: %X';
+	16#8307: F_EL72ErrMsg:= '8307 = Delay time, maximum value exceeded, 0x%X, channel: %X';
+	16#8308: F_EL72ErrMsg:= '8308 = Unsupported ordering designation, 0x%X, channel: %X (only 02 and 22 is supported)';
+	16#8309: F_EL72ErrMsg:= '8309 = Encoder CRC error, channel: %X';
+	16#830A: F_EL72ErrMsg:= '830A = Temperature %X could not be read, channel: %X';
+	16#8400: F_EL72ErrMsg:= '8400 = Incorrect drive configuration: 0x%X, %d';
+	16#8401: F_EL72ErrMsg:= '8401 = Limiting of calibration velocity: %d, %d';
+	16#8402: F_EL72ErrMsg:= '8402 = Emergency stop activated: 0x%X, %d';
+	16#8403: F_EL72ErrMsg:= '8403 = ADC Error';
+	16#8404: F_EL72ErrMsg:= '8404 = Overcurrent';
+	16#8405: F_EL72ErrMsg:= '8405 = Invalid modulo position: %d';
+	16#8406: F_EL72ErrMsg:= '8406 = DC-Link undervoltage (Error)';
+	16#8407: F_EL72ErrMsg:= '8407 = DC-Link overvoltage (Error)';
+	16#8408: F_EL72ErrMsg:= '8408 = I2T-Model Amplifier overload (Error)';
+	16#8409: F_EL72ErrMsg:= '8409 = I2T-Model motor overload (Error)';
+	16#840A: F_EL72ErrMsg:= '840A = Overall current threshold exceeded';
+	16#8415: F_EL72ErrMsg:= '8415 = Invalid modulo factor: %d';
+	16#8416: F_EL72ErrMsg:= '8416 = Motor overtemperature';
+	16#8417: F_EL72ErrMsg:= '8417 = Maximum rotating field velocity exceeded';
+	16#841C: F_EL72ErrMsg:= '841C = STO while the axis was enabled';
+	16#8550: F_EL72ErrMsg:= '8550 = Zero crossing phase %X missing';
+	16#8551: F_EL72ErrMsg:= '8551 = Phase sequence Error';
+	16#8552: F_EL72ErrMsg:= '8552 = Overcurrent phase %X';
+	16#8553: F_EL72ErrMsg:= '8553 = Overcurrent neutral wire';
+	16#8581: F_EL72ErrMsg:= '8581 = Wire broken Ch %D';
+	16#8600: F_EL72ErrMsg:= '8600 = Wrong supply voltage range';
+	16#8601: F_EL72ErrMsg:= '8601 = Supply voltage to low';
+	16#8602: F_EL72ErrMsg:= '8602 = Supply voltage to high';
+	16#8603: F_EL72ErrMsg:= '8603 = Over current of supply voltage';
+	16#8610: F_EL72ErrMsg:= '8610 = Wrong output voltage range';
+	16#8611: F_EL72ErrMsg:= '8611 = Output voltage to low';
+	16#8612: F_EL72ErrMsg:= '8612 = Output voltage to high';
+	16#8613: F_EL72ErrMsg:= '8613 = Over current of output voltage';
+	16#8700: F_EL72ErrMsg:= '8700 = Channel/Interface not calibrated';
+	16#8701: F_EL72ErrMsg:= '8701 = Operating time was manipulated';
+	16#8702: F_EL72ErrMsg:= '8702 = Oversampling setting is not possible';
+	16#8703: F_EL72ErrMsg:= '8703 = No slave controller found';
+	16#8704: F_EL72ErrMsg:= '8704 = Slave controller is not in Bootstrap';
+	16#8705: F_EL72ErrMsg:= '8705 = Processor usage to high (>= 100%%)';
+	16#8706: F_EL72ErrMsg:= '8706 = Channel in saturation';
+	16#8707: F_EL72ErrMsg:= '8707 = Channel overload';
+	16#8708: F_EL72ErrMsg:= '8708 = Overloadtime was manipulated';
+	16#8709: F_EL72ErrMsg:= '8709 = Saturationtime was manipulated';
+	16#870A: F_EL72ErrMsg:= '870A = Channel range error';
+	16#870B: F_EL72ErrMsg:= '870B = no ADC clock';
+	16#FFFF: F_EL72ErrMsg:= 'FFFF = Debug: 0x%X, 0x%X, 0x%X';
+
+ELSE
+	F_EL72ErrMsg := UINT_TO_STRING(uiDriveError);
+	F_EL72ErrMsg := concat(F_EL72ErrMsg, ' Unknown Error code');
+END_CASE
+F_EL72ErrMsg := F_EL72ErrMsg;]]></ST>
+    </Implementation>
+    <LineIds Name="F_EL72ErrMsg">
+      <LineId Id="3" Count="1" />
+      <LineId Id="6" Count="172" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

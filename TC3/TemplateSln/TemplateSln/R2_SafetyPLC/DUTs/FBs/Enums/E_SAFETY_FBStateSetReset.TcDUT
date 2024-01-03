@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_SAFETY_FBStateSetReset" Id="{ce614cae-feed-4c0a-ae41-3154cc3ca697}">
+    <Declaration><![CDATA[TYPE E_SAFETY_FBStateSetReset :
+(* Refers to the following function blocks: SR, RS *)
+(
+	eSAFETY_FBStateSetReset_UNDEFINED 	:= 0,
+	eSAFETY_FBStateSetReset_STOP 		:= 2,
+	eSAFETY_FBStateSetReset_SAFE 		:= 3,
+	eSAFETY_FBStateSetReset_SET 		:= 9
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

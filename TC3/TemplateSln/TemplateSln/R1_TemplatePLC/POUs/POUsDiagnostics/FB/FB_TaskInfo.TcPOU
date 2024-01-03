@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_TaskInfo" Id="{a97cad04-5914-49fc-bdc9-2d2ccb5425d6}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//							FB_TaskInfo
+//							15.11.2016
+//
+//				Blok funkcyjny odczytujący informacje o tasku
+//				Zapamiętuje maksymalne czasy wykonania oraz licznik przekroczeń
+//
+// 	v1.1 	|| TC v 3.1.4020.14 	|| - dodanie wyjsc
+// 	v1.0 	|| TC v 3.1.4020.14 	|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_TaskInfo
+VAR_INPUT
+	bReset					: BOOL;
+END_VAR
+VAR_OUTPUT
+	bError					: BOOL;
+END_VAR
+VAR
+	fbGetCurTaskIdx			: GETCURTASKINDEX;
+	rLastExecTime			: REAL;
+	rCycleTime				: REAL;
+	uiPriority				: UINT;
+	sTaskName				: STRING(63);
+	bCycleTimeExceeded		: BOOL;
+	rCycleCount				: REAL;
+	rTotalTime				: REAL;
+	rAverageCycleTime		: REAL;
+	bResetVisu				: BOOL;
+	byIndex					: BYTE;
+END_VAR
+VAR PERSISTENT
+	udiCountExceedCycle		: UDINT; 						
+	rMaxExecTime			: REAL;						
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbGetCurTaskIdx(index=>byIndex);
+
+(*Odczyt czasu cyklu i ostatniego czasu wykonania*)
+rCycleTime 					:= UDINT_TO_REAL(_TaskInfo[byIndex].CycleTime)/10000.0;
+rLastExecTime 				:= UDINT_TO_REAL(_TaskInfo[byIndex].LastExecTime)/10000.0;
+(*Zapamiętanie maksymalnego czasu wykonania*)
+IF rLastExecTime > rMaxExecTime THEN 
+	rMaxExecTime 			:= rLastExecTime;
+END_IF
+
+uiPriority					:= _TaskInfo[byIndex].Priority;
+sTaskName					:= _TaskInfo[byIndex].TaskName;
+bCycleTimeExceeded			:= _TaskInfo[byIndex].CycleTimeExceeded;
+bError 						:= bCycleTimeExceeded; // Blad gdy czas cyklu przekroczony
+
+(*Licznik przekroczeń czasu cyklu*)
+IF _TaskInfo[byIndex].CycleTimeExceeded  THEN 
+	udiCountExceedCycle 	:= udiCountExceedCycle + 1; 
+END_IF
+rCycleCount 				:= rCycleCount + 1;
+rTotalTime 					:= rLastExecTime + rTotalTime;
+rAverageCycleTime 			:= rTotalTime / rCycleCount;
+
+(*Reset wyliczanych wartości*)
+IF bReset OR bResetVisu THEN
+	udiCountExceedCycle 	:= 0;
+	rMaxExecTime 			:= 0;
+	rTotalTime 				:= 0;
+	rCycleCount 			:= 0;
+	rAverageCycleTime 		:= 0;
+	bReset 					:= FALSE;
+END_IF
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_TaskInfo">
+      <LineId Id="3" Count="32" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

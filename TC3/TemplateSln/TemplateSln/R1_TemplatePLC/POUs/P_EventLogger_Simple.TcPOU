@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.4">
+  <POU Name="P_EventLogger_Simple" Id="{0ac3b7e5-3b43-4adf-a733-83d5200475cb}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM P_EventLogger_Simple
+VAR
+	rtMessage 			: ARRAY [1..GVL_EventLogger_Simple.nMaxNumMessages] OF R_TRIG;
+	rtWarning 			: ARRAY [1..GVL_EventLogger_Simple.nMaxNumWarnings] OF R_TRIG;
+	rtError 			: ARRAY [1..GVL_EventLogger_Simple.nMaxNumErrors] OF R_TRIG;
+	ftError 			: ARRAY [1..GVL_EventLogger_Simple.nMaxNumErrors] OF F_TRIG;
+	rtErrorConfirm		: ARRAY [1..GVL_EventLogger_Simple.nMaxNumErrors] OF R_TRIG;
+	
+	fbTcMessage 		: FB_TcMessage;
+	fbTcWarning 		: FB_TcMessage;
+	fbTcError 			: ARRAY [1..GVL_EventLogger_Simple.nMaxNumErrors] OF FB_TcAlarm;
+	
+	idx					: UDINT;
+	bAlarmsInitialized	: BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Messages
+FOR idx := 1 TO GVL_EventLogger_Simple.nMaxNumMessages DO	
+	rtMessage[idx](CLK := GVL_EventLogger_Simple.arrMessageTriggers[idx]);
+	IF rtMessage[idx].Q THEN
+		GVL_EventLogger_Simple.arrMessageTriggers[idx] := FALSE; // auto clear
+		fbTcMessage.Create(TC_EVENT_CLASSES.MyMessages, idx, TcEventSeverity.Verbose, 0);
+		fbTcMessage.Send(0);
+	END_IF
+END_FOR
+
+// Warnings
+FOR idx := 1 TO GVL_EventLogger_Simple.nMaxNumWarnings DO	
+	rtWarning[idx](CLK := GVL_EventLogger_Simple.arrWarningTriggers[idx]);
+	IF rtWarning[idx].Q THEN
+		GVL_EventLogger_Simple.arrWarningTriggers[idx] := FALSE; // auto clear
+		fbTcWarning.Create(TC_EVENT_CLASSES.MyWarnings, idx, TcEventSeverity.Warning, 0);
+		fbTcWarning.Send(0);
+	END_IF
+END_FOR
+
+// Alarms
+IF NOT bAlarmsInitialized THEN
+	bAlarmsInitialized := TRUE;
+	FOR idx := 1 TO GVL_EventLogger_Simple.nMaxNumErrors DO	
+		fbTcError[idx].Create(TC_EVENT_CLASSES.MyErrors, idx, TcEventSeverity.Error, TRUE, 0);
+	END_FOR	
+END_IF
+
+FOR idx := 1 TO GVL_EventLogger_Simple.nMaxNumErrors DO	
+	rtError[idx](CLK := GVL_EventLogger_Simple.arrErrorTriggers[idx]);
+	ftError[idx](CLK := GVL_EventLogger_Simple.arrErrorTriggers[idx]);
+	rtErrorConfirm[idx](CLK := GVL_EventLogger_Simple.arrErrorConfirmations[idx]);
+	IF rtError[idx].Q THEN
+		fbTcError[idx].Raise(0);
+	END_IF
+	IF ftError[idx].Q THEN
+		fbTcError[idx].Clear(0, FALSE);
+	END_IF
+	IF rtErrorConfirm[idx].Q THEN
+		GVL_EventLogger_Simple.arrErrorConfirmations[idx] := FALSE; // auto clear
+		fbTcError[idx].Confirm(0);
+	END_IF	
+END_FOR
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="P_EventLogger_Simple">
+      <LineId Id="79" Count="0" />
+      <LineId Id="3" Count="7" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="11" Count="3" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="16" Count="3" />
+      <LineId Id="123" Count="0" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="117" Count="0" />
+      <LineId Id="127" Count="0" />
+      <LineId Id="118" Count="3" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="96" Count="0" />
+      <LineId Id="129" Count="1" />
+      <LineId Id="97" Count="2" />
+      <LineId Id="108" Count="2" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="113" Count="1" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="54" Count="2" />
+      <LineId Id="53" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

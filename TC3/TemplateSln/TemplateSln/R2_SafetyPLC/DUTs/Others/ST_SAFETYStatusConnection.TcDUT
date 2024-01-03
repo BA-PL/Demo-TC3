@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETYStatusConnection" Id="{ac6d6794-92bd-48e1-8175-d7eae04862b7}">
+    <Declaration><![CDATA[TYPE ST_SAFETYStatusConnection :
+STRUCT
+	dwStatusConnection			: DWORD;
+	BState						: BYTE;
+	BDiagnosis					: BYTE;	(*	xxxx 0001  Invalid command 
+											xxxx 0010  Unknown command 
+											xxxx 0011  Invalid connection ID 
+											xxxx 0100  Invalid CRC 
+											xxxx 0101  Watchdog time elapsed 
+											xxxx 0110  Invalid FSoE address 
+											xxxx 0111  Invalid data 
+											xxxx 1000  Invalid communication parameter length 
+											xxxx 1001  Invalid communication parameters 
+											xxxx 1010  Invalid user parameter length 
+											xxxx 1011  Invalid user parameters 
+											xxxx 1100  FSoE master reset 
+											xxxx 1101  Module error detected on slave, with option "Module error is ComError" activated 
+											xxxx 1110  Module error detected on EL290x, with option "Error acknowledge active" activated 
+											xxxx 1111  Slave not yet started, or unexpected error argument 
+											xxx1 xxxx  FSoE slave error detected 
+											xx1x xxxx  FSoE slave reports Failsafe Value active 
+											x1xx xxxx  StartUp 
+											1xxx xxxx  FSoE master reports Failsafe Value active *)
+	eSAFETY_ConnectionDiag0F	: E_SAFETY_ConnectionDiag;
+	sSAFETY_ConnectionDiagF0	: STRING(4);
+	BSAFETY_ConnectionDiagF0	: BYTE;
+	eSAFETY_ConnectionState		: E_SAFETY_ConnectionState;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

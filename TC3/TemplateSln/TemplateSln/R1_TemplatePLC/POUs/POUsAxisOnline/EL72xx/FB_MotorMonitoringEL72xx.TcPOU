@@ -1,0 +1,432 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_MotorMonitoringEL72xx" Id="{5c5ff8ab-7a02-4e22-8483-b737f9e88153}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									9.07.2018
+//	Blok funkcyjny pozwala na monitorowanie i ograniczanie momentu oraz monitoring parametru I2T dla EL72xx.
+//	Zmienne do zlinkowania zadeklarowane są wewnątrz bloku.
+//	Ograniczenie i monitorowanie momentu
+//	Ograniczenie momentu podawane jest przez wejście rTorqueLimit.
+//	Na wyjściu podana jest wartość surowa w %, jak i przeskalowana na A (prąd) i Nm (moment).
+//	Blok zwraca wartości bieżące, przefiltrowane i maksymalne.
+//	Wartości maksymalne mogą być wyzerowane za pomocą zmiennej bReset.
+//	Wewnętrznie wykorzystany jest blok FB_FilterEx.
+//
+//  v1.0	|| TC v 3.1.4022.22		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_MotorMonitoringEL72xx
+VAR CONSTANT
+	rTorqueLimitLow					: REAL 		:= 0.01;				// Low limit used for bipolar torque limit value
+	rTorqueLimitHigh				: REAL		:= 500.0;				// High limit used for bipolar torque limit value
+END_VAR
+VAR_INPUT
+	bReset							: BOOL;								// Reset FB
+	rTorqueLimit					: REAL 		:= rTorqueLimitHigh; 	// Bipolar torque limit: 0-500%, resolution 0.1%, value goes to: 16#6072 (Ch A)/ 16#6872 (Ch B)	
+	stDriveRef						: ST_DriveRef;						// Necessary for FB_CoERead_ByDriveRef
+END_VAR
+VAR_OUTPUT
+	bError							: BOOL; 							// General error: parameter or CoE read.
+																		// If bError = TRUE and bInitialized = FALSE - error during read motor data.
+																		// If bError = TRUE and bInitialized = TRUE and (iAdsErrId <> 0 or iCANopenErrId <> 0) then I2T read error
+																		// If bError = TRUE and bInitialized = TRUE and iAdsErrId = 0 and iCANopenErrId = 0 then parameter error: rTorqueLimit outside permitted range rTorqueLimitLow..rTorqueLimitHigh or Empty stDriveRef
+	uiAdsErrId						: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	uiCANopenErrId					: UINT;								// Forwarded output FB_CoERead_ByDriveRef
+	bInitialized					: BOOL;								// TRUE - Motor data read without errors, so it's possible to calculate torqe and current values in metric units
+	bWarning						: BOOL;								// rCurrentF > rWarningCurrent, be aware to be over permitted range
+	rWarningCurrent					: REAL; 							// 8011:12 - Rated current in [A]
+	rTorquePerc						: REAL;								// [%]
+	rTorquePercMax					: REAL;								// Max [%]
+	rTorque							: REAL; 							// [Nm]
+	rTorqueF						: REAL;								// Filtered [Nm]
+	rTorqueMax						: REAL;								// Max [Nm]
+	rCurrent						: REAL; 							// [A]
+	rCurrentF						: REAL;								// Filtered [A]
+	rCurrentMax						: REAL;								// Max [A]
+	rI2T							: REAL; 							// Thermal Motor Utilization: 16#32C1:02 (Ch A)/ 16#36C1:02 (Ch B); units: [%]
+	rI2TMax							: REAL; 							// Max % Nominal
+END_VAR
+VAR_IN_OUT
+	Axis							: AXIS_REF;							// Axis Ref struct
+END_VAR
+VAR
+//======================= Internal var ===========================
+	iStep							: INT;								// Case instruction
+	bDriveRefOK						: BOOL;								// stDriveRef contains necessary data to read CoE
+	bTorqueLimitOK					: BOOL;								// rTorqueLimit in permitted range rTorqueLimitLow..rTorqueLimitHigh
+	uiBipolarTorqueLimitValue  		AT %Q*: UINT; 						// Raw data, linked to Bipolar torque limit value
+	rTorqueRAW						: REAL; 							// -1000 .. 1000 - RAW values the same as process image
+	rSfTorque						: REAL; 							// A --> Nm
+	rSfCurrent						: REAL; 							// RAW -1000..1000 --> A
+	wInitErrorCount					: WORD;								// Initialization error counter, if bigger then 10 then error
+	rPeakCurrent					: REAL; 							// 8011:11 in [A]
+	rRatedCurrent					: REAL; 							// 8011:12 in [A]
+	bFirstCycle						: BOOL := TRUE;
+	bRMSValue						: BOOL;								// 16#8010:54  Bit 0 = 1 - RMS value
+//========================== EL72xx =============================
+	dwPeakCurrent					: DWORD;							// 16#8011:11 - Max current, Peak current [mA]
+	dwRatedCurrent					: DWORD;							// 16#8011:12 - Rated current [mA]
+	dwTorqueConstant				: DWORD;							// 16#8011:16 - Torque constant [mNm/A]
+	dwFeatureBits					: DWORD;							// 16#8010:54 - Feature bits:	Peak value --> Bit 0 = 0 (default for EL7201-000x) 
+																									//	RMS value --> Bit 0 = 1 (default for EL7211-000x)
+//========================== I2T ================================
+	sDeviceName						: STRING;							// 
+	sNo								: STRING(1);						// xxxxxxx-000Y - char Y
+	usiI2T							: USINT;							// 
+	bDS402Profile					: BOOL;								// Flag DS402
+	bMDP742Profile					: BOOL;								// Flag MDP742
+	wMotorI2TIndex					: WORD;								// EL72x1-0000 --> MDP 742: A011:11 Motor I2T temperature [%] USINT
+																		// EL72x1-0001 --> DS 402: 2031:11 Motor I2T temperature [%] USINT
+//========================== FBs ================================
+	rtReset							: R_TRIG;							// Reset trigger
+	tonWait							: TON;								// Wait timer
+	fbFilterEx						: FB_FilterEx;						// Filter
+	fbGETCURTASKINDEX   			: GETCURTASKINDEX;					// FB to check task no
+	fbCoERead						: FB_CoERead_ByDriveRef;			// FB for read CoE parameters
+//===============================================================
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//===== Initialization, reinitialization and reset  =============
+ACT_Init_Reset();
+//=================== Call triggers and timers ==================
+tonWait(IN:= NOT tonWait.Q, PT:= T#1S);
+//======= Check for parameter error - each cycle ================
+bDriveRefOK 							:= (stDriveRef.nSlaveAddr <> 0) AND (stDriveRef.sNetId <> '');
+bTorqueLimitOK 							:= (rTorqueLimit > rTorqueLimitLow);
+//============= Read params and calculations ====================
+CASE iStep OF
+	
+	0: // Read: 16#8011:11 - Max current, Peak current [mA]
+	
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK THEN
+			fbCoERead.nIndex			:= 16#8011;
+			fbCoERead.nSubIndex			:= 16#11;
+			fbCoERead.pDstBuf			:= ADR(dwPeakCurrent);
+			fbCoERead.cbBufLen			:= SIZEOF(dwPeakCurrent);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= iStep + 10; 
+		END_IF
+	
+	10:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbCoERead.iAdsErrId;
+					uiCANopenErrId		:= fbCoERead.iCANopenErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+		
+	20: // Read: 16#8011:12 - Rated current [mA]
+	
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK THEN
+			fbCoERead.nIndex			:= 16#8011;
+			fbCoERead.nSubIndex			:= 16#12;
+			fbCoERead.pDstBuf			:= ADR(dwRatedCurrent);
+			fbCoERead.cbBufLen			:= SIZEOF(dwRatedCurrent);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= iStep + 10; 
+		END_IF
+	
+	30:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbCoERead.iAdsErrId;
+					uiCANopenErrId		:= fbCoERead.iCANopenErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+		
+	40: // Read: 16#8011:16 - Torque constant [mNm/A]
+	
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK THEN
+			fbCoERead.nIndex			:= 16#8011;
+			fbCoERead.nSubIndex			:= 16#16;
+			fbCoERead.pDstBuf			:= ADR(dwTorqueConstant);
+			fbCoERead.cbBufLen			:= SIZEOF(dwTorqueConstant);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= iStep + 10; 
+		END_IF
+	
+	50:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbCoERead.iAdsErrId;
+					uiCANopenErrId		:= fbCoERead.iCANopenErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+
+	60: // Read: 16#8010:54 - Feature bits
+	
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK THEN
+			fbCoERead.nIndex			:= 16#8010;
+			fbCoERead.nSubIndex			:= 16#54;
+			fbCoERead.pDstBuf			:= ADR(dwFeatureBits);
+			fbCoERead.cbBufLen			:= SIZEOF(dwFeatureBits);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= iStep + 10; 
+		END_IF
+	
+	70:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbCoERead.iAdsErrId;
+					uiCANopenErrId		:= fbCoERead.iCANopenErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= 100;
+			END_IF
+		END_IF
+	
+	100: // Calculate Sf
+	
+		bRMSValue						:= dwFeatureBits.0;											// If RMS then don't div by SQRT(2)
+		rPeakCurrent 					:= DWORD_TO_REAL(dwPeakCurrent) / 1000.0;					// In [A]
+		rRatedCurrent	 				:= DWORD_TO_REAL(dwRatedCurrent) / 1000.0;					// In [A]
+		rSfCurrent 						:= rRatedCurrent / 1000000.0 / SEL(bRMSValue,SQRT(2),1 );	// iTorque -1000..1000 --> - rPeakCurrent .. rPeakCurrent [A]
+		rWarningCurrent 				:= rRatedCurrent;
+		rSfTorque	 					:= DWORD_TO_REAL(dwTorqueConstant) / 1000.0;	// A --> Nm 
+		
+		iStep 							:= 200;
+		
+	200: // Read profile MDP 742 or DS 402:
+	
+			// We have to read device name Index 1008:0 - STRING
+			// EL72x1-0000 --> MDP 742: A011:11 Motor I2T temperature [%] USINT
+			// EL72x1-0001 --> DS 402: 2031:11 Motor I2T temperature [%] USINT
+	
+		// Execute read only if DriveRef is OK
+		IF bDriveRefOK THEN
+			fbCoERead.nIndex			:= 16#1008;
+			fbCoERead.nSubIndex			:= 0;
+			fbCoERead.pDstBuf			:= ADR(sDeviceName);
+			fbCoERead.cbBufLen			:= SIZEOF(sDeviceName);
+			fbCoERead.bExecute			:= TRUE;
+			iStep 						:= iStep + 10; 
+		END_IF
+	
+	210:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbCoERead.iAdsErrId;
+					uiCANopenErrId		:= fbCoERead.iCANopenErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				iStep 					:= iStep + 10;
+			END_IF
+		END_IF
+
+	220: // Check last digit in device name 0 - MDP742, 1 - DS402
+	
+	sNo 								:=  MID(sDeviceName, 1, FIND(sDeviceName, '-') + 4);
+	bMDP742Profile 						:= 	sNo = '0';
+	bDS402Profile 						:= 	sNo = '1';
+	// If 0 or 1 then go to next step, if other No - not implemented yet
+	IF bMDP742Profile OR bDS402Profile THEN
+		wMotorI2TIndex					:= SEL(bMDP742Profile, 16#2031, 16#A011);
+		iStep 							:= iStep + 10;
+	ELSE
+		iStep							:= 1000;					// Error step
+	END_IF
+
+	230: // Read profile MDP 742 or DS 402:
+	
+			// EL72x1-0000 --> MDP 742: A011:11 Motor I2T temperature [%] USINT
+			// EL72x1-0001 --> DS 402: 2031:11 Motor I2T temperature [%] USINT
+	
+		// Execute read only if DriveRef is OK and read trigger
+		fbCoERead.nIndex				:= wMotorI2TIndex;
+		fbCoERead.nSubIndex				:= 16#11;
+		fbCoERead.pDstBuf				:= ADR(usiI2T);
+		fbCoERead.cbBufLen				:= SIZEOF(usiI2T);
+		fbCoERead.bExecute				:= bDriveRefOK AND tonWait.Q;
+		IF fbCoERead.bBusy THEN
+			iStep 						:= iStep + 10;
+		END_IF
+	
+	240:	// Wait till read finish
+	
+		IF NOT fbCoERead.bBusy THEN
+			fbCoERead.bExecute			:= FALSE;
+			IF fbCoERead.bError THEN
+				wInitErrorCount 		:= wInitErrorCount + 1;
+				// Count > 10 then go to error and wait for reset, if not wait in warning step
+				IF wInitErrorCount > 10 THEN
+					uiAdsErrId			:= fbCoERead.iAdsErrId;
+					uiCANopenErrId		:= fbCoERead.iCANopenErrId;
+					iStep				:= 1000;								// Error step
+				ELSE
+					iStep				:= 900;									// Warning step
+				END_IF
+			ELSE
+				rI2T					:= USINT_TO_REAL(usiI2T);				// Konwersja i przepisanie
+				iStep 					:= iStep - 10;
+			END_IF
+		END_IF
+	
+	900: // Warning - wait and repeat read - problem during read motor data, i.e. EtherCAT doesn't work yet
+		IF tonWait.Q THEN
+			iStep 						:= 0;	// Repeat initialization phase 
+		END_IF
+			  
+			  
+	1000: // Error - wait for reset 
+		;
+END_CASE
+//===============================================================
+
+bError		 							:= iStep = 1000;
+bInitialized 							:= iStep >= 230 AND NOT bError;
+ACT_Calculations();
+
+//======================== Save I2T max value ======================
+IF rI2TMax < rI2T THEN
+	rI2TMax 							:= rI2T;
+END_IF
+
+//========================= Warning =============================
+bWarning								:= rCurrentF > rWarningCurrent;
+
+//===================== Limit output torque =====================
+IF rTorqueLimit < rTorqueLimitLow THEN
+	uiBipolarTorqueLimitValue 			:= REAL_TO_UINT(rTorqueLimitHigh);			// Secure against 0 value - probably empty var connected to input
+ELSE
+	uiBipolarTorqueLimitValue 			:= REAL_TO_UINT(LIMIT(rTorqueLimitLow,rTorqueLimit,rTorqueLimitHigh)) * 10;
+END_IF
+//====================== Call CoE read FB =======================
+fbCoERead(stDriveRef:= stDriveRef);
+]]></ST>
+    </Implementation>
+    <Action Name="ACT_Calculations" Id="{4e0b316a-3fb0-4149-a8af-1e91a66a6c81}">
+      <Implementation>
+        <ST><![CDATA[//============== Raw values - always avaliable ==================
+rTorquePerc								:= LREAL_TO_REAL(Axis.NcToPlc.ActTorque); 		// [%]
+rTorqueRAW 								:= rTorquePerc * 10;							// -1000 .. 1000 - RAW values the same as process image
+//===================== Filter current value ====================
+fbFilterEx(rIn:= rTorqueRAW, tTimeConstant:= T#1S);
+
+// Calculations	- possible only with params
+IF bInitialized THEN
+	rCurrent 							:= rTorqueRAW * rSfCurrent;
+	rTorque 							:= rCurrent * rSfTorque;
+
+	
+	rCurrentF 							:= fbFilterEx.rOut * rSfCurrent;
+	rTorqueF 							:= fbFilterEx.rOut * rSfTorque;
+END_IF
+
+//=============== Save torque and current max values ===============
+IF ABS(rCurrentMax) < ABS(rCurrentF) THEN
+	rTorquePercMax						:= rTorquePerc;
+	rCurrentMax 						:= rCurrentF;
+	rTorqueMax 							:= rTorqueF;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <Action Name="ACT_Init_Reset" Id="{e745c688-d3bd-4a8c-ad42-69b6abf3c371}">
+      <Implementation>
+        <ST><![CDATA[//============== Reset max values and FB ========================
+rtReset(CLK:= bReset);
+IF rtReset.Q THEN
+	fbCoERead.bExecute					:= FALSE;
+	// FB Outputs
+	rWarningCurrent						:= 0;
+	rTorquePerc							:= 0;
+	rTorquePercMax						:= 0;
+	rTorque								:= 0;
+	rTorqueF							:= 0;
+	rTorqueMax							:= 0;
+	rCurrent							:= 0;
+	rCurrentF							:= 0;
+	rCurrentMax							:= 0;
+	rI2T								:= 0;
+	rI2TMax								:= 0;
+	uiAdsErrId		 					:= 0;
+	uiCANopenErrId	 					:= 0;
+	// Internal
+	iStep								:= 0;
+	wInitErrorCount						:= 0;
+	rTorqueRAW							:= 0;
+	rSfTorque							:= 0;
+	rSfCurrent							:= 0;
+	wInitErrorCount						:= 0;
+	rPeakCurrent						:= 0;
+	rRatedCurrent						:= 0;
+	bRMSValue							:= FALSE;
+	dwPeakCurrent						:= 0;
+	dwRatedCurrent						:= 0;
+	dwTorqueConstant					:= 0;
+	dwFeatureBits						:= 0;
+	sDeviceName							:= '';
+	sNo									:= '';
+	usiI2T								:= 0;
+	bDS402Profile						:= FALSE;
+	bMDP742Profile						:= FALSE;
+	wMotorI2TIndex						:= 0;
+END_IF]]></ST>
+      </Implementation>
+    </Action>
+    <LineIds Name="FB_MotorMonitoringEL72xx">
+      <LineId Id="2759" Count="258" />
+      <LineId Id="957" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_MotorMonitoringEL72xx.ACT_Calculations">
+      <LineId Id="56" Count="20" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_MotorMonitoringEL72xx.ACT_Init_Reset">
+      <LineId Id="40" Count="37" />
+      <LineId Id="1" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

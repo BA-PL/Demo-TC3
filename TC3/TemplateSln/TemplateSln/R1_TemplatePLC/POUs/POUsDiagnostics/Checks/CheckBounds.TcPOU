@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+  <POU Name="CheckBounds" Id="{a2917252-a5bd-462b-898a-66626a9a5ae1}" SpecialFunc="CheckBounds">
+    <Declaration><![CDATA[// Implicitly generated code : DO NOT EDIT
+FUNCTION CheckBounds : DINT
+VAR_INPUT
+	index, lower, upper: DINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Implicitly generated code : Only an Implementation suggestion
+IF  index < lower THEN
+	CheckBounds := lower;
+	GVL_Checks.dCheckBounds := GVL_Checks.dCheckBounds + 1;
+	ADSLOGSTR(4,'Checks critical error - index out of range','');
+ELSIF  index > upper THEN
+	CheckBounds := upper;
+	GVL_Checks.dCheckBounds := GVL_Checks.dCheckBounds + 1;
+	ADSLOGSTR(4,'Checks critical error - index out of range','');
+ELSE  
+	CheckBounds := index;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="CheckBounds">
+      <LineId Id="3" Count="0" />
+      <LineId Id="18" Count="9" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

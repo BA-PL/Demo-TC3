@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_TWOHAND" Id="{e59bb584-6ccb-4966-bd12-40e980a4fe07}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_TWOHAND :
+STRUCT
+	{attribute 'hide'}
+	BUnknown						: BYTE;
+	BState							: BYTE;
+(* wDiagnosis *)
+	bDiag_DiscErrorTWOHANDIn1_2		: BIT;		(*	Discrepancy error input group 1	*)
+	bDiag_DiscErrorTWOHANDIn3_4		: BIT;		(*	Discrepancy error input group 2	*)
+	bDiag_DiscErrorTWOHANDIn1_2_3_4	: BIT;		(*	Discrepancy error between the two input groups 	*)
+	{attribute 'hide'}
+	bDiagBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT5						: BIT; 		(* Empty *)
+	bDiag_TwoHandError				: BIT;		(* Two-hand error	*)
+	{attribute 'hide'}
+	bDiagBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT10						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT11						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bDiagBIT15						: BIT; 		(* Empty *)
+(* wInputs *)
+	{attribute 'hide'}
+	bInputBIT0						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT1						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT7						: BIT; 		(* Empty *)
+	bIn_TWOHANDIn1					: BIT; 		(* .8 *)
+	bIn_TWOHANDIn2					: BIT; 		(* .9 *)
+	bIn_TWOHANDIn3					: BIT; 		(* .10 *)
+	bIn_TWOHANDIn4					: BIT; 		(* .11 *)
+	{attribute 'hide'}
+	bInputBIT12						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT13						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT14						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bInputBIT15						: BIT; 		(* Empty *)
+(* wOutputs *)
+	bOut_Error						: BIT; 		(* .0 *)
+	bOut_TWOHANDOut					: BIT; 		(* .1 *)
+	{attribute 'hide'}
+	bOutputBIT2						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT3						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT4						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT5						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT6						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT7						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT8						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT9						: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT10					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT11					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT12					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT13					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT14					: BIT; 		(* Empty *)
+	{attribute 'hide'}
+	bOutputBIT15					: BIT; 		(* Empty *)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

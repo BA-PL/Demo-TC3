@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_McAxisOnline" Id="{6ab98389-c989-48b9-b5d8-977bc9b175b3}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.05.2018
+//	Struktura interfejsu do obslugi Axis Online
+//	v1.1	|| TC v 3.1.4022.16		|| - zmiana nazw struktur 
+// 									 ST_FBCoEAX8000SetPositionOffsetIO 	--> ST_FBCoESetPositionOffsetIO
+// 									 ST_FBHoldingBrakeCtrlAX8000IO 		--> ST_FBHoldingBrakeCtrlIO
+// 									 ST_FBMotorMonitoringAX8000IO 		--> ST_FBMotorMonitoringIO
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_McAxisOnline :
+STRUCT
+	// Base administration
+	mcPower							: ST_MCPowerIO;
+	mcStop							: ST_MCStopIO;
+	mcHalt							: ST_MCHaltIO;
+	mcSS1							: ST_MCStopIO;
+	mcSS2							: ST_MCStopIO;
+	mcReset							: ST_MCResetIO;
+	mcHome							: ST_MCHomeIO;
+	mcSetPosition					: ST_MCSetPositionIO;
+	stSetPositionOffset				: ST_FBSetPositionOffsetIO;
+	// Base move
+	mcMoveAbsolute					: ST_MCMoveAbsoluteIO;
+	mcMoveRelative					: ST_MCMoveRelativeIO;
+	mcMoveVelocity					: ST_MCMoveVelocityIO;
+	mcMoveModulo					: ST_MCMoveModuloIO;
+	mcMoveAbsolute2					: ST_MCMoveAbsoluteIO;
+	mcMoveRelative2					: ST_MCMoveRelativeIO;
+	mcMoveVelocity2					: ST_MCMoveVelocityIO;
+	mcMoveModulo2					: ST_MCMoveModuloIO;
+	mcJog							: ST_MCJogIO;
+	// States, parameters, monitoring and diag
+	stMotorMonitoring				: ST_FBMotorMonitoringIO;
+	stHoldingBrake					: ST_FBHoldingBrakeCtrlIO;
+	stNcLimitSwitch					: ST_FBNcSWLimitSwitchCtrlIO;
+	stAxisParameter					: Tc2_MC2.ST_AxisParameterSet;
+	stDriveRef						: Tc2_EtherCAT.ST_DriveRef;
+	stDriveAddress					: Tc2_MC2.ST_DriveAddress;
+	stChannelErrorCode				: ST_FBReadChannelErrorCodeIO;
+	stStatus						: ST_McAxisStatus;
+	// FBs
+	stGetDriveRef					: ST_FBGetDriveRefIO;					// IO for FB_GetDriveRef
+	mcReadDriveAddress				: ST_MCReadDriveAddressIO;				// IO for MC_ReadDriveAddress
+	mcReadParameterSet				: ST_MCReadParameterSetIO;				// IO for MC_ReadParameterSet
+	stError							: ST_McAxisOnlineErrorCollection;		// Error collection for all Axis Online functions
+	bError							: BOOL;									// General Error flag - all error, FB, NC, drive, communication... check stError for detail
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

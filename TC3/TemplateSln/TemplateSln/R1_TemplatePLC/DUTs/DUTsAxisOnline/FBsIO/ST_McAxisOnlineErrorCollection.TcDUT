@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.16">
+  <DUT Name="ST_McAxisOnlineErrorCollection" Id="{cc0a5fcd-7bdd-4832-b7b2-f785fd95d520}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									7.12.2018
+//	Struktura zawierajaca wszsytkie bbledy AxisOnline
+//  v1.1	|| TC v 3.1.4022.27		|| - dodane opisy bledow w formie zmiennych typu string
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_McAxisOnlineErrorCollection :
+STRUCT
+	// Error Collection
+	bError							: BOOL;						// General Error flag - all error, FB, NC, drive, communication...
+	bNcError						: BOOL;
+	bFBError						: BOOL;						// Mc FB error
+	bCommunicationError				: BOOL;						// ADS, CoE (AX8000), SoE (AX5000)...
+	bDriveError						: BOOL;
+	uiAdsErrorID					: UINT;						// Forwarded output FB_CoERead_ByDriveRef
+	uiSecErrorID					: UINT;						// Sercos Error ID for AX5000, CanOpen error ID for AX8000
+	udiErrorID						: UDINT;					// Set Position Offset FB error ID
+	udiNcErrorID					: UDINT;					// Nc ErrorID
+	{attribute 'displaymode':='hex'}
+	udiNcErrorIDHex					: UDINT;					// Nc ErrorID
+	udiFBErrorID					: UDINT;					// FB ErrorID
+	{attribute 'displaymode':='hex'}
+	udiFBErrorIDHex					: UDINT;					// FB ErrorID
+
+	uiDriveErrorID					: UINT;						// 603F Error code	0x603F (Ch A)/ 0x683F (Ch B) 	UINT16
+	{attribute 'displaymode':='hex'}
+	uiDriveErrorIDHex				: UINT;						// 603F Error code	0x603F (Ch A)/ 0x683F (Ch B) 	UINT16
+	sNcError						: STRING(255);				// Error description
+	sDriveError						: STRING(255);				// Error description
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

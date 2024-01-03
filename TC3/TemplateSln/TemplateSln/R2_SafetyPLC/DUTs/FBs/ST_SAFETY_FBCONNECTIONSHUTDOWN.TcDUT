@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_SAFETY_FBCONNECTIONSHUTDOWN" Id="{b29e70d1-e765-4c2a-b01e-fff332d3b9cb}">
+    <Declaration><![CDATA[TYPE ST_SAFETY_FBCONNECTIONSHUTDOWN:
+STRUCT
+	uStatus							: U_SAFETY_CONNECTIONSHUTDOWN; 		(* Typ zalezny od bloku *)
+	eState							: E_SAFETY_FBStateCS;				(* Enum ze statusem bloku *)
+	bGeneralError					: BOOL; 							(* Gdy wystapi chociaz jeden Error *)	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

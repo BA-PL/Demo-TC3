@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="FB_FilterEx" Id="{4eb5e190-1921-4c99-9782-88b716c4844c}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									23.11.2016
+//			Bloczek do filtru inercyjnego do wygladzania przebiegow,					
+//					czas próbkowania wyliczany wewnętrznie
+//  v1.1	|| TC v 3.1.4020.28		|| - poprawienie inicjalizacji, notacja wegierska
+// 	v1.0	|| TC v 3.1.4020.0		|| - pierwsza wersja
+//==================================================================================================
+FUNCTION_BLOCK FB_FilterEx
+VAR_INPUT
+	rIn										: REAL;					// Sygnal wejsciowy
+	tTimeConstant							: TIME;					// Stala czasowa T gdy rOut = 0,63 * rIn 
+END_VAR
+VAR_OUTPUT
+	rOut									: REAL;					// Przefiltrowany sygnal wyjsciowy, 
+END_VAR
+VAR
+	rLastOut								: REAL;					// Wartosc wyjscia w poprzednim cyklu
+	rCycleTime								: REAL; 				// [ms]
+	rTimeConst								: REAL;					// [ms]
+	tX										: TIME;					// Aktualny czas
+	tY 										: TIME;					// Zmienna pomocnicza, poprzedni czas
+	tCycleTime								: TIME;					// Wyliczony czas cyklu
+	bFirstCycle								: BOOL := TRUE;			// Flaga pierwszego cyklu - nie mamy jeszce wyliczonego prawidlowo czasu cylu 
+																	// - potrzebujemy dwoch cylki do odjecia czasu
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Obliczenie czasu cyklu do inkrementu
+tX 					:= TIME();
+IF NOT bFirstCycle THEN
+	tCycleTime 		:= tX - tY;
+END_IF
+tY 					:= tX;
+// Przeliczenie czasu na typ REAL
+rCycleTime 			:= TIME_TO_REAL(tCycleTime);
+rTimeConst 			:= TIME_TO_REAL(tTimeConstant);
+// Wyliczenie wyjscia tylko jesli stala czasowa wieksza od 1 ms i zakonczylismy inicjalizacje
+IF NOT bFirstCycle AND rTimeConst > 0.001 THEN
+	rOut 			:= rLastOut + (rIn - rLastOut) * rCycleTime/rTimeConst;
+	rLastOut 		:= rOut;
+END_IF
+// Zerowanie flagu pierwszego cyklu
+bFirstCycle 		:= FALSE;]]></ST>
+    </Implementation>
+    <LineIds Name="FB_FilterEx">
+      <LineId Id="62" Count="14" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="P_SystemDiagnostics" Id="{7e196210-9fee-4653-8689-56e94c2c639b}" SpecialFunc="None">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									2.11.2018
+//					Program zbiorczy diagnostyki systemu
+// 
+//	v1.4 	|| TC v 3.1.4022.25 	|| Dodany state machine
+//	v1.3 	|| TC v 3.1.4022.20 	|| Usuniete P_MDP, dodany podprogram EventLoggera P_SystemDiag_EventLog
+//	v1.2 	|| TC v 3.1.4020.32 	|| Dodane P_EtherCAT_ChangeCounter
+//	v1.1 	|| TC v 3.1.4020.14 	|| Dodane wyjscia bOk, bWarning, bError
+//	v1.0 	|| TC v 3.1.4020.0 		|| Pierwsza wersja
+//==================================================================================================
+PROGRAM P_SystemDiagnostics
+VAR_INPUT
+	eMachineMode							: E_MachineMode; 		// Machine mode
+	eMachineCommand							: E_MachineCommand; 	// Command from top level state program
+END_VAR
+VAR_OUTPUT
+	eMachineState							: E_MachineState;
+	bOK										: BOOL;					// Brak bledow i ostrzezen
+	bWarning								: BOOL;					// Ostrzezenie
+	bError									: BOOL;					// Zbiorcza flaga bledow
+END_VAR
+VAR
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[P_SystemInfo(bConfirm:=);
+P_Persistent();
+P_EtherCAT_Diag();
+P_EtherCAT_ChangeCounter(bReset := );
+P_KBus();
+P_Checks(bReset := );
+P_TaskInfo();
+
+// Machine mode change over
+CASE eMachineMode OF
+	
+	E_MachineMode.eInitialization:
+		; // Do nothing
+	
+ELSE
+	
+	// Set flags
+	bError										:= P_SystemInfo.bError OR P_Persistent.bError OR P_EtherCAT_Diag.bError OR P_EtherCAT_ChangeCounter.bError OR P_KBus.bError OR P_Checks.bError OR P_TaskInfo.bError;
+	bWarning									:= P_SystemInfo.bWarning OR P_Persistent.bWarning OR P_EtherCAT_Diag.bWarning OR P_EtherCAT_ChangeCounter.bWarning OR P_KBus.bWarning OR P_Checks.bWarning OR P_TaskInfo.bWarning;
+	bOk											:= NOT (bError OR bWarning);
+	
+	// State machine
+	CASE eMachineState OF
+	
+		E_MachineState.eIdle, E_MachineState.eStopping, E_MachineState.eStopped, E_MachineState.eStarting, E_MachineState.eAborting, E_MachineState.eAborted:
+
+			// Ignore global commands eAbort, eRun, eStop, eReset, eRestart
+			// Set eRunning state
+			eMachineState 						:= E_MachineState.eRunning;
+
+		E_MachineState.eRunning:
+		
+			// Ignore global commands eAbort, eRun, eStop, eReset, eRestart
+			// If error go to error state
+			IF bError THEN
+				eMachineState					:= E_MachineState.eError;
+			END_IF
+	
+		E_MachineState.eRestarting, E_MachineState.eReseting:
+
+			// Reset/Restart only if not OK
+			P_EtherCAT_ChangeCounter.bReset		:= NOT P_EtherCAT_ChangeCounter.bOK;
+			P_Checks.bReset						:= NOT P_Checks.bOK;
+			IF NOT bError THEN
+				eMachineState					:= E_MachineState.eRunning;
+			END_IF
+
+		E_MachineState.eError:
+	
+			IF eMachineCommand = E_MachineCommand.eReset THEN
+				eMachineState					:= E_MachineState.eReseting;
+			END_IF
+	
+			IF eMachineCommand = E_MachineCommand.eRestart THEN
+				eMachineState					:= E_MachineState.eRestarting;
+			END_IF
+	
+	END_CASE
+	
+END_CASE
+
+// Log to events - You can switch it off in Initialization phase
+P_SystemDiag_EventLog();]]></ST>
+    </Implementation>
+    <LineIds Name="P_SystemDiagnostics">
+      <LineId Id="110" Count="5" />
+      <LineId Id="380" Count="1" />
+      <LineId Id="282" Count="5" />
+      <LineId Id="305" Count="0" />
+      <LineId Id="353" Count="0" />
+      <LineId Id="389" Count="0" />
+      <LineId Id="355" Count="1" />
+      <LineId Id="354" Count="0" />
+      <LineId Id="390" Count="0" />
+      <LineId Id="357" Count="0" />
+      <LineId Id="306" Count="1" />
+      <LineId Id="337" Count="0" />
+      <LineId Id="382" Count="1" />
+      <LineId Id="387" Count="0" />
+      <LineId Id="371" Count="0" />
+      <LineId Id="392" Count="0" />
+      <LineId Id="391" Count="0" />
+      <LineId Id="393" Count="0" />
+      <LineId Id="397" Count="3" />
+      <LineId Id="394" Count="0" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="343" Count="0" />
+      <LineId Id="377" Count="0" />
+      <LineId Id="375" Count="0" />
+      <LineId Id="351" Count="0" />
+      <LineId Id="376" Count="0" />
+      <LineId Id="372" Count="2" />
+      <LineId Id="350" Count="0" />
+      <LineId Id="361" Count="7" />
+      <LineId Id="360" Count="0" />
+      <LineId Id="346" Count="0" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="348" Count="0" />
+      <LineId Id="280" Count="0" />
+      <LineId Id="251" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="77" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

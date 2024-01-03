@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="ST_MCMoveAbsoluteIO" Id="{7d179cb6-edd1-4f51-9efa-38f2aca80225}">
+    <Declaration><![CDATA[//==================================================================================================
+//							Beckhoff Automation Poland
+//									18.04.2018
+//	Struktura zawierajaca I/O odpowiedniego bloku
+//  v1.0	|| TC v 3.1.4022.16		|| - pierwsza wersja
+//==================================================================================================
+TYPE ST_MCMoveAbsoluteIO:
+STRUCT
+	bExecute						: BOOL;								// Rising edge executes cmd
+	lrPosition						: LREAL;
+	lrVelocity						: LREAL;
+	lrAcceleration					: LREAL;
+	lrDeceleration					: LREAL;
+	lrJerk							: LREAL;
+	eBufferMode						: Tc2_MC2.MC_BufferMode;
+	stOptions						: Tc2_MC2.ST_MoveOptions;
+	bDone							: BOOL;
+	bBusy							: BOOL;
+	bActive							: BOOL;
+	bCommandAborted					: BOOL;
+	bError							: BOOL;
+	udiErrorID						: UDINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>
